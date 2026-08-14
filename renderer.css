@@ -19,6 +19,17 @@
     --ok: #2E7D4F;
     --bad: #B3402E;
     --shadow: 0 24px 60px rgba(30, 34, 48, 0.18);
+
+    /* ——— Motion-Tokens (v3 Sequenz-Layer) ———
+       EINE Duration-Skala, EIN Easing, EINE Puls-Optik. Karten-Typen konsumieren die
+       Tokens, definieren nie eigene Animationen; die Engine in renderer.js liest ihre
+       Zeiten hier aus — es gibt keine zweite Zahl im JS. */
+    --m-beat: 340ms;      /* Label, Highlight, kurzes Aufglühen */
+    --m-move: 760ms;      /* Puls-Wanderung, Kurven-Trace */
+    --m-hold: 260ms;      /* Atempause zwischen zwei Schritten */
+    --m-ease: cubic-bezier(0.3, 0, 0.12, 1);
+    --m-pulse-r: 5.5;     /* Radius des laufenden Punkts */
+    --m-dim: 0.35;        /* zurückgenommen, nicht weg */
   }
   /* Bewusst light-only: helle Lernwelt wie Imprint, hält auf jedem Host-Theme. */
 
@@ -118,6 +129,55 @@
   @media (prefers-reduced-motion: reduce) {
     .card { animation: none; }
     .balance-swing { animation: none !important; }
+  }
+
+  /* ——— Sequenz-Zustände ———
+     Ein Schritt IST ein Zustand: .on/.lit/.seq-dim sind der Zustand, die Transitions
+     nur der Weg dorthin. Deshalb ist jeder Schritt einfrierbar (Shot-Hook, Audit,
+     prefers-reduced-motion). Karten OHNE sequence tragen keines dieser Attribute und
+     rendern exakt wie bisher. */
+  [data-seq-step] { transition: opacity var(--m-beat) var(--m-ease); }
+  /* Versteckt = opacity 0. SICHTBAR heißt bewusst KEINE Regel: das Element behält
+     seine eigene Opacity (Flächen unter Kurven sind zart, Wasser ist 0.92). */
+  [data-seq-step]:not(.on) { opacity: 0 !important; }
+  .seq-trace { transition: stroke-dashoffset var(--m-move) var(--m-ease); }
+  /* Zurückgenommen, nicht weg — als Filter, damit eigene Opacity erhalten bleibt
+     (eine zarte Fläche würde von `opacity: 0.35` sonst HELLER). */
+  .seq-dim { filter: opacity(var(--m-dim)); transition: filter var(--m-beat) var(--m-ease); }
+  /* Highlight: Farb-Beat auf dem Label. Der Beat ist der Weg, der BLEIBENDE Zustand ist
+     die Akzentfarbe plus ein Soft-Ton-Halo — dieselbe Sprache wie das Puls-Aufglühen.
+     Ohne das Halo wäre der Schritt auf einem ohnehin farbigen Label (Serien-Label trägt
+     seine Serienfarbe) unsichtbar, also kein Zustand, sondern nur eine Zuckung. */
+  .seq-hl {
+    transition: fill var(--m-beat) var(--m-ease), stroke var(--m-beat) var(--m-ease);
+    paint-order: stroke; stroke-linejoin: round;
+    transform-box: fill-box; transform-origin: center;
+  }
+  /* Die Halo-BREITE bleibt exakt die des Papier-Halos (3px), den jedes Label ohnehin
+     trägt: getBBox misst OHNE Kontur — ein breiterer Halo wüchse über jede Box hinaus,
+     die Solver und Audit kennen, und könnte optisch an ein Nachbar-Label stoßen, ohne
+     dass ein Gate es sieht. Der Zustand wird über die FARBE getragen, nicht über Fläche. */
+  .seq-hl.lit { stroke-width: 3px; animation: seq-beat var(--m-beat) var(--m-ease); }
+  @keyframes seq-beat { 0% { transform: scale(1); } 45% { transform: scale(1.13); } 100% { transform: scale(1); } }
+  /* Aufglühen des Puls-Ziels: Soft-Ton-Ring hinter der Zielfläche — bleibt. */
+  .seq-halo { opacity: 0; stroke-width: 11; stroke-linejoin: round; transition: opacity var(--m-beat) var(--m-ease); }
+  .seq-halo.lit { opacity: 0.85; }
+  /* Puls: EIN Punkt-Design für alle Karten. Er läuft seinen Weg ab und verschwindet —
+     der bleibende Zustand ist das Aufglühen des Ziels, nie der Punkt selbst. */
+  .seq-pulse { offset-rotate: 0deg; opacity: 0; }
+  .seq-pulse.run { animation: seq-pulserun var(--m-move) var(--m-ease) forwards; }
+  .seq-pulse.rev.run { animation-direction: reverse; }
+  @keyframes seq-pulserun {
+    0%   { offset-distance: 0%;   opacity: 0; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { offset-distance: 100%; opacity: 0; }
+  }
+  /* Einfrieren: kein Weg, nur Zustand (Shots, Endzustand, reduced-motion). */
+  .seq-frozen, .seq-frozen * { transition: none !important; animation: none !important; }
+  @media (prefers-reduced-motion: reduce) {
+    [data-seq-step], .seq-trace, .seq-dim, .seq-hl, .seq-halo { transition: none !important; }
+    .seq-pulse.run, .seq-hl.lit { animation: none !important; }
   }
 
   .lehrsatz {

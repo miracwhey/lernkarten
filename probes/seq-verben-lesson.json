@@ -1,0 +1,95 @@
+{
+  "id": "seq-verben-gewohnheiten",
+  "title": "Die Gewohnheits-Schleife",
+  "source": "Verb-Matrix v3: dim, highlight, pulse auf allen Weg-Arten",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "SEQUENZ-VERBEN",
+      "title": "Die Gewohnheits-Schleife",
+      "sub": "Wie aus einem Auslöser eine Gewohnheit wird — Runde für Runde.",
+      "stats": "7 Karten — 4 Minuten"
+    },
+    {
+      "type": "cycle",
+      "relation": "loop",
+      "text": "Jede Gewohnheit läuft dieselbe Runde: Ein Auslöser weckt ein Verlangen, die Reaktion folgt, die Belohnung schreibt die Runde fest — und macht den nächsten Auslöser stärker.",
+      "steps": [
+        { "label": "AUSLÖSER", "sub": "Ort, Zeit, Gefühl", "color": "ueberich" },
+        { "label": "VERLANGEN", "sub": "Der Zug entsteht", "color": "es" },
+        { "label": "REAKTION", "sub": "Du tust es", "color": "ich" },
+        { "label": "BELOHNUNG", "sub": "Es fühlt sich gut an", "color": "ueberich" }
+      ],
+      "caption": "Die Belohnung ist der Grund, warum der Auslöser beim nächsten Mal zieht.",
+      "trigger": "auto",
+      "sequence": [
+        { "verb": "pulse", "from": "step:auslöser", "to": "step:verlangen" },
+        { "verb": "pulse", "from": "step:verlangen", "to": "step:reaktion" },
+        { "verb": "pulse", "from": "step:reaktion", "to": "step:belohnung" },
+        { "verb": "highlight", "target": "label:belohnung" },
+        { "verb": "dim", "target": "step:auslöser" }
+      ]
+    },
+    {
+      "type": "balance",
+      "relation": "weighing",
+      "text": "Ob du eine Gewohnheit durchhältst, entscheidet selten der Wille: Die Reibung wiegt schwerer als der gute Vorsatz.",
+      "left": { "label": "REIBUNG", "sub": "Jede Hürde zählt", "color": "es" },
+      "right": { "label": "VORSATZ", "sub": "Hält nicht lange", "color": "ich" },
+      "pivot": { "label": "UMGEBUNG", "sub": "Sie kippt es", "color": "ueberich" },
+      "trigger": "auto",
+      "sequence": [
+        { "verb": "pulse", "from": "node:reibung", "to": "pivot" },
+        { "verb": "highlight", "target": "label:umgebung" }
+      ]
+    },
+    {
+      "type": "fanout",
+      "relation": "multiplication",
+      "text": "Eine einzige Entscheidung über deine Umgebung wirkt jeden Tag neu — sie muss nicht wiederholt werden, sie wirkt einfach weiter.",
+      "source": { "label": "EINMAL TUN", "sub": "Handy aus dem Zimmer", "color": "ich" },
+      "count": 6,
+      "result": { "label": "JEDE NACHT" },
+      "caption": "Aufwand einmal, Wirkung dauerhaft — das ist der ganze Trick.",
+      "trigger": "auto",
+      "sequence": [
+        { "verb": "dim", "target": "fan" },
+        { "verb": "pulse", "from": "node:einmal-tun", "to": "target:1" },
+        { "verb": "pulse", "from": "node:einmal-tun", "to": "target:6" },
+        { "verb": "highlight", "target": "label:jede-nacht" }
+      ]
+    },
+    {
+      "type": "venn",
+      "relation": "intersection",
+      "text": "Gewohnheiten halten, wo beides zusammenkommt: Was du leicht tun kannst und was zu der Person passt, die du sein willst.",
+      "a": { "label": "LEICHT ZU TUN", "color": "ich" },
+      "b": { "label": "PASST ZU DIR", "color": "ueberich" },
+      "overlap": { "label": ["BLEIBT"], "color": "es" },
+      "caption": "Nur leicht ist beliebig, nur passend ist anstrengend — zusammen wird es Alltag.",
+      "trigger": "auto",
+      "sequence": [
+        { "verb": "pulse", "from": "region:leicht-zu-tun", "to": "overlap" },
+        { "verb": "pulse", "from": "region:passt-zu-dir", "to": "overlap" },
+        { "verb": "highlight", "target": "label:bleibt" }
+      ]
+    },
+    {
+      "type": "quiz",
+      "question": "Du willst abends weniger am Handy hängen. Was ändert am meisten?",
+      "options": [
+        { "label": "Dir fest vornehmen, früher aufzuhören.", "correct": false },
+        { "label": "Das Handy aus dem Schlafzimmer verbannen.", "correct": true },
+        { "label": "Die Bildschirmzeit täglich kontrollieren.", "correct": false }
+      ],
+      "explain": "Richtig. Wer die Umgebung ändert, muss sich nicht jeden Abend neu entscheiden — die Reibung erledigt das für dich.",
+      "wrong": "Vorsätze und Kontrolle kosten jeden Abend Kraft. Die Umgebung wirkt von allein, auch an müden Tagen."
+    },
+    {
+      "type": "insight",
+      "quote": "Du steigst nicht auf das Niveau deiner Ziele, du fällst auf das Niveau deiner Systeme.",
+      "cite": "James Clear, Atomic Habits",
+      "explain": "Deshalb lohnt die Arbeit an der Umgebung mehr als die Arbeit am Vorsatz."
+    }
+  ]
+}

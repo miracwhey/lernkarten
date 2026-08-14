@@ -1,0 +1,234 @@
+{
+  "id": "seq-demo-schlafdruck",
+  "title": "Schlafdruck & Koffein",
+  "source": "Demo-Lektion für den v3-Sequenz-Layer (Karten 2 und 3 tragen sequence)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "SEQUENZ-DEMO",
+      "title": "Schlafdruck & Koffein",
+      "sub": "Warum du abends müde wirst — und was Kaffee daran ändert.",
+      "stats": "8 Karten — 5 Minuten"
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Je länger du wach bist, desto müder wirst du. Kein Zufall: Ein Stoff sammelt sich stündlich im Gehirn und erzeugt <span class=\"w-es\">Schlafdruck</span> — er heißt Adenosin, und nur Schlaf baut ihn ab.",
+      "xlabel": "TAGESZEIT",
+      "ylabel": "SCHLAFDRUCK",
+      "series": [
+        {
+          "label": "ADENOSIN",
+          "color": "es",
+          "shape": "saturating-rise",
+          "from": "low",
+          "to": "high",
+          "afterStop": "reset",
+          "area": true
+        }
+      ],
+      "stop": {
+        "t": 0.8,
+        "label": "DU SCHLÄFST"
+      },
+      "notes": [
+        {
+          "label": "SCHLAF RÄUMT AUF",
+          "series": 0,
+          "t": 0.92,
+          "side": "above"
+        }
+      ],
+      "caption": "Nach dem langen Tag fallen dir um 23 Uhr die Augen zu — der Tank ist voll.",
+      "trigger": "auto",
+      "sequence": [
+        {
+          "verb": "trace",
+          "target": "series:adenosin"
+        },
+        {
+          "verb": "reveal",
+          "target": "stop"
+        },
+        {
+          "verb": "trace",
+          "target": "series:adenosin"
+        },
+        {
+          "verb": "reveal",
+          "target": "note:schlaf-räumt-auf"
+        }
+      ]
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Koffein besetzt die Andockstellen des Adenosins: Der Druck ist noch da, du spürst ihn nur nicht. Abgebaut wird das Koffein langsam — <span class=\"w-ich\">die halbe Tasse wirkt noch, wenn du längst im Bett liegst</span>.",
+      "xlabel": "STUNDEN",
+      "ylabel": "KOFFEIN",
+      "series": [
+        {
+          "label": "KOFFEIN IM BLUT",
+          "color": "ich",
+          "shape": "decay-halflife",
+          "from": "high",
+          "to": "floor",
+          "area": true
+        }
+      ],
+      "notes": [
+        {
+          "label": "AM ABEND NOCH WACH",
+          "series": 0,
+          "t": 0.34,
+          "side": "above"
+        },
+        {
+          "label": "NACHTS IMMER DA",
+          "series": 0,
+          "t": 0.74,
+          "side": "above"
+        }
+      ],
+      "caption": "Der Kaffee um 16 Uhr sitzt um Mitternacht noch mit im Bett.",
+      "trigger": "auto",
+      "sequence": [
+        {
+          "verb": "trace",
+          "target": "series:koffein-im-blut"
+        },
+        {
+          "verb": "reveal",
+          "target": "note:am-abend-noch-wach"
+        },
+        {
+          "verb": "reveal",
+          "target": "note:nachts-immer-da"
+        },
+        {
+          "verb": "pulse",
+          "from": "note:am-abend-noch-wach",
+          "to": "note:nachts-immer-da"
+        },
+        {
+          "verb": "highlight",
+          "target": "label:koffein-im-blut"
+        }
+      ]
+    },
+    {
+      "type": "compare",
+      "relation": "contrast",
+      "text": "Müdigkeit und Schlafdruck sind nicht dasselbe: Das eine ist ein Gefühl, das andere ein Stoffwechsel-Zustand.",
+      "left": {
+        "title": "GEFÜHLTE MÜDIGKEIT",
+        "color": "ich",
+        "items": [
+          {
+            "label": "Schwankt",
+            "sub": "Licht und Stress heben sie"
+          },
+          {
+            "label": "Täuschbar",
+            "sub": "Koffein blendet sie einfach aus"
+          }
+        ]
+      },
+      "right": {
+        "title": "ECHTER SCHLAFDRUCK",
+        "color": "es",
+        "items": [
+          {
+            "label": "Steigt stur",
+            "sub": "Jede wache Stunde legt nach"
+          },
+          {
+            "label": "Nur Schlaf hilft",
+            "sub": "Kein Wachmacher baut ihn ab"
+          }
+        ]
+      },
+      "caption": "Deshalb kann man sich hellwach fühlen und trotzdem im Defizit stecken."
+    },
+    {
+      "type": "cycle",
+      "relation": "loop",
+      "text": "Ein später Kaffee macht die Nacht flach — und die flache Nacht macht den nächsten Kaffee nötig.",
+      "steps": [
+        {
+          "label": "KURZE NACHT",
+          "sub": "Zu wenig Tiefschlaf",
+          "color": "es"
+        },
+        {
+          "label": "MÜDES TIEF",
+          "sub": "Nachmittags kippt es",
+          "color": "ueberich"
+        },
+        {
+          "label": "KAFFEE SPÄT",
+          "sub": "Druck nur überdeckt",
+          "color": "ich"
+        },
+        {
+          "label": "FLACHE NACHT",
+          "sub": "Koffein wirkt noch",
+          "color": "es"
+        }
+      ],
+      "caption": "Der Kreis dreht sich von selbst weiter — bis eine Tasse ausbleibt."
+    },
+    {
+      "type": "flow",
+      "relation": "descent",
+      "text": "Wer den Druck immer nur überdeckt, merkt nicht, wie tief er schon steht.",
+      "steps": [
+        {
+          "label": "DRUCK STEIGT",
+          "sub": "Jede wache Stunde zählt",
+          "color": "es"
+        },
+        {
+          "label": "KOFFEIN DECKT ZU",
+          "sub": "Das Signal kommt nicht an",
+          "color": "ich"
+        },
+        {
+          "label": "DEFIZIT WÄCHST",
+          "sub": "Unbemerkt, aber messbar",
+          "color": "ueberich",
+          "submerged": true
+        }
+      ],
+      "sink": {
+        "label": "UNTER DER SCHWELLE"
+      }
+    },
+    {
+      "type": "quiz",
+      "question": "Du trinkst um 16 Uhr einen Espresso. Was passiert mit deinem Schlafdruck?",
+      "options": [
+        {
+          "label": "Er sinkt — das Koffein baut ihn ab.",
+          "correct": false
+        },
+        {
+          "label": "Er steigt weiter, du spürst ihn nur nicht.",
+          "correct": true
+        },
+        {
+          "label": "Er bleibt stehen, bis das Koffein weg ist.",
+          "correct": false
+        }
+      ],
+      "explain": "Richtig. Koffein besetzt nur die Andockstellen — das Adenosin sammelt sich weiter an und meldet sich, sobald die Blockade nachlässt.",
+      "wrong": "Nicht ganz: Koffein baut nichts ab. Es blockiert die Meldung, während der Druck im Hintergrund weiter steigt."
+    },
+    {
+      "type": "insight",
+      "quote": "Koffein nimmt dir nicht die Müdigkeit, es nimmt dir nur ihre Stimme.",
+      "cite": "Adenosin und Koffein im Gehirn",
+      "explain": "Wer das weiß, liest den Nachmittags-Kaffee anders: als Aufschub, nicht als Lösung."
+    }
+  ]
+}

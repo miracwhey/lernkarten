@@ -1,6 +1,6 @@
 # Grammatik v3 — Spec-Entwurf (Diskussionsgrundlage)
 
-Stand 14.08.2026 · Status: **ENTWURF, nicht bindend** — Design-Gate mit Mockup folgt vor jedem Bau.
+Stand 14.08.2026 · Status: **RICHTUNG GELOCKT (Leon, 14.08. spät)** — die vier offenen Punkte sind entschieden (unten). Design-Gate mit Mockup bleibt bindend vor jedem Renderer-Bau.
 
 ## Prinzip (unverändert aus v2)
 
@@ -29,7 +29,7 @@ sequence:                # optional, max 6 Schritte
     to: node:soma
   - verb: highlight
     target: label:synapse
-trigger: auto | tap      # ein Trigger-Modus pro Karte, nicht pro Schritt
+trigger: auto            # einziger Wert und Default; "tap" existiert nicht (Tap = Karten-Advance, Leon-Lock) — kommt ggf. mit v4-Schritt-Interaktion additiv
 ```
 
 Validator-Regeln: Verben nur aus Enum · Targets müssen in Anker-Registry existieren · max 6 Schritte · kein Target doppelt im selben Schritt · `pulse` nur zwischen verbundenen Ankern (Typ-Tabelle analog `RELATION_TO_TYPE`).
@@ -46,7 +46,7 @@ Validator-Regeln: Verben nur aus Enum · Targets müssen in Anker-Registry exist
 
 ## 2. Interaktions-Verben v1
 
-- **`step`** — existiert (Tap-Advance). Sequenz mit `trigger: tap` nutzt ihn.
+- **`step`** — existiert (Tap-Advance) und bleibt exklusiv Karten-Wechsel; Sequenzen laufen ausschließlich `auto`.
 - **`scrub`** — ein einziger Parameter (Zeit/Fortschritt), bindet an die Sequenz-Timeline oder an `stop.t` einer Kurve. Kein freies Parameter-Binden: Was scrubbar ist, definiert der Karten-Typ.
 - **`drag` / `simulate`** — Flaggschiff-Kandidat (Orbit, Compounding), eigenes Design-Gate, **v4**. Simulation braucht eine eigene Korrektheits-Gate-Klasse (Physik/Mathe deterministisch prüfbar) — nicht unterschätzen, nicht in v3 quetschen.
 
@@ -82,8 +82,8 @@ Vision-Modell prüft finale Karten-Shots — **Zusatz, nie Ersatz** der determin
 
 ## 5. Prozess
 
-1. **Design-Gate vor Bau (bindend):** karten-grammatik.html um 3 Beispielkarten erweitert — (a) Neuron-Puls mit Asset + Sequenz, (b) Reveal auf bestehender Adenosin-Kurve, (c) Scrub-Karte. Abnahme durch Leon am Mockup, erst dann Renderer-Bau.
-2. Bau-Reihenfolge nach Abnahme: Anker-Registry → Motion-Tokens → Sequenz-Verben → Sequenz-Audit → Asset-Slot/Manifest → scrub → Vision-Critic.
+1. **Design-Gate vor Bau (bindend):** karten-grammatik.html um 3 Beispielkarten erweitert — (a) Neuron-Puls mit Asset + Sequenz, (b) Reveal auf bestehender Adenosin-Kurve, (c) zweites Asset-Thema mit eigenem frisch generiertem Asset (Nagelprobe gegen Über-Standardisierung, statt der gestrichenen Scrub-Karte). Abnahme durch Leon am Mockup, erst dann Renderer-Bau.
+2. Bau-Reihenfolge nach Abnahme: Anker-Registry → Motion-Tokens → Sequenz-Verben → Sequenz-Audit → Asset-Slot/Manifest → Vision-Critic (scrub = v4).
 3. Katalog-Wachstum bleibt der Weg gegen Repetitivität: neue Typen werden EINMAL aus internen Primitives komponiert, designt, gegatet, eingefroren — Kosten pro Typ sinken, LLM-Freiheit bleibt null.
 
 ## Bestands-Befunde v2-Renderer (mit auf die Design-Gate-Agenda)
@@ -93,9 +93,9 @@ Vision-Modell prüft finale Karten-Shots — **Zusatz, nie Ersatz** der determin
 - Bis zu 7 gleichrangige Textelemente (Achsen, Serien, Stop-Label, Notes) ohne visuelle Hierarchie; `side:below`-Notes landen auf der Zeile der x-Achsen-Beschriftung — verschiedene Bedeutungsebenen, gleiche Optik.
 - Note-Labels wirken vom Bezugspunkt losgelöst (z. B. Crash-Label neben der Spitze statt erkennbar an ihr).
 
-## Offene Diskussionspunkte
+## Entschiedene Punkte (Leon, 14.08.2026 spät)
 
-1. **Schrittzahl-Limit 6** — reicht das für „Signalweg Neuron"? (Imprint-Karten haben selten >5 Beats.)
-2. **`trigger: auto` Default-Timing** — Karte animiert beim Erscheinen vs. erst nach erstem Tap?
-3. **scrub in v3 oder erst v4?** Empfehlung: v3 nur wenn das Mockup zeigt, dass es ohne Simulation schon trägt — sonst raus.
-4. **Anker-Namensschema** — `typ:id` wie oben, oder flach? Entscheidet, wie lesbar Judge-Prüfaufträge über Sequenzen werden.
+1. **Schrittzahl-Limit 6 GELOCKT** — additiv erhöhbar; Validator loggt echte Misses ins Wachstums-Backlog (gleiche Mechanik wie Asset-Registry-Misses). Kein weiches Judge-Urteil statt Limit.
+2. **`trigger: auto` = Animation beim Erscheinen GELOCKT** — Karte wird beim Card-Enter lebendig (Imprint-Gefühl), deterministischer Endzustand nach Ablauf; `prefers-reduced-motion` springt sofort zum Endzustand. Tap bleibt exklusiv Karten-Advance (keine Doppeldeutigkeit erster Tap).
+3. **scrub → v4 GELOCKT, raus aus v3.** Mockup-Karte (c) wird ersetzt durch ein ZWEITES Asset-Thema — die Nagelprobe gegen Über-Standardisierung (zwei Themen, je eigenes frisch generiertes Asset; sieht es nach Baukasten aus → durchgefallen).
+4. **Anker-Namensschema `typ:id` GELOCKT** (`series:adenosin`, `node:soma`, `label:synapse`) — Judge-Prüfaufträge bleiben Klartext, keine Namenskollisionen zwischen Element-Klassen.

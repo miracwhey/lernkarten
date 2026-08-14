@@ -38,6 +38,130 @@ export const RELATION_TO_TYPE = {
   "depth-layers": "layers"    // Sichtbares oben, Verborgenes unten
 };
 const STRUCT_TYPES = new Set(["title", "quiz", "insight"]);
+
+// ————————————————————— v3: Anker-Registry —————————————————————
+// Jeder Karten-Typ trägt stabile Anker-Namen im Schema `typ:id`, DETERMINISTISCH aus
+// dem Karten-JSON abgeleitet — ohne Rendern. Der Validator prüft Sequenz-Targets damit,
+// bevor irgendetwas gezeichnet wird.
+//
+// ZWEITER PRODUZENT: renderer.js setzt dieselben Namen konstruktiv als `data-anchor`
+// beim ERZEUGEN der Elemente (nachträgliches Klassifizieren wäre fehleranfällig — die
+// Serien-Geometrie ist eine klassenlose polyline, `.c-series` ist das Text-Label).
+// Dass beide Produzenten dasselbe sagen, bleibt eine Behauptung, solange sie niemand
+// misst: `node probes/anker-check.mjs` vergleicht Registry gegen DOM für JEDEN Typ.
+//
+// Slug: lowercase, Umlaute bleiben (keine Transliteration), Leerzeichen → "-",
+// Satzzeichen/Markup fallen weg. Gleicher Slug zweimal auf einer Karte → "-2", "-3".
+export const ankerSlug = (v, fallback = "") => {
+  const s = String(v ?? "").replace(/<[^>]+>/g, " ").trim().toLowerCase()
+    .replace(/\s+/g, "-").replace(/[^\p{L}\p{N}_-]/gu, "").replace(/-{2,}/g, "-").replace(/^-|-$/g, "");
+  return s || fallback;
+};
+
+// Serien-Index einer Note (Index ODER Label — beide Formen erlaubt der Contract).
+const noteSerie = (card, n) => typeof n.series === "number" ? n.series
+  : (card.series || []).findIndex((s) => s.label === n.series);
+
+// Je Typ knapp definiert, ausschließlich aus vorhandenen Feldern:
+//   anker  — alle gültigen Namen (Reihenfolge = Bau-Reihenfolge im Renderer)
+//   paare  — welche Anker der Typ als VERBUNDEN deklariert (nur dort ist `pulse` wahr)
+//   aeste  — wie viele Striche ein trace-fähiger Anker nacheinander zeichnen kann
+const ANKER_MODELL = {
+  curve(card, A, m) {
+    const serien = (card.series || []).map((s, i) => {
+      const n = A(`series:${ankerSlug(s.label, String(i))}`);
+      m.aeste[n] = 1 + (s.afterStop && card.stop ? 1 : 0);   // Haupt-Ast + Nach-Stop-Ast
+      m.traceBar.push(n);
+      return n;
+    });
+    (card.series || []).forEach((s, i) => { if (s.label !== undefined) A(`label:${ankerSlug(s.label, String(i))}`); });
+    if (card.stop) { A("stop"); A(`label:${ankerSlug(card.stop.label, "ereignis")}`); }
+    const notes = (card.notes || []).map((n, i) => ({ name: A(`note:${ankerSlug(n.label, String(i))}`), si: noteSerie(card, n) }));
+    A("axis");
+    // Verbunden sind zwei Notes DERSELBEN Serie: der Puls läuft auf deren Strich von
+    // der einen zur anderen. Quer über zwei Serien gibt es keinen Weg — nur einen Sprung.
+    for (let i = 0; i < notes.length; i++) for (let j = i + 1; j < notes.length; j++)
+      if (notes[i].si >= 0 && notes[i].si === notes[j].si) m.paare.push([notes[i].name, notes[j].name]);
+    void serien;
+  },
+  balance(card, A, m) {
+    const l = A(`node:${ankerSlug(card.left?.label, "links")}`);
+    const r = A(`node:${ankerSlug(card.right?.label, "rechts")}`);
+    const p = A("pivot");
+    A("beam");
+    A(`label:${ankerSlug(card.left?.label, "links")}`);
+    A(`label:${ankerSlug(card.right?.label, "rechts")}`);
+    A(`label:${ankerSlug(card.pivot?.label, "drehpunkt")}`);
+    m.paare.push([l, p], [r, p]);   // Gewicht läuft über den Balken zum Drehpunkt
+  },
+  fanout(card, A, m) {
+    const q = A(`node:${ankerSlug(card.source?.label, "quelle")}`);
+    A("fan");
+    const n = Number.isInteger(card.count) ? card.count : 0;
+    for (let i = 1; i <= n; i++) m.paare.push([q, A(`target:${i}`)]);
+    A(`label:${ankerSlug(card.source?.label, "quelle")}`);
+    A(`label:${ankerSlug(card.result?.label, "wirkung")}`);
+  },
+  venn(card, A, m) {
+    const a = A(`region:${ankerSlug(card.a?.label, "a")}`);
+    const b = A(`region:${ankerSlug(card.b?.label, "b")}`);
+    const o = A("overlap");
+    A(`label:${ankerSlug(card.a?.label, "a")}`);
+    A(`label:${ankerSlug(card.b?.label, "b")}`);
+    (card.overlap?.label || []).forEach((l, i) => A(`label:${ankerSlug(l, `schnitt${i}`)}`));
+    m.paare.push([a, o], [b, o]);
+  },
+  compare(card, A) {
+    // Reine HTML-Karte: keine Pfad-Geometrie, also keine verbundenen Anker (kein pulse).
+    for (const seite of ["left", "right"]) {
+      A(`panel:${seite}`);
+      A(`label:${ankerSlug(card[seite]?.title, seite)}`);
+      (card[seite]?.items || []).forEach((it, i) => A(`item:${ankerSlug(it.label, `${seite}${i}`)}`));
+    }
+  },
+  cycle(card, A, m) {
+    const steps = (card.steps || []).map((s, i) => A(`step:${ankerSlug(s.label, String(i))}`));
+    (card.steps || []).forEach((s, i) => A(`label:${ankerSlug(s.label, String(i))}`));
+    // arrow:i verbindet Schritt i mit Schritt i+1 (der letzte schließt den Kreis).
+    steps.forEach((_, i) => { A(`arrow:${i + 1}`); m.paare.push([steps[i], steps[(i + 1) % steps.length]]); });
+  },
+  flow(card, A, m) {
+    const steps = (card.steps || []).map((s, i) => A(`step:${ankerSlug(s.label, String(i))}`));
+    (card.steps || []).forEach((s, i) => A(`label:${ankerSlug(s.label, String(i))}`));
+    for (let i = 1; i < steps.length; i++) { A(`arrow:${i}`); m.paare.push([steps[i - 1], steps[i]]); }
+    A("sink");
+  },
+  layers(card, A) {
+    (card.body?.regions || []).forEach((r, i) => A(`region:${ankerSlug(r.label, String(i))}`));
+    (card.zones || []).forEach((z, i) => A(`zone:${ankerSlug(z.label, String(i))}`));
+    A("waterline");
+    (card.body?.regions || []).forEach((r, i) => A(`label:${ankerSlug(r.label, String(i))}`));
+  }
+};
+
+/// Vollständiges Sequenz-Modell einer Karte: Anker, verbundene Paare, trace-Äste.
+export function ankerModell(card) {
+  const m = { typ: card?.type, anker: [], paare: [], aeste: {}, traceBar: [] };
+  const seen = new Set();
+  const A = (name) => {
+    let n = name;
+    for (let k = 2; seen.has(n); k++) n = `${name}-${k}`;
+    seen.add(n); m.anker.push(n); return n;
+  };
+  if (ANKER_MODELL[card?.type]) ANKER_MODELL[card.type](card, A, m);
+  return m;
+}
+
+/// Die Menge gültiger Anker-Namen einer Karte — ohne Rendern, ohne DOM.
+export function ankerFuerKarte(card) { return ankerModell(card).anker; }
+
+export const SEQ_VERBEN = ["reveal", "trace", "pulse", "highlight", "dim"];
+export const SEQ_MAX = 6;
+// Nur "auto": der Tap gehört exklusiv dem Karten-Advance (Leon-Lock 14.08.) — ein
+// Trigger-Wert ohne erreichbares Verhalten wäre eine Falle, kein Ausdrucksraum.
+// Kommt mit echter Schritt-Interaktion (v4) additiv zurück.
+export const SEQ_TRIGGER = ["auto"];
+
 const SHAPES = ["linear-rise", "compound-rise", "saturating-rise", "decay-halflife", "suppressed", "flat"];
 const LEVEL_ORD = { floor: 0, low: 1, mid: 2, high: 3 };
 const AFTER_STOP = ["collapse", "reset", "rebound"];
@@ -45,6 +169,78 @@ const AFTER_STOP = ["collapse", "reset", "rebound"];
 // ein Apex auf dem Boden wäre keine Höhe, sondern ein Widerspruch zur Form.
 const REBOUND_LEVELS = ["low", "mid", "high"];
 const COLORS = new Set(["es", "ich", "ueberich"]);
+
+/// Sequenz-Layer v3, ADDITIV: eine Karte ohne `sequence` bleibt exakt so gültig wie
+/// vorher. Geprüft wird gegen die Anker-Registry der KARTE — ein Target, das es dort
+/// nicht gibt, ist ein Fehler, bevor irgendetwas gerendert wurde.
+function checkSequence(card, p, err) {
+  if (card.trigger !== undefined && !SEQ_TRIGGER.includes(card.trigger))
+    err(p + ".trigger", `ungültig "${card.trigger}" (erlaubt: ${SEQ_TRIGGER.join(", ")}) — ohne Angabe gilt "auto"`);
+  if (card.sequence === undefined) return;
+  const { anker, paare, aeste, traceBar } = ankerModell(card);
+  if (!anker.length) {
+    err(p + ".sequence", `Karten-Typ "${card.type}" trägt keine Anker — eine Sequenz hätte nichts zu adressieren; `
+      + `entferne ${p}.sequence (Sequenzen gehören auf Diagramm-Karten)`);
+    return;
+  }
+  if (!Array.isArray(card.sequence) || card.sequence.length < 1 || card.sequence.length > SEQ_MAX) {
+    const n = Array.isArray(card.sequence) ? card.sequence.length : -1;
+    err(p + ".sequence", n < 0 ? `ist kein Array — erwartet 1–${SEQ_MAX} Schritte {verb, target}`
+      : `braucht 1–${SEQ_MAX} Schritte, hat ${n} — ${n ? `entferne ${n - SEQ_MAX} Schritte (die kleinste Aussage zuerst)` : "entferne das Feld"}`);
+    return;
+  }
+  const alle = new Set(anker);
+  const verbunden = new Set(paare.flatMap(([a, b]) => [`${a}|${b}`, `${b}|${a}`]));
+  const paarText = paare.length ? paare.map(([a, b]) => `${a} → ${b}`).join(" · ")
+    : `diese Karte hat keine verbundenen Anker — pulse ist auf ihr nicht möglich`;
+  const gesehen = new Map();
+  card.sequence.forEach((st, i) => {
+    const sp = `${p}.sequence[${i}]`;
+    if (!SEQ_VERBEN.includes(st?.verb)) {
+      err(sp + ".verb", `unbekanntes Verb "${st?.verb}" (erlaubt: ${SEQ_VERBEN.join(", ")})`);
+      return;
+    }
+    const gilt = (name, feld) => {
+      if (alle.has(name)) return true;
+      err(sp + "." + feld, `Anker "${name}" gibt es auf dieser Karte nicht — gültige Anker: ${anker.join(", ")}`);
+      return false;
+    };
+    if (st.verb === "pulse") {
+      if (st.target !== undefined)
+        err(sp + ".target", `pulse läuft ZWISCHEN zwei Ankern — setze ${sp}.from und ${sp}.to und entferne ${sp}.target`);
+      if (st.from === undefined || st.to === undefined) {
+        err(sp, `pulse braucht from UND to (gültige Verbindungen: ${paarText})`);
+        return;
+      }
+      // „kein Target doppelt im selben Schritt": ein Puls von A nach A wäre kein Weg.
+      if (st.from === st.to) { err(sp, `pulse von "${st.from}" auf sich selbst — from und to müssen verschieden sein`); return; }
+      if (!gilt(st.from, "from") || !gilt(st.to, "to")) return;
+      if (!verbunden.has(`${st.from}|${st.to}`))
+        err(sp, `"${st.from}" und "${st.to}" sind auf einer ${card.type}-Karte nicht verbunden — `
+          + `ein Puls braucht einen Weg, den das Bild zeigt. Gültige Verbindungen: ${paarText}`);
+    } else {
+      if (st.from !== undefined || st.to !== undefined)
+        err(sp, `from/to gibt es nur bei pulse — ${st.verb} nennt sein Ziel als ${sp}.target`);
+      if (st.target === undefined) { err(sp + ".target", `fehlt — ${st.verb} braucht einen Anker (gültig: ${anker.join(", ")})`); return; }
+      if (!gilt(st.target, "target")) return;
+      if (st.verb === "trace" && !traceBar.includes(st.target))
+        err(sp + ".target", `trace zeichnet einen Kurvenstrich und geht nur auf series:* (ist "${st.target}") — `
+          + (traceBar.length ? `gültig: ${traceBar.join(", ")}` : `diese Karte hat keine Serie, nimm reveal`));
+    }
+    // Ein Schritt ist ein neuer ZUSTAND. Zweimal dasselbe Verb auf denselben Anker
+    // ändert nichts — außer bei trace: dessen Wiederholung zeichnet den NÄCHSTEN Ast.
+    const key = st.verb === "pulse" ? `pulse|${st.from}|${st.to}` : `${st.verb}|${st.target}`;
+    const n = (gesehen.get(key) || 0) + 1;
+    gesehen.set(key, n);
+    if (n > 1 && st.verb !== "trace")
+      err(sp, `wiederholt "${st.verb} ${st.target ?? `${st.from}→${st.to}`}" aus Schritt ${card.sequence.findIndex((o) => o !== st && (o.verb === st.verb) && (o.target === st.target) && (o.from === st.from) && (o.to === st.to)) + 1} `
+        + `— derselbe Zustand zweimal; entferne den Schritt oder wähle einen anderen Anker`);
+    if (n > 1 && st.verb === "trace" && n > (aeste[st.target] ?? 1))
+      err(sp, `${n}. trace auf "${st.target}", die Serie hat aber nur ${aeste[st.target] ?? 1} Ast — `
+        + `ein zweiter trace zeichnet den Nach-Stop-Ast und braucht dafür afterStop + stop auf der Karte; `
+        + `entferne diesen Schritt ODER setze ${p}.stop = {"t": <0.15–0.9>, "label": "<max 20 Zeichen>"} UND afterStop auf der Serie`);
+  });
+}
 
 // Setzt fehlende Typen aus der Relation. Mutiert nicht; liefert Kopie.
 export function normalizeLesson(lesson) {
@@ -244,6 +440,7 @@ export function validateLesson(lesson, opts = {}) {
           err(p, `relation "${c.relation}" gehört zu Typ "${RELATION_TO_TYPE[c.relation]}", Karte ist "${c.type}"`);
       }
       CARD_CHECKS[c.type](c, p);
+      checkSequence(c, p, err);
     });
     if (lesson.cards[0]?.type !== "title") err("cards[0]", "muss title sein");
     if (lesson.cards.at(-1)?.type !== "insight") err("cards[letzte]", "muss insight sein");

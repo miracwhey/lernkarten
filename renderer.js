@@ -2,6 +2,31 @@ const C = (key) => `var(--${key})`;
 const SOFT = (key) => `var(--${key}-soft)`;
 const MEASURE_CTX = document.createElement("canvas").getContext("2d");
 
+// ————————————————————— v3: Anker (Sequenz-Layer) —————————————————————
+// Anker-Namen entstehen KONSTRUKTIV beim Erzeugen der Elemente, nie durch
+// nachträgliches Klassifizieren: die Serien-Geometrie ist eine klassenlose polyline,
+// `.c-series` ist ihr Text-LABEL — wer hinterher sortiert, erwischt das Falsche.
+// Zweiter Produzent derselben Namen ist validate-lesson.mjs (`ankerModell`); der
+// Validator darf dafür nicht rendern müssen. Dass beide dasselbe sagen, ist gemessen,
+// nicht behauptet: `node probes/anker-check.mjs` vergleicht Registry gegen DOM.
+const ankerSlug = (v, fallback = "") => {
+  const s = String(v ?? "").replace(/<[^>]+>/g, " ").trim().toLowerCase()
+    .replace(/\s+/g, "-").replace(/[^\p{L}\p{N}_-]/gu, "").replace(/-{2,}/g, "-").replace(/^-|-$/g, "");
+  return s || fallback;
+};
+// Vergabe je Karte, in derselben Reihenfolge wie die Registry: gleicher Slug → -2, -3.
+const ankerVergabe = () => {
+  const seen = new Set();
+  return (name) => { let n = name; for (let k = 2; seen.has(n); k++) n = `${name}-${k}`; seen.add(n); return n; };
+};
+// Ein Element kann zu MEHREREN Ankern gehören (das Ereignis-Label ist `stop` und
+// `label:<slug>`); die Sequenz-Engine sucht deshalb mit [data-anchor~="…"].
+const AN = (...namen) => ` data-anchor="${namen.filter(Boolean).join(" ")}"`;
+// `data-glow` = die Fläche, die als Puls-ZIEL aufglüht. `data-ton` = die Farbe, die
+// ein Label bei `highlight` annimmt. Getrennt, weil sonst der Text mitglühen würde.
+const GLOW = (farbe) => ` data-glow="${farbe}"`;
+const TON = (farbe) => ` data-ton="${farbe}"`;
+
 const RENDERERS = {
 
   title(card) {
@@ -27,6 +52,11 @@ const RENDERERS = {
     const wave1 = "M0,150 C60,139 150,161 225,149 C300,137 352,157 400,146";   // Oberkante Band = Wasserlinie
     const wave2 = "M0,218 C60,208 150,228 225,217 C300,206 352,224 400,214";   // Unterkante Band = Grenze zum Unbewussten
     const wave2rev = "L400,214 C352,224 300,206 225,217 C150,228 60,208 0,218";
+    const A = ankerVergabe();
+    const anRegion = card.body.regions.map((r, i) => A(`region:${ankerSlug(r.label, String(i))}`));
+    const anZone = card.zones.map((z, i) => A(`zone:${ankerSlug(z.label, String(i))}`));
+    const anWater = A("waterline");
+    const anLabel = card.body.regions.map((r, i) => A(`label:${ankerSlug(r.label, String(i))}`));
     const SPLIT_X = 225;        // Mittellinie Berg
     const ES_TOP_Y = 268;       // Ich/Es-Grenze
     const berg = "M225,46 L248,96 L258,132 L268,158 L306,196 L322,258 L300,330 L260,378 L226,392 L180,386 L140,356 L112,298 L106,238 L126,186 L158,156 L186,110 L206,72 Z";
@@ -38,32 +68,32 @@ const RENDERERS = {
           <path id="wavemid" d="${wave2}"/>
           <clipPath id="bergclip"><path d="${berg}"/></clipPath>
         </defs>
-        <path d="${wave2} L400,432 L0,432 Z" fill="${C("water3")}"/>
-        <path d="M24,300 q10,-7 20,0 q10,7 20,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.3"/>
-        <path d="M330,264 q10,-7 20,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.3"/>
-        <path d="M44,392 q10,-7 20,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.3"/>
+        <path${AN(anWater)} d="${wave2} L400,432 L0,432 Z" fill="${C("water3")}"/>
+        <path${AN(anWater)} d="M24,300 q10,-7 20,0 q10,7 20,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.3"/>
+        <path${AN(anWater)} d="M330,264 q10,-7 20,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.3"/>
+        <path${AN(anWater)} d="M44,392 q10,-7 20,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.3"/>
         <g clip-path="url(#bergclip)">
-          <rect x="90" y="30" width="245" height="410" fill="${C("berg")}"/>
-          <rect x="90" y="182" width="${SPLIT_X - 90}" height="258" fill="${SOFT(rUe.color)}"/>
+          <rect${AN(anRegion[0])}${GLOW(rIch.color)} x="90" y="30" width="245" height="410" fill="${C("berg")}"/>
+          <rect${AN(anRegion[1])}${GLOW(rUe.color)} x="90" y="182" width="${SPLIT_X - 90}" height="258" fill="${SOFT(rUe.color)}"/>
           <rect x="${SPLIT_X}" y="182" width="120" height="${ES_TOP_Y - 182}" fill="${C("berg-deep")}"/>
-          <rect x="${SPLIT_X}" y="${ES_TOP_Y}" width="120" height="140" fill="${SOFT(rEs.color)}"/>
+          <rect${AN(anRegion[2])}${GLOW(rEs.color)} x="${SPLIT_X}" y="${ES_TOP_Y}" width="120" height="140" fill="${SOFT(rEs.color)}"/>
           <path d="M225,46 L248,96 L232,112 Z" fill="${C("water1")}" opacity="0.25"/>
           <line x1="${SPLIT_X}" y1="46" x2="${SPLIT_X}" y2="440" stroke="${C("ink")}" stroke-width="2"/>
           <line x1="${SPLIT_X}" y1="${ES_TOP_Y}" x2="330" y2="${ES_TOP_Y}" stroke="${C("ink")}" stroke-width="2"/>
         </g>
         <path d="${berg}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
-        <path d="${wave1} ${wave2rev} Z" fill="${C("water1")}"/>
-        <path d="${wave1}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
-        <path d="${wave2}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
-        <text class="svglabel" font-size="20" fill="${C("ink")}"><textPath href="#wavetop" startOffset="5%"><tspan dy="-13">${zB.label}</tspan></textPath></text>
-        <text class="svglabel" font-size="17" fill="#FFFFFF"><textPath href="#wavetop" startOffset="3%"><tspan dy="42">${zV.label}</tspan></textPath></text>
-        <text class="svglabel" font-size="17" fill="#FFFFFF"><textPath href="#wavemid" startOffset="2%"><tspan dy="32">${zU.label}</tspan></textPath></text>
+        <path${AN(anWater)} d="${wave1} ${wave2rev} Z" fill="${C("water1")}"/>
+        <path${AN(anWater)} d="${wave1}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
+        <path${AN(anWater)} d="${wave2}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
+        <text class="svglabel"${AN(anZone[0])} font-size="20" fill="${C("ink")}"><textPath href="#wavetop" startOffset="5%"><tspan dy="-13">${zB.label}</tspan></textPath></text>
+        <text class="svglabel"${AN(anZone[1])} font-size="17" fill="#FFFFFF"><textPath href="#wavetop" startOffset="3%"><tspan dy="42">${zV.label}</tspan></textPath></text>
+        <text class="svglabel"${AN(anZone[2])} font-size="17" fill="#FFFFFF"><textPath href="#wavemid" startOffset="2%"><tspan dy="32">${zU.label}</tspan></textPath></text>
         ${rIch.at === "peak"
-          ? `<line x1="262" y1="84" x2="240" y2="92" stroke="${C("ink")}" stroke-width="1.6"/>
-             <text class="svglabel" x="268" y="90" font-size="17" fill="${C("ink")}" text-anchor="start">${rIch.label}</text>`
-          : `<text class="svglabel" x="272" y="250" font-size="21" fill="${C("ink")}" text-anchor="middle">${rIch.label}</text>`}
-        <text class="svglabel" x="164" y="308" font-size="${rUe.label.length > 7 ? 15 : 18}" fill="${C("ink")}" text-anchor="middle">${rUe.label}</text>
-        <text class="svglabel" x="${rEs.label.length > 4 ? 276 : 270}" y="${rEs.label.length > 4 ? 318 : 336}" font-size="${rEs.label.length > 4 ? 15 : 21}" fill="${C("ink")}" text-anchor="middle">${rEs.label}</text>
+          ? `<line${AN(anRegion[0], anLabel[0])} x1="262" y1="84" x2="240" y2="92" stroke="${C("ink")}" stroke-width="1.6"/>
+             <text class="svglabel"${AN(anRegion[0], anLabel[0])}${TON(rIch.color)} x="268" y="90" font-size="17" fill="${C("ink")}" text-anchor="start">${rIch.label}</text>`
+          : `<text class="svglabel"${AN(anRegion[0], anLabel[0])}${TON(rIch.color)} x="272" y="250" font-size="21" fill="${C("ink")}" text-anchor="middle">${rIch.label}</text>`}
+        <text class="svglabel"${AN(anRegion[1], anLabel[1])}${TON(rUe.color)} x="164" y="308" font-size="${rUe.label.length > 7 ? 15 : 18}" fill="${C("ink")}" text-anchor="middle">${rUe.label}</text>
+        <text class="svglabel"${AN(anRegion[2], anLabel[2])}${TON(rEs.color)} x="${rEs.label.length > 4 ? 276 : 270}" y="${rEs.label.length > 4 ? 318 : 336}" font-size="${rEs.label.length > 4 ? 15 : 21}" fill="${C("ink")}" text-anchor="middle">${rEs.label}</text>
       </svg></div>
     </div>`;
   },
@@ -82,49 +112,65 @@ const RENDERERS = {
       if (t2 < 0.98) segs.push([ax + dx * t2, ay + dy * t2, bx, by]);
       return segs;
     };
-    const arm = (side, x, yEnd) => `
+    const A = ankerVergabe();
+    const anLinks = A(`node:${ankerSlug(card.left?.label, "links")}`);
+    const anRechts = A(`node:${ankerSlug(card.right?.label, "rechts")}`);
+    const anPivot = A("pivot"), anBeam = A("beam");
+    const anLabel = [A(`label:${ankerSlug(card.left?.label, "links")}`), A(`label:${ankerSlug(card.right?.label, "rechts")}`),
+      A(`label:${ankerSlug(card.pivot?.label, "drehpunkt")}`)];
+    const arm = (side, x, yEnd, anNode, anLbl) => `<g${AN(anNode)}>
       ${[[x - 35, yEnd + 52], [x + 35, yEnd + 52]].flatMap(([bx, by]) =>
         ropeSegs(x, yEnd, bx, by, x, yEnd + 36, 31.5).map(([x1, y1, x2, y2]) =>
           `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${C("ink")}" stroke-width="1.6"/>`)).join("")}
-      <circle cx="${x}" cy="${yEnd + 36}" r="29" fill="${SOFT(side.color)}" stroke="${C(side.color)}" stroke-width="2.5"/>
-      <text class="svglabel" x="${x}" y="${yEnd + 41}" font-size="${side.label.length > 6 ? 9.5 : 11.5}" letter-spacing="0" fill="${C("ink")}" text-anchor="middle">${side.label}</text>
+      <circle${GLOW(side.color)} cx="${x}" cy="${yEnd + 36}" r="29" fill="${SOFT(side.color)}" stroke="${C(side.color)}" stroke-width="2.5"/>
+      <text class="svglabel"${AN(anLbl)}${TON(side.color)} x="${x}" y="${yEnd + 41}" font-size="${side.label.length > 6 ? 9.5 : 11.5}" letter-spacing="0" fill="${C("ink")}" text-anchor="middle">${side.label}</text>
       <path d="M${x - 35},${yEnd + 52} A35,15 0 0 0 ${x + 35},${yEnd + 52}" fill="${C("card")}" stroke="${C("ink")}" stroke-width="2"/>
-      <text x="${x}" y="${yEnd + 86}" font-size="10.5" fill="${C("muted")}" text-anchor="middle" font-weight="600">${side.sub}</text>`;
+      <text x="${x}" y="${yEnd + 86}" font-size="10.5" fill="${C("muted")}" text-anchor="middle" font-weight="600">${side.sub}</text></g>`;
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
       <div class="diagram"><svg viewBox="0 50 400 210" role="img" aria-label="Waage: ${card.left.label} wiegt schwerer als ${card.right.label}, ${card.pivot.label} am Drehpunkt">
-        <line x1="72" y1="107" x2="328" y2="85" stroke="${C("ink")}" stroke-width="4" stroke-linecap="round"/>
-        ${arm(card.left, 72, 107)}
-        ${arm(card.right, 328, 85)}
+        <line${AN(anBeam)} x1="72" y1="107" x2="328" y2="85" stroke="${C("ink")}" stroke-width="4" stroke-linecap="round"/>
+        ${arm(card.left, 72, 107, anLinks, anLabel[0])}
+        ${arm(card.right, 328, 85, anRechts, anLabel[1])}
+        <g${AN(anPivot)}>
         <path d="M200,96 L176,152 L224,152 Z" fill="${C("ink")}"/>
         <line x1="140" y1="152" x2="260" y2="152" stroke="${C("ink")}" stroke-width="3" stroke-linecap="round"/>
         <circle cx="200" cy="96" r="7" fill="${C("card")}" stroke="${C("ink")}" stroke-width="3"/>
-        <rect x="139" y="176" width="122" height="58" rx="14" fill="${SOFT(card.pivot.color)}" stroke="${C(card.pivot.color)}" stroke-width="2.5"/>
-        <text class="svglabel" x="200" y="202" font-size="16" fill="${C("ink")}" text-anchor="middle">${card.pivot.label}</text>
+        <rect${GLOW(card.pivot.color)} x="139" y="176" width="122" height="58" rx="14" fill="${SOFT(card.pivot.color)}" stroke="${C(card.pivot.color)}" stroke-width="2.5"/>
+        <text class="svglabel"${AN(anLabel[2])}${TON(card.pivot.color)} x="200" y="202" font-size="16" fill="${C("ink")}" text-anchor="middle">${card.pivot.label}</text>
         <text x="200" y="221" font-size="11" fill="${C("muted")}" text-anchor="middle" font-weight="600">${card.pivot.sub}</text>
+        </g>
       </svg></div>
     </div>`;
   },
 
   flow(card) {
     const ys = [46, 138, 262];
+    const A = ankerVergabe();
+    const anStep = card.steps.map((s, i) => A(`step:${ankerSlug(s.label, String(i))}`));
+    const anLabel = card.steps.map((s, i) => A(`label:${ankerSlug(s.label, String(i))}`));
+    const anArrow = card.steps.map((_, i) => i ? A(`arrow:${i}`) : null);
+    const anSink = A("sink");
     const nodes = card.steps.map((s, i) => `
-      ${i > 0 ? `<line x1="200" y1="${ys[i-1] + 32}" x2="200" y2="${ys[i] - 34}" stroke="${C("ink")}" stroke-width="1.8" marker-end="url(#arrow)"/>` : ""}
-      <rect x="96" y="${ys[i] - 30}" width="208" height="62" rx="16"
+      ${i > 0 ? `<line${AN(anArrow[i])} data-idx="${i}" x1="200" y1="${ys[i-1] + 32}" x2="200" y2="${ys[i] - 34}" stroke="${C("ink")}" stroke-width="1.8" marker-end="url(#arrow)"/>` : ""}
+      <g${AN(anStep[i])} data-idx="${i}">
+      <rect${GLOW(card.steps[i].color)} x="96" y="${ys[i] - 30}" width="208" height="62" rx="16"
             fill="${SOFT(card.steps[i].color)}" stroke="${C(card.steps[i].color)}" stroke-width="2.5"/>
-      <text class="svglabel" x="200" y="${ys[i] - 2}" font-size="16" fill="${C("ink")}" text-anchor="middle">${s.label}</text>
-      <text x="200" y="${ys[i] + 18}" font-size="11.5" fill="${C("muted")}" text-anchor="middle" font-weight="600">${s.sub}</text>`).join("");
+      <text class="svglabel"${AN(anLabel[i])}${TON(card.steps[i].color)} x="200" y="${ys[i] - 2}" font-size="16" fill="${C("ink")}" text-anchor="middle">${s.label}</text>
+      <text x="200" y="${ys[i] + 18}" font-size="11.5" fill="${C("muted")}" text-anchor="middle" font-weight="600">${s.sub}</text></g>`).join("");
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
       <div class="diagram"><svg viewBox="0 0 400 340" role="img" aria-label="Ablauf der Verdrängung: Impuls, Konflikt, Verdrängung ins Unbewusste">
         <defs><marker id="arrow" markerWidth="9" markerHeight="8" refX="7" refY="4" orient="auto">
           <path d="M0,0 L8,4 L0,8 Z" fill="${C("ink")}"/>
         </marker></defs>
+        <g${AN(anSink)}>
         <rect x="0" y="216" width="400" height="124" fill="${C("water3")}" opacity="0.92"/>
         <path d="M24,302 q9,-6 18,0 q9,6 18,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.35"/>
         <path d="M334,252 q9,-6 18,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.35"/>
         <line x1="0" y1="216" x2="400" y2="216" stroke="${C("card")}" stroke-width="2" stroke-dasharray="7 6"/>
         <text class="svglabel" x="14" y="326" font-size="14" fill="${C("card")}">${card.sink.label}</text>
+        </g>
         ${nodes}
       </svg></div>
     </div>`;
@@ -134,6 +180,15 @@ const RENDERERS = {
     // Contract v2: das LLM liefert nur Semantik (Form, Niveaus, Ereignis-Zeitpunkt,
     // Anker). Punkte UND Label-Positionen berechnet das System — Kollisionen sind
     // damit konstruktiv ausgeschlossen, nicht nachträglich gelintet.
+    // Anker-Namen zuerst und in Registry-Reihenfolge vergeben (Serien, Serien-Labels,
+    // Ereignis, Notes, Achse) — die Dedup-Suffixe hängen an dieser Reihenfolge.
+    const A = ankerVergabe();
+    const anSerie = (card.series || []).map((s, i) => A(`series:${ankerSlug(s.label, String(i))}`));
+    const anSerieLabel = (card.series || []).map((s, i) => s.label !== undefined ? A(`label:${ankerSlug(s.label, String(i))}`) : null);
+    const anStop = card.stop ? A("stop") : null;
+    const anStopLabel = card.stop ? A(`label:${ankerSlug(card.stop.label, "ereignis")}`) : null;
+    const anNote = (card.notes || []).map((n, i) => A(`note:${ankerSlug(n.label, String(i))}`));
+    const anAxis = A("axis");
     const PLOT = { x0: 52, x1: 382, y0: 244, y1: 34 };
     const sx = (t) => PLOT.x0 + t * (PLOT.x1 - PLOT.x0);
     const sy = (v) => PLOT.y0 - (v / 100) * (PLOT.y0 - PLOT.y1);
@@ -725,8 +780,8 @@ const RENDERERS = {
       return `<text class="svglabel ${cls}" transform="translate(${r.cx.toFixed(1)} ${r.cy.toFixed(1)})${dreh}"
         y="${(size * BASE_OFF).toFixed(2)}" font-size="${size}" text-anchor="middle" style="fill:${fill}" ${attrs}>${txt}</text>`;
     };
-    const leaderSvg = (g) => g
-      ? `<line class="leader" x1="${g.x1.toFixed(1)}" y1="${g.y1.toFixed(1)}" x2="${g.x2.toFixed(1)}" y2="${g.y2.toFixed(1)}"/>`
+    const leaderSvg = (g, anker) => g
+      ? `<line class="leader"${AN(anker)} x1="${g.x1.toFixed(1)}" y1="${g.y1.toFixed(1)}" x2="${g.x2.toFixed(1)}" y2="${g.y2.toFixed(1)}"/>`
       : "";
 
     // 3) Zeichnen: Pfade (Stop-Folge-Segment gestrichelt bei collapse), dann Labels.
@@ -737,21 +792,25 @@ const RENDERERS = {
       const tail = sm.stopIdx != null ? pts.slice(sm.stopIdx) : [];
       const [et, ev] = pts[pts.length - 1];
       const areaPts = s.afterStop === "collapse" ? main : pts;
-      return `${s.area ? `<polygon points="${sx(areaPts[0][0])},244 ${px(areaPts)} ${sx(areaPts[areaPts.length - 1][0])},244" fill="${C(s.color)}" opacity="0.1"/>` : ""}
-        <polyline data-series="${si}" points="${px(main)}" fill="none" stroke="${C(s.color)}" stroke-width="3"
+      // Ein `series:`-Anker umfasst Strich, Fläche UND Endpunkt. `data-branch` trennt
+      // Haupt- von Nach-Stop-Ast: der zweite `trace` zeichnet Ast 1 — die Zäsur am
+      // Ereignis kommt damit aus der Geometrie, nicht aus einer LLM-Entscheidung.
+      const astEnde = tail.length ? 1 : 0;
+      return `${s.area ? `<polygon${AN(anSerie[si])} data-branch="0" points="${sx(areaPts[0][0])},244 ${px(areaPts)} ${sx(areaPts[areaPts.length - 1][0])},244" fill="${C(s.color)}" opacity="0.1"/>` : ""}
+        <polyline data-series="${si}"${AN(anSerie[si])} data-branch="0" points="${px(main)}" fill="none" stroke="${C(s.color)}" stroke-width="3"
               stroke-linejoin="round" stroke-linecap="round"
               ${s.dash ? 'stroke-dasharray="6 6"' : ""} ${s.faded ? 'opacity="0.4"' : ""}/>
-        ${tail.length ? `<polyline data-series="${si}" data-tail="${s.afterStop}" points="${px(tail)}" fill="none" stroke="${C(s.color)}" stroke-width="3"
+        ${tail.length ? `<polyline data-series="${si}" data-tail="${s.afterStop}"${AN(anSerie[si])} data-branch="1" points="${px(tail)}" fill="none" stroke="${C(s.color)}" stroke-width="3"
               stroke-linejoin="round" stroke-linecap="round"
               ${s.afterStop === "collapse" ? 'stroke-dasharray="6 6"' : (s.dash ? 'stroke-dasharray="6 6"' : "")}
               ${s.faded ? 'opacity="0.4"' : ""}/>` : ""}
-        <circle cx="${sx(et)}" cy="${sy(ev)}" r="4.5" fill="${C(s.color)}" ${s.faded ? 'opacity="0.4"' : ""}/>`;
+        <circle${AN(anSerie[si])} data-branch="${astEnde}" cx="${sx(et)}" cy="${sy(ev)}" r="4.5" fill="${C(s.color)}" ${s.faded ? 'opacity="0.4"' : ""}/>`;
     }).join("");
     // Reihenfolge: erst die Notes, dann die Serien-Labels. Eine Note haftet an EINEM
     // Punkt (t oder Apex) und kann kaum ausweichen; ein Serien-Label darf entlang der
     // ganzen Kurve wandern. Der Unflexible wählt zuerst — sonst belegt das Serien-Label
     // die Tasche am Apex und die Note müsste stapeln.
-    const notes = (card.notes || []).map((n) => {
+    const notes = (card.notes || []).map((n, ni) => {
       const si = typeof n.series === "number" ? n.series
         : Math.max(0, card.series.findIndex((s) => s.label === n.series));
       const sm = samples[si];
@@ -763,32 +822,37 @@ const RENDERERS = {
       const r = (atApex ? apexPlace(a, txt, si) : null) || notePlace(a, txt, n.side, si);
       // Am Apex trägt die vorhandene Endpunkt-Kugel den Marker schon — kein zweiter Punkt.
       const dot = atApex ? ""
-        : `<circle class="c-notedot" cx="${a[0].toFixed(1)}" cy="${a[1].toFixed(1)}" r="3" fill="${C(sm.s.color)}"/>`;
-      return dot + leaderSvg(r.leader) + textSvg(r.r, r.size, txt, "c-note halo", C(sm.s.color),
+        : `<circle class="c-notedot"${AN(anNote[ni])}${GLOW(sm.s.color)} cx="${a[0].toFixed(1)}" cy="${a[1].toFixed(1)}" r="3" fill="${C(sm.s.color)}"/>`;
+      // Der Ankerpunkt steht am Text: ein Puls zwischen zwei Notes derselben Serie
+      // läuft AUF deren Strich zwischen genau diesen beiden Punkten.
+      return dot + leaderSvg(r.leader, anNote[ni]) + textSvg(r.r, r.size, txt, "c-note halo", C(sm.s.color),
         `data-note-series="${si}"${atApex ? ' data-at="apex"' : ""}${r.leader ? ' data-leader="1"' : ""}`
-        + (r.gestapelt ? ' data-stacked="1"' : ""));
+        + (r.gestapelt ? ' data-stacked="1"' : "")
+        + AN(anNote[ni]) + TON(sm.s.color) + ` data-ax="${a[0].toFixed(1)}" data-ay="${a[1].toFixed(1)}"`);
     }).join("");
     const seriesLabels = samples.map((sm, si) => {
       if (!sm.s.label) return "";
       const r = stickyPlace(si, sm.s.label);
       // Halo auch am Serien-Label: auf freiem Papier unsichtbar (er hat dessen Farbe),
       // aber er trägt die eine Lage, in der das Label die Ereignis-Linie queren muss.
-      return r ? textSvg(put(r.r), r.size, sm.s.label, "c-series halo", C(sm.s.color), `data-series-label="${si}"`) : "";
+      return r ? textSvg(put(r.r), r.size, sm.s.label, "c-series halo", C(sm.s.color),
+        `data-series-label="${si}"` + AN(anSerieLabel[si]) + TON(sm.s.color)) : "";
     }).join("");
     // Erst jetzt steht das obere Ende der Vertikalen fest: eine gestapelte Apex-Note
     // hängt unter dem Ereignis-Label und schiebt den Linienanfang nach unten.
     const stopSvg = card.stop
-      ? `<line class="c-stopline" x1="${stopX.toFixed(1)}" y1="${stopTop.toFixed(1)}" x2="${stopX.toFixed(1)}" y2="244"/>`
+      ? `<line class="c-stopline"${AN(anStop)} x1="${stopX.toFixed(1)}" y1="${stopTop.toFixed(1)}" x2="${stopX.toFixed(1)}" y2="244"/>`
       : "";
     // Das Ereignis-Label wird NACH den Kurven gezeichnet: sein Papier-Halo trägt nur,
     // wenn nichts mehr darüber liegt.
-    const stopText = card.stop ? textSvg(stopRect, STOP_SIZE, card.stop.label, "c-stop halo", stopFill) : "";
+    const stopText = card.stop ? textSvg(stopRect, STOP_SIZE, card.stop.label, "c-stop halo", stopFill,
+      AN(anStop, anStopLabel) + TON(stopFill === C("ink") ? "ink" : samples.find((sm) => sm.s.afterStop).s.color)) : "";
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
       <div class="diagram"><svg viewBox="0 0 400 278" role="img" aria-label="Kurvendiagramm: ${card.ylabel} über ${card.xlabel}">
-        <path class="c-axis" d="M52,34 L52,244 L382,244" fill="none" stroke="${C("muted")}" stroke-width="1.5"/>
-        <text x="52" y="22" font-size="11" font-weight="700" letter-spacing="0.1em" fill="${C("muted")}">${card.ylabel}</text>
-        <text x="382" y="266" font-size="11" font-weight="700" letter-spacing="0.1em" fill="${C("muted")}" text-anchor="end">${card.xlabel}</text>
+        <path class="c-axis"${AN(anAxis)} d="M52,34 L52,244 L382,244" fill="none" stroke="${C("muted")}" stroke-width="1.5"/>
+        <text${AN(anAxis)} x="52" y="22" font-size="11" font-weight="700" letter-spacing="0.1em" fill="${C("muted")}">${card.ylabel}</text>
+        <text${AN(anAxis)} x="382" y="266" font-size="11" font-weight="700" letter-spacing="0.1em" fill="${C("muted")}" text-anchor="end">${card.xlabel}</text>
         ${stopSvg}
         ${series}
         ${stopText}
@@ -804,19 +868,26 @@ const RENDERERS = {
     // Adaptive Label-Größe wie in den Waage-Schalen: ein 12-Zeichen-Label füllt die
     // Box sonst randvoll; Strahlen starten mit Luft zur Box, nie an ihrer Kante.
     const fs = card.source.label.length > 9 ? 12.5 : 15;
+    const A = ankerVergabe();
+    const anQuelle = A(`node:${ankerSlug(card.source?.label, "quelle")}`), anFan = A("fan");
+    const anTarget = cys.map((_, i) => A(`target:${i + 1}`));
+    const anQuelleLabel = A(`label:${ankerSlug(card.source?.label, "quelle")}`);
+    const anWirkung = A(`label:${ankerSlug(card.result?.label, "wirkung")}`);
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
       <div class="diagram"><svg viewBox="0 0 400 300" role="img" aria-label="Hebel-Diagramm: eine Handlung wirkt vielfach">
-        ${cys.map((cy) => `<line x1="166" y1="154" x2="${316 - 15}" y2="${cy}" stroke="${C("ink")}" stroke-width="1.5"/>`).join("")}
-        <rect x="24" y="122" width="136" height="64" rx="16" fill="${SOFT(card.source.color)}" stroke="${C(card.source.color)}" stroke-width="2.5"/>
-        <text class="svglabel" x="92" y="150" font-size="${fs}" fill="${C("ink")}" text-anchor="middle">${card.source.label}</text>
+        ${cys.map((cy) => `<line${AN(anFan)} x1="166" y1="154" x2="${316 - 15}" y2="${cy}" stroke="${C("ink")}" stroke-width="1.5"/>`).join("")}
+        <g${AN(anQuelle)}>
+        <rect${GLOW(card.source.color)} x="24" y="122" width="136" height="64" rx="16" fill="${SOFT(card.source.color)}" stroke="${C(card.source.color)}" stroke-width="2.5"/>
+        <text class="svglabel"${AN(anQuelleLabel)}${TON(card.source.color)} x="92" y="150" font-size="${fs}" fill="${C("ink")}" text-anchor="middle">${card.source.label}</text>
         <text x="92" y="168" font-size="10.5" fill="${C("muted")}" text-anchor="middle" font-weight="600">${card.source.sub}</text>
-        ${cys.map((cy) => `<g>
-          <circle cx="316" cy="${cy}" r="15" fill="${SOFT("ich")}" stroke="${C("ich")}" stroke-width="2"/>
+        </g>
+        ${cys.map((cy, i) => `<g${AN(anTarget[i])} data-idx="${i}">
+          <circle${GLOW("ich")} cx="316" cy="${cy}" r="15" fill="${SOFT("ich")}" stroke="${C("ich")}" stroke-width="2"/>
           <circle cx="316" cy="${cy - 3.5}" r="4.2" fill="${C("ich")}"/>
           <path d="M308,${cy + 9.5} a8,6 0 0 1 16,0 Z" fill="${C("ich")}"/>
         </g>`).join("")}
-        <text class="svglabel" x="316" y="28" font-size="14" fill="${C("ink")}" text-anchor="middle">${card.result.label}</text>
+        <text class="svglabel"${AN(anWirkung)}${TON("ich")} x="316" y="28" font-size="14" fill="${C("ink")}" text-anchor="middle">${card.result.label}</text>
       </svg></div>
       ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
     </div>`;
@@ -829,19 +900,26 @@ const RENDERERS = {
       "M278,74 Q330,100 326,136", "M312,206 Q330,252 274,270",
       "M126,288 Q70,260 74,204", "M88,134 Q70,88 124,72"
     ];
+    // arrow:i+1 ist der gezeichnete Weg von Schritt i zu Schritt i+1 — ein Puls im
+    // Kreislauf läuft auf ihm, nicht quer durch die Mitte.
+    const A = ankerVergabe();
+    const anStep = card.steps.map((s, i) => A(`step:${ankerSlug(s.label, String(i))}`));
+    const anLabel = card.steps.map((s, i) => A(`label:${ankerSlug(s.label, String(i))}`));
+    const anArrow = card.steps.map((_, i) => A(`arrow:${i + 1}`));
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
       <div class="diagram"><svg viewBox="0 0 400 340" role="img" aria-label="Kreislauf: ${card.steps.map((s) => s.label).join(", ")}">
         <defs><marker id="cyarrow" markerWidth="9" markerHeight="8" refX="7" refY="4" orient="auto">
           <path d="M0,0 L8,4 L0,8 Z" fill="${C("ink")}"/>
         </marker></defs>
-        ${arrows.map((d) => `<path d="${d}" fill="none" stroke="${C("ink")}" stroke-width="1.8" marker-end="url(#cyarrow)"/>`).join("")}
+        ${arrows.map((d, i) => `<path${AN(anArrow[i])} data-idx="${i}" d="${d}" fill="none" stroke="${C("ink")}" stroke-width="1.8" marker-end="url(#cyarrow)"/>`).join("")}
         ${card.steps.map((s, i) => {
           const [cx, cy] = pos[i];
-          return `<rect x="${cx - 66}" y="${cy - 26}" width="132" height="52" rx="14"
+          return `<g${AN(anStep[i])} data-idx="${i}">
+            <rect${GLOW(s.color)} x="${cx - 66}" y="${cy - 26}" width="132" height="52" rx="14"
               fill="${SOFT(s.color)}" stroke="${C(s.color)}" stroke-width="2.5"/>
-            <text class="svglabel" x="${cx}" y="${cy - 2}" font-size="14.5" fill="${C("ink")}" text-anchor="middle">${s.label}</text>
-            <text x="${cx}" y="${cy + 15}" font-size="10.5" fill="${C("muted")}" text-anchor="middle" font-weight="600">${s.sub}</text>`;
+            <text class="svglabel"${AN(anLabel[i])}${TON(s.color)} x="${cx}" y="${cy - 2}" font-size="14.5" fill="${C("ink")}" text-anchor="middle">${s.label}</text>
+            <text x="${cx}" y="${cy + 15}" font-size="10.5" fill="${C("muted")}" text-anchor="middle" font-weight="600">${s.sub}</text></g>`;
         }).join("")}
       </svg></div>
       ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
@@ -849,29 +927,42 @@ const RENDERERS = {
   },
 
   compare(card) {
-    const panel = (p) => `<div class="cpanel" style="border-color:${C(p.color)};background:${SOFT(p.color)}">
-      <h3>${p.title}</h3>
-      ${p.items.map((it) => `<div class="citem"><b>${it.label}</b><span>${it.sub}</span></div>`).join("")}
+    // Reine HTML-Karte: Anker gibt es, aber keine Pfad-Geometrie — `pulse` ist hier
+    // konstruktiv unmöglich und deshalb in der Registry nicht als Paar deklariert.
+    const A = ankerVergabe();
+    const an = {};
+    for (const seite of ["left", "right"]) {
+      an[seite] = { panel: A(`panel:${seite}`), titel: A(`label:${ankerSlug(card[seite]?.title, seite)}`),
+        items: (card[seite]?.items || []).map((it, i) => A(`item:${ankerSlug(it.label, `${seite}${i}`)}`)) };
+    }
+    const panel = (p, seite) => `<div class="cpanel"${AN(an[seite].panel)} style="border-color:${C(p.color)};background:${SOFT(p.color)}">
+      <h3${AN(an[seite].titel)}${TON(p.color)}>${p.title}</h3>
+      ${p.items.map((it, i) => `<div class="citem"${AN(an[seite].items[i])}><b>${it.label}</b><span>${it.sub}</span></div>`).join("")}
     </div>`;
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
-      <div class="diagram"><div class="compare">${panel(card.left)}${panel(card.right)}</div></div>
+      <div class="diagram"><div class="compare">${panel(card.left, "left")}${panel(card.right, "right")}</div></div>
       ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
     </div>`;
   },
 
   venn(card) {
     // Schnittfläche als eigenes, konturiertes Objekt — die Grenze ist die Aussage.
+    const A = ankerVergabe();
+    const anA = A(`region:${ankerSlug(card.a?.label, "a")}`), anB = A(`region:${ankerSlug(card.b?.label, "b")}`);
+    const anOverlap = A("overlap");
+    const anLabelA = A(`label:${ankerSlug(card.a?.label, "a")}`), anLabelB = A(`label:${ankerSlug(card.b?.label, "b")}`);
+    const anLabelO = (card.overlap?.label || []).map((l, i) => A(`label:${ankerSlug(l, `schnitt${i}`)}`));
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
       <div class="diagram"><svg viewBox="0 0 400 280" role="img" aria-label="Venn-Diagramm: ${card.a.label} und ${card.b.label} überschneiden sich">
-        <circle cx="150" cy="155" r="95" fill="${SOFT(card.a.color)}" stroke="${C(card.a.color)}" stroke-width="2.5"/>
-        <circle cx="250" cy="155" r="95" fill="${SOFT(card.b.color)}" stroke="${C(card.b.color)}" stroke-width="2.5"/>
-        <path d="M200,74 A95,95 0 0 1 200,236 A95,95 0 0 1 200,74 Z"
+        <circle${AN(anA)}${GLOW(card.a.color)} cx="150" cy="155" r="95" fill="${SOFT(card.a.color)}" stroke="${C(card.a.color)}" stroke-width="2.5"/>
+        <circle${AN(anB)}${GLOW(card.b.color)} cx="250" cy="155" r="95" fill="${SOFT(card.b.color)}" stroke="${C(card.b.color)}" stroke-width="2.5"/>
+        <path${AN(anOverlap)}${GLOW(card.overlap.color)} d="M200,74 A95,95 0 0 1 200,236 A95,95 0 0 1 200,74 Z"
               fill="${SOFT(card.overlap.color)}" stroke="${C("ink")}" stroke-width="2"/>
-        <text class="svglabel" x="118" y="38" font-size="12.5" fill="${C("ink")}" text-anchor="middle">${card.a.label}</text>
-        <text class="svglabel" x="285" y="38" font-size="12.5" fill="${C("ink")}" text-anchor="middle">${card.b.label}</text>
-        ${card.overlap.label.map((l, i) => `<text class="svglabel" x="200" y="${146 + i * 18}" font-size="12" fill="${C("ink")}" text-anchor="middle">${l}</text>`).join("")}
+        <text class="svglabel"${AN(anLabelA)}${TON(card.a.color)} x="118" y="38" font-size="12.5" fill="${C("ink")}" text-anchor="middle">${card.a.label}</text>
+        <text class="svglabel"${AN(anLabelB)}${TON(card.b.color)} x="285" y="38" font-size="12.5" fill="${C("ink")}" text-anchor="middle">${card.b.label}</text>
+        ${card.overlap.label.map((l, i) => `<text class="svglabel"${AN(anLabelO[i])}${TON(card.overlap.color)} x="200" y="${146 + i * 18}" font-size="12" fill="${C("ink")}" text-anchor="middle">${l}</text>`).join("")}
       </svg></div>
       ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
     </div>`;
@@ -929,7 +1020,216 @@ function wireQuiz(root, card, onAdvance, onResult) {
   });
 }
 
+// ————————————————— Sequenz-Layer v3 (Motion) —————————————————
+// Ein Schritt IST ein Zustand: `.on`, `.lit`, `.seq-dim` SIND der Zustand, die
+// Transitions sind nur der Weg dorthin. Damit ist jeder Schritt per Definition
+// einfrierbar — __seqGoto springt ohne Weg hin, prefers-reduced-motion ebenso.
+// Alle Zeiten kommen aus den Motion-Tokens in renderer.css (eine Duration-Skala, ein
+// Easing, eine Puls-Optik); hier steht keine zweite Zahl.
+const SVGNS = "http://www.w3.org/2000/svg";
+let SEQ = null;                                     // Zustand der ZULETZT gerenderten Karte
+function seqStop() { if (SEQ) { SEQ.timers.forEach(clearTimeout); SEQ.timers = []; } }
+
+// Punkt-Umrechnung in viewBox-Einheiten: getBBox misst im LOKALEN System des Elements
+// (Labels tragen ein translate) — ungerechnet läge die Mitte eines Labels bei 0,0.
+function anchorBox(svg, el) {
+  const ctm = svg.getScreenCTM(), own = el.getScreenCTM();
+  if (!ctm || !own) return null;
+  const m = ctm.inverse().multiply(own), b = el.getBBox();
+  const xs = [], ys = [];
+  for (const [x, y] of [[b.x, b.y], [b.x + b.width, b.y], [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]]) {
+    xs.push(m.a * x + m.c * y + m.e); ys.push(m.b * x + m.d * y + m.f);
+  }
+  return { cx: (Math.min(...xs) + Math.max(...xs)) / 2, cy: (Math.min(...ys) + Math.max(...ys)) / 2 };
+}
+
+function wireSequence(root, card) {
+  seqStop();
+  window.__seqSteps = 0;
+  window.__seqGoto = () => 0;
+  const plan = Array.isArray(card.sequence) ? card.sequence : null;
+  if (!plan || !plan.length) return;                // ohne sequence rendert alles wie bisher
+  const svg = root.querySelector(".diagram svg");
+  const els = (name) => name ? [...root.querySelectorAll(`[data-anchor~="${name}"]`)] : [];
+  const N = plan.length;
+
+  const dots = [], lits = [], dims = [], getraced = new Map();
+  // Ein Element wird EINMAL sichtbar: der erste Schritt, der es zeigt, gewinnt.
+  const setStep = (e, n) => { if (!e.dataset.seqStep) e.dataset.seqStep = n; };
+
+  // Puls-Weg: ein Puls läuft auf einem Weg, den das Bild ZEIGT.
+  //  1) Kurve — auf dem Strich der Serie zwischen zwei Note-Punkten
+  //  2) Kette/Kreis — auf dem gezeichneten Pfeil zwischen zwei Schritten
+  //  3) sonst — gerade Verbindung der beiden Anker-Mitten
+  const punkte = (el) => (el.getAttribute("points") || "").trim().split(/\s+/)
+    .filter(Boolean).map((p) => p.split(",").map(Number));
+  const dOf = (el) => {
+    if (!el) return null;
+    if (el.tagName === "path") return el.getAttribute("d");
+    if (el.tagName === "line")
+      return `M${el.getAttribute("x1")},${el.getAttribute("y1")} L${el.getAttribute("x2")},${el.getAttribute("y2")}`;
+    if (el.tagName === "polyline") return "M" + punkte(el).map(([x, y]) => `${x},${y}`).join(" L");
+    return null;
+  };
+  const pulsWeg = (from, to) => {
+    const a = els(from).find((e) => e.dataset.ax), b = els(to).find((e) => e.dataset.ax);
+    if (a && b && a.dataset.noteSeries === b.dataset.noteSeries) {
+      const x1 = +a.dataset.ax, y1 = +a.dataset.ay, x2 = +b.dataset.ax, y2 = +b.dataset.ay;
+      const pts = [];
+      root.querySelectorAll(`polyline[data-series="${a.dataset.noteSeries}"]`).forEach((pl) => pts.push(...punkte(pl)));
+      const lo = Math.min(x1, x2), hi = Math.max(x1, x2);
+      const mitte = pts.filter(([x]) => x > lo && x < hi);     // x läuft monoton nach rechts
+      const folge = [[x1, y1], ...(x1 <= x2 ? mitte : mitte.reverse()), [x2, y2]];
+      return { d: "M" + folge.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L"), rev: false };
+    }
+    const ga = els(from).find((e) => e.dataset.idx !== undefined), gb = els(to).find((e) => e.dataset.idx !== undefined);
+    if (ga && gb && from.startsWith("step:") && to.startsWith("step:")) {
+      const ia = +ga.dataset.idx, ib = +gb.dataset.idx, n = (card.steps || []).length;
+      const vor = ib === (ia + 1) % n, zurueck = ia === (ib + 1) % n;
+      const d = dOf(els(`arrow:${(vor ? ia : ib) + 1}`)[0]);
+      if ((vor || zurueck) && d) return { d, rev: zurueck };
+    }
+    if (!svg) return null;
+    const mitteVon = (name) => {
+      const boxen = els(name).map((e) => anchorBox(svg, e)).filter(Boolean);
+      if (!boxen.length) return null;
+      return [boxen.reduce((s, b) => s + b.cx, 0) / boxen.length, boxen.reduce((s, b) => s + b.cy, 0) / boxen.length];
+    };
+    const p = mitteVon(from), q = mitteVon(to);
+    return p && q ? { d: `M${p[0].toFixed(1)},${p[1].toFixed(1)} L${q[0].toFixed(1)},${q[1].toFixed(1)}`, rev: false } : null;
+  };
+
+  // Aufglühen des Puls-ZIELS: ein Soft-Ton-Ring hinter der Zielfläche. Bewusst ein
+  // eigenes Element statt einer Füll-Änderung — die Karten-Typen füllen ihre Flächen
+  // schon selbst (meist im Soft-Ton), eine zweite Füllung wäre unsichtbar oder falsch.
+  const litElemente = (name) => {
+    const out = [];
+    for (const e of els(name)) {
+      out.push(e);
+      const flaeche = e.matches("[data-glow]") ? e : e.querySelector("[data-glow]");
+      if (!flaeche) continue;
+      if (!flaeche.__halo) {
+        const h = flaeche.cloneNode(false);
+        [...h.attributes].forEach((a) => { if (a.name.startsWith("data-")) h.removeAttribute(a.name); });
+        h.setAttribute("class", "seq-halo");
+        h.style.fill = "none";
+        h.style.stroke = `var(--${flaeche.dataset.glow}-soft)`;
+        flaeche.parentNode.insertBefore(h, flaeche);
+        flaeche.__halo = h;
+      }
+      out.push(flaeche.__halo);
+    }
+    return out;
+  };
+
+  plan.forEach((st, i) => {
+    const n = i + 1;
+    if (st.verb === "reveal") els(st.target).forEach((e) => setStep(e, n));
+    else if (st.verb === "dim") dims.push({ n, els: els(st.target) });
+    else if (st.verb === "highlight") {
+      const ziel = els(st.target);
+      ziel.forEach((e) => { e.classList.add("seq-hl"); e.dataset.seqFill = e.style.fill || ""; e.dataset.seqStroke = e.style.stroke || ""; });
+      lits.push({ n, els: ziel, hl: true });
+    } else if (st.verb === "trace") {
+      // Wiederholter trace zeichnet den NÄCHSTEN Ast — die Zäsur am Ereignis steckt
+      // in der Geometrie (Haupt- und Nach-Stop-Ast sind getrennte polylines).
+      const k = getraced.get(st.target) || 0;
+      getraced.set(st.target, k + 1);
+      els(st.target).filter((e) => Number(e.dataset.branch || 0) === k).forEach((e) => {
+        setStep(e, n);
+        if (e.tagName === "polyline" || e.tagName === "path") {
+          const L = e.getTotalLength();
+          e.classList.add("seq-trace");
+          e.style.strokeDasharray = L;
+          e.dataset.seqLen = L;
+        }
+      });
+      // Das Serien-Label läuft implizit mit dem ersten Strich (bindendes Mockup:
+      // „ADENOSIN" erschien MIT der Kurve). Ein expliziter reveal auf das Label
+      // gewinnt — highlight/dim zählen nicht, sie ändern Farbe, nicht Erscheinen.
+      if (k === 0 && st.target.startsWith("series:")) {
+        const labelName = "label:" + st.target.slice(7);
+        if (!plan.some((s2) => s2.verb === "reveal" && s2.target === labelName))
+          els(labelName).forEach((e) => setStep(e, n));
+      }
+    } else if (st.verb === "pulse") {
+      const weg = svg ? pulsWeg(st.from, st.to) : null;
+      // Ohne messbare Geometrie (Karte hängt nicht im Layout) entfällt der WEG, nicht
+      // der Zustand: das Ziel glüht trotzdem — der Endzustand bleibt derselbe.
+      if (weg) {
+        const dot = document.createElementNS(SVGNS, "circle");
+        const ton = (els(st.from).find((e) => e.dataset.glow || e.dataset.ton) || {}).dataset;
+        dot.setAttribute("class", "seq-pulse" + (weg.rev ? " rev" : ""));
+        dot.setAttribute("r", parseFloat(getComputedStyle(root).getPropertyValue("--m-pulse-r")) || 5.5);
+        dot.setAttribute("fill", `var(--${(ton && (ton.glow || ton.ton)) || "ink"})`);
+        dot.style.offsetPath = `path('${weg.d}')`;
+        svg.appendChild(dot);
+        dots.push({ n, dot });
+      }
+      lits.push({ n, els: litElemente(st.to) });
+    }
+  });
+
+  const apply = (s, animiert) => {
+    SEQ.cur = s;
+    root.querySelectorAll("[data-seq-step]").forEach((e) => {
+      const on = Number(e.dataset.seqStep) <= s;
+      e.classList.toggle("on", on);
+      if (e.dataset.seqLen) e.style.strokeDashoffset = on ? 0 : e.dataset.seqLen;
+    });
+    dims.forEach(({ n, els: ee }) => ee.forEach((e) => e.classList.toggle("seq-dim", n <= s)));
+    lits.forEach(({ n, els: ee, hl }) => ee.forEach((e) => {
+      const on = n <= s;
+      e.classList.toggle("lit", on);
+      if (hl && e.dataset.ton) {
+        e.style.fill = on ? `var(--${e.dataset.ton})` : e.dataset.seqFill;
+        e.style.stroke = on ? `var(--${e.dataset.ton}-soft)` : e.dataset.seqStroke;
+      }
+    }));
+    dots.forEach(({ n, dot }) => {
+      dot.classList.remove("run");
+      if (n === s && animiert) { void dot.getBoundingClientRect(); dot.classList.add("run"); }
+    });
+  };
+
+  const ms = (name) => {
+    const v = getComputedStyle(root).getPropertyValue(name).trim(), n = parseFloat(v);
+    return Number.isFinite(n) ? (/[^m]s$/.test(v) ? n * 1000 : n) : NaN;
+  };
+  const play = () => {
+    seqStop();
+    root.classList.remove("seq-frozen");
+    apply(0, false);
+    const beat = ms("--m-beat"), move = ms("--m-move"), hold = ms("--m-hold");
+    // Ohne Token-Skala (renderer.css fehlt) wird keine Zeit erfunden — dann gilt der
+    // Endzustand, genau wie bei prefers-reduced-motion.
+    if (!(beat && move && hold)) { root.classList.add("seq-frozen"); apply(N, false); return; }
+    let at = 320;                                   // die Karte kommt herein, dann wird sie lebendig
+    for (let n = 1; n <= N; n++) {
+      SEQ.timers.push(setTimeout(() => apply(n, true), at));
+      at += (["pulse", "trace"].includes(plan[n - 1].verb) ? move : beat) + hold;
+    }
+  };
+
+  SEQ = { root, timers: [], cur: 0 };
+  window.__seqSteps = N;
+  window.__seqGoto = (s) => {                       // Test-Hook: Schritt-ENDZUSTAND ohne Weg
+    seqStop();
+    root.classList.add("seq-frozen");
+    apply(Math.max(0, Math.min(N, Number(s) || 0)), false);
+    return SEQ.cur;
+  };
+  // trigger:auto — die Karte wird beim Erscheinen lebendig (Leon-Lock 14.08.);
+  // "tap" existiert im Contract nicht (Tap gehört exklusiv dem Karten-Wechsel).
+  // prefers-reduced-motion springt sofort in den Endzustand.
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    root.classList.add("seq-frozen");
+    apply(N, false);
+  } else play();
+}
+
 function renderCardInto(root, card, opts = {}) {
+  seqStop();                                        // laufende Sequenz der Vorgänger-Karte abbrechen
   root.innerHTML = RENDERERS[card.type](card);
   if (card.type === "quiz") wireQuiz(root, card, opts.onAdvance, opts.onQuizResult);
   const save = root.querySelector(".savebtn");
@@ -938,4 +1238,5 @@ function renderCardInto(root, card, opts = {}) {
     save.classList.toggle("saved");
     if (opts.onSave) opts.onSave(save.classList.contains("saved"));
   });
+  wireSequence(root, card);
 }
