@@ -16,6 +16,7 @@ Prüfe ausschließlich Fakten — keine Stilnoten, keine Didaktik. Konkret:
 3. **Beurteile jeden Prüfauftrag** der Liste: echter Fehler, unbelegt, oder unbedenklich?
 4. **Zitat**: Das Insight-Zitat muss im Dossier belegt sein (sinngemäße Übersetzung ok). Unbelegt = melden.
 5. **Wort-Sinn-Aufträge** (kind „wort-sinn"): Beurteile NUR, ob das genannte Wort als deutsches Wort existiert und keinen bestehenden Begriff verdreht. Verdrehte oder erfundene Komposita („Schlafmantel" statt „Schlafmangel") sind Fehler → finding mit fix (korrigierter Feldwert, Längen-Limit des Felds beachten). Alltags- und Beispielwörter (Zahnarzt, Bäcker, Espresso) sind auch OHNE Dossier-Bezug in Ordnung — Captions dürfen frei erfundene Alltagsbeispiele nutzen; fehlender Dossier-Bezug ist bei wort-sinn NIE ein Fehler.
+6. **Geometrie-Aufträge** (kind „geometrie-sinn"): Der Auftrag beschreibt in Worten, was das Diagramm dieser Karte TATSÄCHLICH zeichnet. Beurteile NUR Text gegen diese Geometrie — nicht, ob die Geometrie didaktisch klug ist. Fehler ist jeder Widerspruch: ein Text behauptet Sinken auf einer steigenden Serie (oder umgekehrt), eine Achsen-Beschriftung nennt eine andere Größe als die dargestellte, die Waage hängt die laut Lehrsatz leichtere Seite nach unten. Der fix korrigiert ENTWEDER die Text-Felder (path z. B. cards[3].text ≤ 220, .caption ≤ 90, .xlabel ≤ 12, .ylabel ≤ 12, .series[0].label ≤ 18, .notes[0].label ≤ 22 Zeichen) ODER die Geometrie-Felder (path cards[3].series[0].shape mit einem Wert aus linear-rise, compound-rise, saturating-rise, decay-halflife, suppressed, flat; .from/.to aus floor, low, mid, high) — je nachdem, welche Seite dem Dossier widerspricht: Sagt das Dossier, die Größe fällt, dann ist die steigende Serie der Fehler. Bei einer falsch herum hängenden Waage sendest du zwei findings mit path cards[i].left und cards[i].right, deren fix die vollständigen vertauschten Objekte sind. Verdict für Widersprüche: „wrong".
 
 Toleranz: Alltagsrundung in Beispielen ist ok, wenn die Größenordnung stimmt (±20 %). Ein falscher Faktor (Viertel statt Hälfte), eine falsche Kategorie oder eine erfundene Zahl ist NIE ok.
 
@@ -27,10 +28,18 @@ PFLICHT: "checks" enthält GENAU EINEN Eintrag pro Zeile der Prüfauftrag-Liste,
 
 Regeln für fix: kompletter Ersatz-Text des Felds unter path (nicht nur das korrigierte Wort), gleiche Sprache/Ton, HTML-Auszeichnung des Originals erhalten, ähnlich lang oder kürzer als das Original (harte Limits: text ≤ 220, caption ≤ 90, explain ≤ 180, quiz-Option ≤ 42 Zeichen). Korrekte Karten erzeugen KEIN Finding. Keine Probleme → {"findings":[]}.`;
 
+/// Chat-Optionen der Judge-Stufe. Der NIM-Free-Tier verträgt den Judge gemessen mit
+/// 5 s Abstand (der 25-s-Default gilt dem Generator); für fremde Bases entscheidet
+/// der Host-Default in nim.mjs. `usage` sammelt Tokens/Provider für die Lauf-Statistik.
+const chatOpts = (opts) => ({
+  temperature: 0.1, signal: opts.signal, base: opts.base, usage: opts.usage,
+  paceMs: opts.paceMs ?? (opts.base ? undefined : 5000),
+});
+
 export async function judgeLesson(lesson, dossier, opts = {}) {
   const flags = opts.flags ?? factFlags(lesson, dossier);
   const key = loadKey(opts.keyName ?? "NVIDIA_DS_PRO_KEY");
-  const model = opts.model ?? await resolveModel(key, opts.modelFilter ?? "deepseek", { signal: opts.signal });
+  const model = opts.model ?? await resolveModel(key, opts.modelFilter ?? "deepseek", { signal: opts.signal, base: opts.base });
   const user = `## Fakten-Dossier\n\n${dossier}\n\n## Lektion (JSON)\n\n${JSON.stringify(lesson, null, 2)}\n\n## Automatische Prüfaufträge\n\n${flags.length ? flags.map((f) => `- [${f.kind}] ${f.path}: ${f.detail}`).join("\n") : "(keine)"}`;
   const messages = [
     { role: "system", content: JUDGE_SYSTEM },
@@ -39,7 +48,7 @@ export async function judgeLesson(lesson, dossier, opts = {}) {
   // Ein Judge-Call. Kaputtes JSON heilt der Chokepoint (Reparatur + EIN Korrektur-
   // Retry) — vor der Härtung riss ein unescaptes " in einem deutschen Zitat den
   // ganzen Generatorlauf ab.
-  const chat = (msgs) => nimChat(key, model, msgs, { temperature: 0.1, paceMs: opts.paceMs ?? 5000, signal: opts.signal });
+  const chat = (msgs) => nimChat(key, model, msgs, chatOpts(opts));
   // Vollständigkeits-Gate: jeder Prüfauftrag braucht seine Check-Zeile — ein Retry bei Lücken.
   for (let attempt = 0; ; attempt++) {
     const { value: parsed, raw } = await chatJson(chat, messages);
@@ -57,7 +66,7 @@ export async function judgeLesson(lesson, dossier, opts = {}) {
 export async function restoreMarkup(items, opts = {}) {
   if (!items.length) return {};
   const key = loadKey(opts.keyName ?? "NVIDIA_DS_PRO_KEY");
-  const model = opts.model ?? await resolveModel(key, opts.modelFilter ?? "deepseek", { signal: opts.signal });
+  const model = opts.model ?? await resolveModel(key, opts.modelFilter ?? "deepseek", { signal: opts.signal, base: opts.base });
   const user = `In korrigierten Lernkarten-Feldern ist die HTML-Auszeichnung des Originals verloren gegangen. Setze sie sinngemäß in den NEUEN Text ein — der Wortlaut des neuen Texts bleibt EXAKT unverändert, du fügst nur Tags hinzu.
 
 Erlaubte Tags und Bedeutung: <b>…</b> (Indigo — Lösungs-/Kernbegriff), <span class="w-es">…</span> (Koralle — Problem/Gefahr/Verlust), <span class="w-ue">…</span> (Ocker — Belohnung/Wert), <strong>…</strong> (nur wo das Original <strong> nutzte). Markiere die Begriffe, die der Rolle der im Original markierten Begriffe entsprechen.
@@ -65,7 +74,7 @@ Erlaubte Tags und Bedeutung: <b>…</b> (Indigo — Lösungs-/Kernbegriff), <spa
 ${items.map((it) => `### ${it.path}\nOriginal (mit Tags): ${it.original}\nNeuer Text (Tags fehlen): ${it.value}`).join("\n\n")}
 
 Antworte AUSSCHLIESSLICH mit einem JSON-Objekt { "<path>": "<neuer Text mit Tags>", … } für alle Felder.`;
-  const chat = (msgs) => nimChat(key, model, msgs, { temperature: 0.1, paceMs: opts.paceMs ?? 5000, signal: opts.signal });
+  const chat = (msgs) => nimChat(key, model, msgs, chatOpts(opts));
   const { value } = await chatJson(chat, [{ role: "user", content: user }]);
   return value;
 }

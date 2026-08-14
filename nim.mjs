@@ -6,7 +6,7 @@
 // erbt das — die Reparatur steht NICHT in den einzelnen Stufen.
 import { readFileSync } from "fs";
 
-const BASE = "https://integrate.api.nvidia.com/v1";
+export const NIM_BASE = "https://integrate.api.nvidia.com/v1";
 // Ein einzelner Request darf nie unbegrenzt hängen: ohne echten Abbruch läuft er
 // nach einem Promise.race-Timeout des Aufrufers weiter und verbrennt Kontingent.
 // Der Wert ist ein Backstop gegen TOTE Sockets, keine Geduldsgrenze: ein Judge-Call
@@ -14,6 +14,27 @@ const BASE = "https://integrate.api.nvidia.com/v1";
 // gewählt killt der Backstop genau die großen Läufe, für die er gebaut wurde. Die
 // echten Fristen setzen die Stufen darüber (Worker: Dossier 6 Min, Pipeline 30 Min).
 export const REQ_TIMEOUT_MS = 600000;
+
+/// Pacing-Default am Host, nicht am Aufrufer: der NIM-Free-Tier drosselt aggressiv und
+/// braucht 25 s Abstand, fremde Endpunkte (OpenRouter) nur Anstands-Abstand. Stünde der
+/// Default weiter fest bei 25 s, verlängerte jeder Bench-Lauf sich um Minuten Wartezeit.
+export const defaultPace = (base) => (base ?? NIM_BASE).includes("integrate.api.nvidia.com") ? 25000 : 2000;
+
+/// Zuordnung HTTP-Status → Infrastruktur-Ursache. Ohne diese Trennung erscheint ein
+/// leeres Konto (402) oder ein falscher Key (401) im Bench als Modell-Versagen.
+export const infraFault = (status) => status === 402 ? "budget" : status === 401 || status === 403 ? "auth" : null;
+
+/// Zählt Tokens und gesehene Provider in einen Sammler (OpenRouter routet ein Modell
+/// auf wechselnde Unter-Anbieter — ohne Erfassung vergleicht ein Bench unbemerkt
+/// verschieden quantisierte Deployments desselben Modells).
+export function collectUsage(usage, data) {
+  if (!usage) return;
+  usage.in += data?.usage?.prompt_tokens ?? 0;
+  usage.out += data?.usage?.completion_tokens ?? 0;
+  usage.calls = (usage.calls ?? 0) + 1;
+  const p = data?.provider;
+  if (p && Array.isArray(usage.providers) && !usage.providers.includes(p)) usage.providers.push(p);
+}
 
 export function loadKey(envName) {
   const line = readFileSync("/Users/leonvalentin/Workspace/jarvis/.env", "utf8")
@@ -41,7 +62,7 @@ export function throwIfAborted(signal) {
 }
 
 export async function resolveModel(key, filter, opts = {}) {
-  const res = await fetch(`${BASE}/models`, {
+  const res = await fetch(`${opts.base ?? NIM_BASE}/models`, {
     headers: { Authorization: `Bearer ${key}` },
     signal: attemptSignal(opts.signal, opts.timeoutMs ?? 30000),
   });
@@ -54,15 +75,16 @@ export async function resolveModel(key, filter, opts = {}) {
 
 let lastCall = 0;
 export async function nimChat(key, model, messages, opts = {}) {
+  const base = opts.base ?? NIM_BASE;
   // Free-Tier-Pacing: Abstand halten statt ins Rate-Limit zu laufen.
-  const gap = (opts.paceMs ?? 25000) - (Date.now() - lastCall);
+  const gap = (opts.paceMs ?? defaultPace(base)) - (Date.now() - lastCall);
   if (lastCall && gap > 0) await sleep(gap, opts.signal);
   for (let i = 0; i < (opts.retries ?? 8); i++) {
     throwIfAborted(opts.signal);
     lastCall = Date.now();
     let res;
     try {
-      res = await fetch(`${BASE}/chat/completions`, {
+      res = await fetch(`${base}/chat/completions`, {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({ model, messages, temperature: opts.temperature ?? 0.2, max_tokens: opts.maxTokens ?? 8000 }),
@@ -80,6 +102,7 @@ export async function nimChat(key, model, messages, opts = {}) {
     if (res.ok) {
       const data = await res.json();
       warnAbgeschnitten(data, model);
+      collectUsage(opts.usage, data);
       return stripThink(data.choices?.[0]?.message?.content);
     }
     const body = (await res.text()).slice(0, 300);
@@ -89,9 +112,15 @@ export async function nimChat(key, model, messages, opts = {}) {
       await sleep(wait, opts.signal);
       continue;
     }
-    throw new Error(`API ${res.status}: ${body}`);
+    // Infrastruktur-Ursache am Fehler mitführen: der Aufrufer soll leeres Konto und
+    // falschen Key nicht als inhaltliches Scheitern des Modells verbuchen.
+    const err = new Error(`API ${res.status}: ${body}`);
+    err.infra = infraFault(res.status);
+    throw err;
   }
-  throw new Error("Rate-Limit hält an.");
+  const err = new Error("Rate-Limit hält an.");
+  err.infra = "net";
+  throw err;
 }
 
 /// Wartezeit, die auf ein Abbruch-Signal sofort reagiert (statt es auszusitzen).

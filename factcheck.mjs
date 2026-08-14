@@ -2,8 +2,9 @@
 // gegen das Dossier ab und prüft, ob das Insight-Zitat belegt ist. Findet keine
 // Wahrheit — er erzeugt PRÜFAUFTRÄGE für den Judge (wie spellcheck.mjs).
 // Nutzung: node factcheck.mjs <lesson.json> <dossier.md>  → Exit 0 / 2 (Flags).
-// Als Modul: import { factFlags }.
+// Als Modul: import { factFlags, geometryFlags }.
 import { readFileSync } from "fs";
+import { RELATION_TO_TYPE } from "./validate-lesson.mjs";
 
 // Prosa-Felder wie im Spellcheck; stats ("7 Karten · 4 Minuten") ist Meta, keine Faktenfläche.
 const SKIP_KEYS = new Set(["type", "relation", "color", "shape", "from", "to", "afterStop", "side", "series", "id", "source", "cite", "eyebrow", "stats"]);
@@ -53,6 +54,69 @@ export function factFlags(lesson, dossier) {
   if (quote && !dossierNorm.includes(normQuote(quote)))
     flags.push({ kind: "unbelegtes-zitat", path: "cards[insight].quote", detail: `"${quote}" nicht (wörtlich) im Dossier — prüfen, ob sinngemäß belegt oder erfunden` });
 
+  return flags;
+}
+
+// ── Geometrie-Sinn ───────────────────────────────────────────────────────────
+// Zweite Hälfte der Fehlerklasse „Text widerspricht dem Bild": notecheck misst die
+// Richtung an der Note-Position, sieht aber weder Lehrsatz noch Caption noch die
+// Achsen-Beschriftung. Diese Flags übersetzen die DEKLARIERTE Geometrie in Worte und
+// beauftragen den Judge, die Texte dagegen zu halten — deterministisch erzeugt, ohne
+// Rendern: die Aussage steckt bereits im Karten-JSON.
+
+// Was jede shape-Form zeichnet. Die Enums stammen aus validate-lesson.mjs; ändert
+// sich dort eine Form, muss hier ihr Satz stehen (sonst beschreibt der Auftrag Unsinn).
+const SHAPE_SINN = {
+  "linear-rise": "STEIGT gleichmäßig",
+  "compound-rise": "STEIGT beschleunigt (erst flach, dann steil)",
+  "saturating-rise": "STEIGT und flacht oben ab",
+  "decay-halflife": "FÄLLT ab (Halbwertszeit-Form)",
+  "suppressed": "bleibt UNTEN, gedrückt (Delle statt Anstieg)",
+  "flat": "bleibt KONSTANT",
+};
+const AFTER_STOP_SINN = {
+  collapse: "bricht danach auf den Boden ein",
+  reset: "fällt danach auf ihr Startniveau zurück",
+  rebound: "schnellt danach über ihr bisheriges Maximum hinauf",
+};
+// Defaults exakt wie im Renderer (renderer.js, defFrom/defTo) — ein abweichender
+// Default hier beschriebe dem Judge eine Kurve, die so nie gezeichnet wird.
+const defFrom = (s) => s.from ?? (s.shape === "decay-halflife" ? "high" : "low");
+const defTo = (s) => s.to ?? (s.shape === "decay-halflife" ? "floor"
+  : (s.shape === "flat" || s.shape === "suppressed") ? defFrom(s) : "high");
+
+const cardType = (c) => c.type ?? RELATION_TO_TYPE[c.relation];
+
+export function geometryFlags(lesson) {
+  const flags = [];
+  (lesson.cards || []).forEach((c, i) => {
+    const path = `cards[${i}]`;
+    const typ = cardType(c);
+    if (typ === "curve") {
+      const serien = (c.series || []).map((s) => {
+        const verlauf = SHAPE_SINN[s.shape] ?? `unbekannte Form "${s.shape}"`;
+        const niveau = s.shape === "flat" || s.shape === "suppressed"
+          ? `Niveau ${defFrom(s)}` : `von ${defFrom(s)} auf ${defTo(s)}`;
+        return `„${s.label ?? "(ohne Label)"}" ${verlauf}, ${niveau}`
+          + (s.afterStop ? ` und ${AFTER_STOP_SINN[s.afterStop] ?? s.afterStop}` : "");
+      }).join("; ");
+      const stop = c.stop ? ` Ereignis „${c.stop.label}" bei t=${c.stop.t} (${Math.round(c.stop.t * 100)} % der Breite).` : "";
+      flags.push({ kind: "geometrie-sinn", path,
+        detail: `Das Diagramm zeichnet: ${serien}.${stop} Achsen: x „${c.xlabel}", y „${c.ylabel}".`
+          + ` Widersprechen text, caption oder ein Noten-Label dieser Richtung (z. B. „senkt" auf einer steigenden Serie)?`
+          + ` Passen xlabel/ylabel zu der Größe, die hier dargestellt wird, und zum Dossier?` });
+    }
+    if (typ === "balance") {
+      // Der Renderer kippt den Balken statisch: linker Arm endet tiefer (y=107 gegen
+      // y=85), linke Schale hängt unten — LINKS ist die schwerere Seite. Verifiziert
+      // an renderer.js (balance) und der aria-Beschriftung „left wiegt schwerer".
+      flags.push({ kind: "geometrie-sinn", path,
+        detail: `Die Waage rendert die LINKE Seite als die schwerere (linke Schale hängt unten).`
+          + ` Links steht „${c.left?.label}" (${c.left?.sub}), rechts „${c.right?.label}" (${c.right?.sub}), am Drehpunkt „${c.pivot?.label}".`
+          + ` „${c.left?.label}" ist damit die schwerere — passt diese Seitenzuordnung zum Lehrsatz der Karte?`
+          + ` Wiegt laut Lehrsatz und Dossier das rechte Objekt schwerer, müssen left und right getauscht werden.` });
+    }
+  });
   return flags;
 }
 

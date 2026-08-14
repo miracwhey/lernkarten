@@ -1,0 +1,17 @@
+{
+  "id": "probe-d",
+  "title": "Sonde D — Level- UND Richtungs-Claim",
+  "source": "Sonde (kein Dossier)",
+  "cards": [
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Sonde D: Eine Note trägt beide Claim-Arten — Zahl und Richtung.",
+      "xlabel": "ZEIT",
+      "ylabel": "DRUCK",
+      "series": [{ "label": "DRUCK", "color": "es", "shape": "saturating-rise", "from": "low", "to": "high" }],
+      "notes": [{ "label": "50 % UND FÄLLT", "series": 0, "t": 0.9, "side": "above" }],
+      "caption": "Erwartung: FIX (Level) + HART (Richtung)."
+    }
+  ]
+}

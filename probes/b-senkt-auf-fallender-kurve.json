@@ -1,0 +1,17 @@
+{
+  "id": "probe-b",
+  "title": "Sonde B — Richtung stimmt",
+  "source": "Sonde (kein Dossier)",
+  "cards": [
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Sonde B: Der Note-Text behauptet eine Senkung auf einer fallenden Kurve.",
+      "xlabel": "ZEIT",
+      "ylabel": "KOFFEIN",
+      "series": [{ "label": "KOFFEIN", "color": "ueberich", "shape": "decay-halflife", "from": "high", "to": "floor" }],
+      "notes": [{ "label": "SPIEGEL SENKT SICH", "series": 0, "t": 0.5, "side": "above" }],
+      "caption": "Erwartung: OK."
+    }
+  ]
+}

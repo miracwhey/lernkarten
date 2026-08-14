@@ -11,9 +11,9 @@ import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import { execFileSync } from "child_process";
 import { cardRange, lesezeit, normalizeLesson, validateLesson } from "./validate-lesson.mjs";
 import { suspiciousWords, wordFindings } from "./spellcheck.mjs";
-import { factFlags } from "./factcheck.mjs";
+import { factFlags, geometryFlags } from "./factcheck.mjs";
 import { judgeLesson, restoreMarkup } from "./judge.mjs";
-import { attemptSignal, chatJson, extractJson, isAbortError, loadKey, warnAbgeschnitten } from "./nim.mjs";
+import { attemptSignal, chatJson, collectUsage, defaultPace, extractJson, infraFault, isAbortError, loadKey, NIM_BASE, warnAbgeschnitten } from "./nim.mjs";
 
 const DIR = new URL(".", import.meta.url).pathname.replace(/\/$/, "");
 
@@ -36,6 +36,10 @@ const jIdx = argv.indexOf("--judge");
 const judgeModelArg = jIdx > -1 ? argv.splice(jIdx, 2)[1] : null;
 const jkIdx = argv.indexOf("--judgekey");
 const judgeKeyArg = jkIdx > -1 ? argv.splice(jkIdx, 2)[1] : null;
+// --judgebase <url>: Judge auf einem fremden Endpunkt (Bench fährt Generator UND
+// Judge über OpenRouter); ohne Flag bleibt der Judge auf NIM.
+const jbIdx = argv.indexOf("--judgebase");
+const judgeBaseArg = jbIdx > -1 ? argv.splice(jbIdx, 2)[1] : null;
 // --topic <text>: Thema der Lektion (Default = die Bestands-Blindtest-Vorgabe unten).
 const tIdx = argv.indexOf("--topic");
 const topicArg = tIdx > -1 ? argv.splice(tIdx, 2)[1] : null;
@@ -51,15 +55,59 @@ const outdirArg = oIdx > -1 ? argv.splice(oIdx, 2)[1] : null;
 // Ohne Flag bleibt alles wie bisher (Bestands-Contract 7–8, keine Tiefe im Artefakt).
 const depIdx = argv.indexOf("--depth");
 const depth = depIdx > -1 ? argv.splice(depIdx, 2)[1] : null;
-let CARDS;
-try { CARDS = cardRange(depth); } catch (e) { console.log(e.message); process.exit(2); }
-const [MIN_CARDS, MAX_CARDS] = CARDS;
-const judgeOpts = { ...(judgeModelArg && { model: judgeModelArg }), ...(judgeKeyArg && { keyName: judgeKeyArg }) };
 const fromFile = argv[0] === "--from" ? argv[1] : null;
 // --from <lesson.json> [modell] [dossier.md] — Prüf-Stufen mit beliebigem Fixer-Modell
 // (ohne Modell wie bisher: GLM aus dem Katalog, Fix-Runden nur soweit Kontingent).
 const fromModel = fromFile && argv[2] && !argv[2].endsWith(".md") ? argv[2] : null;
 const modelArg = fromFile ? fromModel : argv[0];
+
+// Ablage und Statistik stehen VOR der ersten Abbruch-Möglichkeit: ein Konfigurations-
+// Fehler ist ein Lauf-Ausgang wie jeder andere und muss in der Statistik erscheinen —
+// sonst fehlt im Bench genau die Zeile, die erklärt, warum ein Lauf nichts geliefert hat.
+const slug = (m) => m.split("/").pop().toLowerCase().replace(/[^a-z0-9.-]/g, "");
+const OUT = outdirArg ?? DIR;
+if (outdirArg) mkdirSync(OUT, { recursive: true });
+// Vorläufiges Datei-Präfix; steht das Modell (ggf. aus dem Katalog), wird es überschrieben.
+let TAG = modelArg ? slug(modelArg) : fromFile ? "glm" : "lauf";
+
+const T0 = Date.now();
+const stats = {
+  model: modelArg ?? null, base: null, judgeModel: judgeModelArg ?? null, judgeBase: judgeBaseArg ?? null,
+  depth: depth ?? null, dossierPath: null, wallMs: 0, outcome: null,
+  // Ausgang der ERSTEN Modell-Antwort — das eigentliche Können ohne Reparatur-Runden.
+  contractErsterWurf: null,
+  runden: { vollRetries: 0, patchRunden: 0, ergaenzungsRunden: 0, generatorPatches: 0 },
+  spellVerdacht: [], judge: [], detektorReRun: null, notecheck: [],
+  usage: { gen: { in: 0, out: 0, calls: 0, providers: [] }, judge: { in: 0, out: 0, calls: 0, providers: [] } },
+};
+// Stufe, die abgelehnt hat (nicht die Fehlerart) + Klartext-Grund. Ohne den Marker
+// wäre jeder Exit 1 ununterscheidbar; rejectDetail trägt die konkrete Ursache.
+const reject = (stufe, grund) => { stats.rejectStage = stufe; stats.rejectDetail = grund; };
+// Infrastruktur-Ursachen (leeres Konto, falscher Key, totes Netz) sind KEIN Modell-
+// Versagen — sie kommen nur hier an, wenn der Fehler den Lauf wirklich beendet.
+process.on("uncaughtException", (e) => {
+  // Stack mitdrucken: der Handler unterdrückt sonst genau die Ausgabe, die einen
+  // echten System-Bug von einem Infrastruktur-Fehler unterscheidbar macht.
+  console.log("ABBRUCH:", e.stack ?? e.message);
+  stats.infra = e.infra ?? null;
+  stats.fehler = e.message;
+  process.exitCode = 1;
+});
+process.on("exit", (code) => {
+  stats.wallMs = Date.now() - T0;
+  // Exit 1 ohne Stufen-Marker heißt: der Lauf ist geplatzt, nicht abgelehnt worden.
+  stats.outcome = stats.infra ? `infra-${stats.infra}`
+    : code === 0 ? "pass" : code === 2 ? "config" : code === 3 ? "system-bug"
+    : stats.rejectStage ? `reject-${stats.rejectStage}` : "system-bug";
+  try { writeFileSync(`${OUT}/${TAG}-stats.json`, JSON.stringify(stats, null, 2)); }
+  catch (e) { console.log("Statistik nicht schreibbar:", e.message); }
+});
+
+let CARDS;
+try { CARDS = cardRange(depth); } catch (e) { console.log(e.message); process.exit(2); }
+const [MIN_CARDS, MAX_CARDS] = CARDS;
+const judgeOpts = { ...(judgeModelArg && { model: judgeModelArg }), ...(judgeKeyArg && { keyName: judgeKeyArg }),
+  ...(judgeBaseArg && { base: judgeBaseArg }), usage: stats.usage.judge };
 
 // claude-* Modelle laufen über die Anthropic-API (eigener Adapter unten),
 // alles andere über NVIDIA NIM. Judge bleibt in beiden Fällen DeepSeek/NIM.
@@ -73,12 +121,12 @@ const keyName = isAnthropic ? "ANTHROPIC_API_KEY"
   : keyOverride ?? (modelArg && envKeys.find((m) => modelArg.toLowerCase().includes(m[2].toLowerCase()))?.[1]) ?? "NVIDIA_GLM_KEY";
 console.log("Nutze Key:", keyName);
 const KEY = isAnthropic ? null : loadKey(keyName);
-const BASE = baseOverride ?? "https://integrate.api.nvidia.com/v1";
+const BASE = baseOverride ?? NIM_BASE;
 const HEADERS = { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
 const DOSSIER_PATH = dossierArg ?? (fromFile ? (fromModel ? argv[3] : argv[2]) : argv[1]) ?? `${DIR}/facts/why-we-sleep.md`;
 const dossier = readFileSync(DOSSIER_PATH, "utf8");
-const OUT = outdirArg ?? DIR;
-if (outdirArg) mkdirSync(OUT, { recursive: true });
+stats.base = BASE;
+stats.dossierPath = DOSSIER_PATH;
 
 let model = modelArg;
 if (!model) {
@@ -91,8 +139,8 @@ if (!model) {
 console.log("Nutze Modell:", model);
 // Datei-Präfix je Generator-Modell — Läufe überschreiben einander nicht (--from ohne
 // Modell bleibt beim glm-Bestand; --from MIT Modell schreibt <modell>-refix-*).
-const slug = (m) => m.split("/").pop().toLowerCase().replace(/[^a-z0-9.-]/g, "");
-const TAG = fromFile ? (fromModel ? slug(fromModel) + "-refix" : "glm") : slug(model);
+TAG = fromFile ? (fromModel ? slug(fromModel) + "-refix" : "glm") : slug(model);
+stats.model = model;
 
 const system = readFileSync(`${DIR}/generator-prompt.md`, "utf8");
 const TOPIC = topicArg ?? `„Why We Sleep" von Matthew Walker (2017) — warum wir schlafen, Schlafdruck, Koffein, was Schlafmangel anrichtet.`;
@@ -153,6 +201,9 @@ async function anthropicChat(messages) {
     const data = await res.json();
     if (!res.ok) throw new Error(`Anthropic ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
     spend.in += data.usage.input_tokens; spend.out += data.usage.output_tokens; spend.calls++;
+    stats.usage.gen.in += data.usage.input_tokens;
+    stats.usage.gen.out += data.usage.output_tokens;
+    stats.usage.gen.calls++;
     const text = data.content.filter((b) => b.type === "text").map((b) => b.text).join("");
     if (!text) throw new Error(`Anthropic: keine Text-Antwort (stop_reason ${data.stop_reason})`);
     return text;
@@ -160,20 +211,32 @@ async function anthropicChat(messages) {
   throw new Error("Anthropic: Rate-Limit hält an.");
 }
 
+// Request-Body einer Generator-Anfrage. `--body` gewinnt gegen die Vorgaben, und ein
+// explizites null LÖSCHT ein Feld: Modelle ohne temperature-Unterstützung (laut
+// OpenRouter supported_parameters etwa die GPT-5.6-Reihe) antworten auf ein
+// mitgesendetes temperature mit HTTP 400 — das sähe wie Modell-Versagen aus.
+function requestBody(messages) {
+  const body = { model, messages, temperature: 0.6,
+    // Ausgabe-Budget wächst mit der Kartenzahl (~700 Token je Karte inkl. Denk-
+    // Tokens): mit festen 8000 schneidet eine 20-Karten-Lektion mitten im JSON ab.
+    max_tokens: Math.max(8000, MAX_CARDS * 700), ...bodyExtra };
+  for (const k of Object.keys(body)) if (body[k] === null) delete body[k];
+  return body;
+}
+
 let firstCall = true;
 async function llm(messages) {
   if (isAnthropic) return anthropicChat(messages);   // kein Free-Tier-Pacing nötig
-  // Free-Tier-Pacing: NIM drosselt aggressiv — Abstand halten statt hineinlaufen.
-  if (!firstCall) await new Promise((ok) => setTimeout(ok, 25000));
+  // Pacing gehört an den Host: NIM drosselt den Free-Tier aggressiv, fremde
+  // Endpunkte brauchen nur Anstands-Abstand (nim.mjs defaultPace).
+  if (!firstCall) await new Promise((ok) => setTimeout(ok, defaultPace(BASE)));
   firstCall = false;
   for (let i = 0; i < 8; i++) {
     let res;
     try {
       res = await fetch(`${BASE}/chat/completions`, {
         method: "POST", headers: HEADERS,
-        // Ausgabe-Budget wächst mit der Kartenzahl (~700 Token je Karte inkl. Denk-
-        // Tokens): mit festen 8000 schneidet eine 20-Karten-Lektion mitten im JSON ab.
-        body: JSON.stringify({ model, messages, temperature: 0.6, max_tokens: Math.max(8000, MAX_CARDS * 700), ...bodyExtra }),
+        body: JSON.stringify(requestBody(messages)),
         // Echter Abbruch statt hängender Socket: ohne Signal läuft ein toter Request
         // weiter und frisst die Job-Deadline des Workers.
         signal: attemptSignal(null),
@@ -194,6 +257,7 @@ async function llm(messages) {
       // Leere oder abgeschnittene Antwort benennen: sonst erscheint sie weiter
       // unten nur als „kein JSON-Objekt" und die nächste Runde rät.
       warnAbgeschnitten(data, model);
+      collectUsage(stats.usage.gen, data);
       const msg = data.choices?.[0]?.message;
       const text = (msg?.content ?? "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
       if (!text) console.log(`LEERE ANTWORT (${model}, finish_reason=${data.choices?.[0]?.finish_reason})`
@@ -207,9 +271,14 @@ async function llm(messages) {
       await new Promise((ok) => setTimeout(ok, wait));
       continue;
     }
-    throw new Error(`API ${res.status}: ${body}`);
+    // Ursache am Fehler mitführen (leeres Konto/falscher Key ≠ schlechtes Modell).
+    const err = new Error(`API ${res.status}: ${body}`);
+    err.infra = infraFault(res.status);
+    throw err;
   }
-  throw new Error("API: Rate-Limit hält an.");
+  const err = new Error("API: Rate-Limit hält an.");
+  err.infra = "net";
+  throw err;
 }
 
 // Contract-Prüfung IMMER mit der bestellten Tiefe — sonst prüft die Pipeline gegen
@@ -281,12 +350,14 @@ if (fromFile) {
   raw = JSON.stringify(lesson);
   messages.push({ role: "assistant", content: raw });
   const errs = contract(lesson);
+  stats.contractErsterWurf = { fehler: errs.length, liste: errs };
   console.log(errs.length ? `Eingangs-Contract: ${errs.length} Fehler (werden am Ende erneut geprüft)` : "Eingangs-Contract: PASS");
 }
 
 full: for (let i = 1; fromFile ? false : i <= MAX_FULL; i++) {
   raw = await llm(messages);
   r = parseAndValidate(raw, `v2-try${i}`);
+  if (i === 1) stats.contractErsterWurf = { fehler: r.errors?.length ?? 0, liste: r.errors ?? [] };
   if (!r.errors) { console.log(`VERSUCH ${i}: Contract PASS`); break; }
   console.log(`VERSUCH ${i} — ${r.errors.length} Contract-Fehler:\n` + r.errors.map((e) => "- " + e).join("\n"));
 
@@ -294,6 +365,7 @@ full: for (let i = 1; fromFile ? false : i <= MAX_FULL; i++) {
   // Feld-Fehler der neuen Karten fangen die Patch-Runden unten ab.
   for (let ar = 1; ar <= MAX_ADD && r.lesson && r.errors.some(isTooFewCards); ar++) {
     console.log(`→ Ergänzungs-Runde ${ar} (bestehende Karten unangetastet)…`);
+    stats.runden.ergaenzungsRunden++;
     try {
       const ergaenzt = await addCardsRound(r.lesson, `add${i}-${ar}`);
       raw = JSON.stringify(ergaenzt);
@@ -308,6 +380,7 @@ full: for (let i = 1; fromFile ? false : i <= MAX_FULL; i++) {
     lesson = r.lesson;
     for (let pr = 1; pr <= MAX_PATCH; pr++) {
       console.log(`→ Patch-Runde ${pr} (nur fehlerhafte Felder)…`);
+      stats.runden.patchRunden++;
       messages.push({ role: "assistant", content: raw });
       messages.push({ role: "user", content: `Korrigiere NUR die fehlerhaften Felder. Fehlerliste:\n${r.errors.map((e) => "- " + e).join("\n")}\n\nAntworte mit einem flachen JSON-Objekt { "<pfad>": <neuer Wert>, … } — Pfade exakt wie in der Fehlerliste (z. B. "cards[4].left.sub"). Nur das JSON, nichts sonst.` });
       let patch;
@@ -321,11 +394,16 @@ full: for (let i = 1; fromFile ? false : i <= MAX_FULL; i++) {
       if (!r.errors.length) { r = { lesson }; console.log(`Patch-Runde ${pr}: Contract PASS`); break full; }
       console.log(`Patch-Runde ${pr} — ${r.errors.length} Fehler verbleiben:\n` + r.errors.map((e) => "- " + e).join("\n"));
     }
-    console.log("Pipeline lehnt ab (Patch-Runden erschöpft)."); process.exit(1);
+    console.log("Pipeline lehnt ab (Patch-Runden erschöpft).");
+    reject("contract", "Patch-Runden erschöpft"); process.exit(1);
   }
 
-  if (i === MAX_FULL) { console.log("Pipeline lehnt ab (max. Versuche erreicht)."); process.exit(1); }
+  if (i === MAX_FULL) {
+    console.log("Pipeline lehnt ab (max. Versuche erreicht).");
+    reject("contract", "max. Voll-Versuche erreicht"); process.exit(1);
+  }
   console.log("→ Struktur-Fehler: voller Retry…");
+  stats.runden.vollRetries++;
   messages.push({ role: "assistant", content: raw });
   messages.push({ role: "user", content: `Deine Antwort verletzt den Contract. Fehlerliste:\n${r.errors.map((e) => "- " + e).join("\n")}\n\nKorrigiere alle Fehler und sende das VOLLSTÄNDIGE JSON-Objekt erneut — nur das JSON, nichts sonst.` });
 }
@@ -333,6 +411,7 @@ lesson = r?.lesson ?? lesson;
 
 // Eine Generator-Patch-Runde für eine gegebene Fehlerliste (für Nach-Judge-Verstöße).
 async function generatorPatchRound(errorList) {
+  stats.runden.generatorPatches++;
   messages.push({ role: "assistant", content: JSON.stringify(lesson) });
   messages.push({ role: "user", content: `Korrigiere NUR die fehlerhaften Felder. Fehlerliste:\n${errorList.map((e) => "- " + e).join("\n")}\n\nAntworte mit einem flachen JSON-Objekt { "<pfad>": <neuer Wert>, … } — Pfade exakt wie in der Fehlerliste. Nur das JSON, nichts sonst.` });
   let patch;
@@ -353,6 +432,7 @@ if (wf.suspicious.length && fromFile && !fromModel) {
   console.log("Spellcheck-Verdacht (nur Report — kein Fixer-Modell):", wf.suspicious.map((s) => s.word).join(", "));
 } else if (wf.suspicious.length) {
   console.log("Spellcheck-Verdacht:", wf.suspicious.map((s) => s.word).join(", "));
+  stats.spellVerdacht = wf.suspicious.map((s) => s.word);
   try {
     messages.push({ role: "assistant", content: JSON.stringify(lesson) });
     messages.push({ role: "user", content: `Rechtschreib-Prüfung deiner Lektion. Diese Wörter sind verdächtig (können aber korrekte Fachbegriffe sein):\n${wf.suspicious.map((s) => `- "${s.word}" (${s.path})`).join("\n")}\n\nPrüfe jedes Wort im Kontext seines Felds. Sind alle korrekt geschrieben, antworte exakt mit: OK\nSonst antworte mit einem flachen Patch-JSON { "<pfad>": "<vollständiger korrigierter Feldwert>", … } NUR für die fehlerhaften Felder. Die Längen-Limits des Contracts gelten unverändert — sprengt die korrekte Schreibweise das Limit, wähle ein kürzeres Synonym; NIEMALS ein Wort abschneiden. Nur das JSON bzw. OK, nichts sonst.` });
@@ -401,7 +481,7 @@ async function applyJudgeFindings(findings) {
   if (lostMarkup.length) {
     console.log(`  Markup verloren in ${lostMarkup.length} Feld(ern) — restauriere…`);
     try {
-      const restored = await restoreMarkup(lostMarkup);
+      const restored = await restoreMarkup(lostMarkup, judgeOpts);
       for (const it of lostMarkup) {
         const v = restored[it.path];
         const stripEq = (s) => String(s).replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
@@ -416,8 +496,19 @@ const judgeFlags = [
   ...factFlags(lesson, dossier),
   ...wordFindings(lesson).composita.map((c) => ({ kind: "wort-sinn", path: c.path,
     detail: `Wort "${c.word}" ist nur als Kompositum herleitbar — existiert es als deutsches Wort und verdreht es keinen bestehenden Begriff? (Alltagsbeispiele ohne Dossier-Bezug sind ok)` })),
+  // Geometrie-Sinn: die zweite Hälfte der Klasse „Text widerspricht dem Bild" —
+  // notecheck misst nur an Note-Positionen, hier kommen Lehrsatz, Caption und
+  // Achsen-Beschriftung gegen die deklarierte Kurven-/Waagen-Geometrie.
+  ...geometryFlags(lesson),
 ];
+// Judge-Runde protokollieren: Zahl der Aufträge, Befunde und deren verdict-Verteilung.
+const judgeRunde = (checks, findings) => stats.judge.push({
+  checks: checks.length, findings: findings.length,
+  verdicts: findings.reduce((a, f) => ({ ...a, [f.verdict ?? "ohne"]: (a[f.verdict ?? "ohne"] ?? 0) + 1 }), {}),
+});
 const { findings, checks, model: judgeModel } = await judgeLesson(lesson, dossier, { flags: judgeFlags, ...judgeOpts });
+stats.judgeModel = judgeModel;
+judgeRunde(checks, findings);
 console.log(`Judge (${judgeModel}): ${checks.length} Checks, ${findings.length} Fakten-Befund(e)`);
 await applyJudgeFindings(findings);
 
@@ -428,14 +519,18 @@ const fixedPaths = new Set(findings.filter((f) => f.fix && f.path).map((f) => f.
 let post = factFlags(lesson, dossier).filter((f) => f.kind === "ungedeckte-zahl" && fixedPaths.has(f.path));
 if (post.length) {
   console.log(`Detektor-Re-Run: ${post.length} Judge-Fix(e) lassen unbelegte Zahlen stehen — zweite Judge-Runde…`);
+  const vorher = post.length;
   const r2 = await judgeLesson(lesson, dossier, { ...judgeOpts, flags: post.map((f) => ({ ...f,
     detail: f.detail + " — der vorige Fix hat das NICHT beseitigt: Dossier-Zahl verwenden oder ohne Zahl formulieren" })) });
+  judgeRunde(r2.checks, r2.findings);
   await applyJudgeFindings(r2.findings);
   post = factFlags(lesson, dossier).filter((f) => f.kind === "ungedeckte-zahl" && fixedPaths.has(f.path));
   const stillBad = post.filter((f) => !r2.checks.some((c) => String(c.auftrag).includes(f.path) && c.ergebnis === "ok"));
+  stats.detektorReRun = { vorher, nachher: post.length, offen: stillBad.length };
   if (stillBad.length) {
     console.log("Pipeline lehnt ab — unbelegte Zahl überlebt zwei Judge-Runden: " + stillBad.map((f) => f.path).join(", "));
     writeFileSync(`${OUT}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
+    reject("fakten", "unbelegte Zahl überlebt zwei Judge-Runden: " + stillBad.map((f) => f.path).join(", "));
     process.exit(1);
   }
 }
@@ -447,6 +542,7 @@ if (finalErrs.length) {
   if (finalErrs.length) {
     console.log("Pipeline lehnt ab — verbleibende Contract-Fehler:\n" + finalErrs.map((e) => "- " + e).join("\n"));
     writeFileSync(`${OUT}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
+    reject("fakten", `Contract nach Fakten-Fixes verletzt (${finalErrs.length})`);
     process.exit(1);
   }
   console.log("Contract PASS nach Patch-Runde");
@@ -472,14 +568,21 @@ console.log("→", file);
 // Erreichbare Claims fixt notecheck deterministisch (t-Versatz, kein API-Call);
 // HART = Claim auf der Kurve unerreichbar → das Modell muss Zahl/Serie ändern.
 async function runNotecheck() {
+  let out;
   try {
-    console.log(execFileSync("node", [`${DIR}/notecheck.mjs`, file, "--fix"], { encoding: "utf8" }).trim());
+    out = execFileSync("node", [`${DIR}/notecheck.mjs`, file, "--fix"], { encoding: "utf8" }).trim();
+    console.log(out);
     return [];
   } catch (e) {
-    const out = (e.stdout || e.message).trim();
+    out = (e.stdout || e.message).trim();
     console.log(out);
+    // Die HART-Zeilen tragen ihre Korrektur bereits im Text — sie gehen unverändert
+    // als Fehlerliste in die Generator-Patch-Runde (Level- wie Richtungs-Befunde).
     return out.split("\n").filter((l) => l.startsWith("HART ")).map((l) => "- " + l.slice(6));
   } finally {
+    // Maschinen-Zeile von notecheck: getrennte Zählung statt Nachzählen der Prosa.
+    const z = /ZÄHLUNG ok=(\d+) fix=(\d+) hart=(\d+) hart-richtung=(\d+)/.exec(out ?? "");
+    if (z) stats.notecheck.push({ ok: +z[1], fix: +z[2], hart: +z[3], hartRichtung: +z[4] });
     lesson = JSON.parse(readFileSync(file, "utf8"));   // t-Fixe zurücklesen
   }
 }
@@ -488,13 +591,17 @@ if (hardClaims.length) {
   console.log("→ Generator-Patch-Runde für unerreichbare Note-Claims…");
   try {
     const errs = await generatorPatchRound(hardClaims);
-    if (errs.length) { console.log("Pipeline lehnt ab — Contract-Fehler nach Note-Patch:\n" + errs.map((e) => "- " + e).join("\n")); process.exit(1); }
+    if (errs.length) {
+      console.log("Pipeline lehnt ab — Contract-Fehler nach Note-Patch:\n" + errs.map((e) => "- " + e).join("\n"));
+      reject("notecheck", `Contract-Fehler nach Note-Patch (${errs.length})`); process.exit(1);
+    }
     writeFileSync(file, JSON.stringify(lesson, null, 2));
     hardClaims = await runNotecheck();
   } catch (e) { console.log("Patch-Runde nicht möglich (API):", e.message); }
   if (hardClaims.length) {
-    console.log("Pipeline lehnt ab — Bild-Text-Zahl-Widerspruch bleibt.");
+    console.log("Pipeline lehnt ab — Bild-Text-Widerspruch bleibt.");
     writeFileSync(`${OUT}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
+    reject("notecheck", `${hardClaims.length} HART-Befund(e) überleben die Patch-Runde`);
     process.exit(1);
   }
 }

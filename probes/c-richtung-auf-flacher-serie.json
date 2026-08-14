@@ -1,0 +1,17 @@
+{
+  "id": "probe-c",
+  "title": "Sonde C — Richtung auf flacher Serie",
+  "source": "Sonde (kein Dossier)",
+  "cards": [
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Sonde C: Der Note-Text behauptet Wachstum auf einer konstanten Serie.",
+      "xlabel": "ZEIT",
+      "ylabel": "BESTAND",
+      "series": [{ "label": "BESTAND", "color": "ich", "shape": "flat", "from": "mid" }],
+      "notes": [{ "label": "BESTAND WÄCHST", "series": 0, "t": 0.5, "side": "above" }],
+      "caption": "Erwartung: HART (Richtung)."
+    }
+  ]
+}

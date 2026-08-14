@@ -1,0 +1,17 @@
+{
+  "id": "probe-a",
+  "title": "Sonde A — Richtungs-Widerspruch",
+  "source": "Sonde (kein Dossier)",
+  "cards": [
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Sonde A: Der Note-Text behauptet eine Senkung auf einer steigenden Kurve.",
+      "xlabel": "HÖHE",
+      "ylabel": "SIEDEPUNKT",
+      "series": [{ "label": "SIEDEPUNKT", "color": "es", "shape": "saturating-rise", "from": "low", "to": "high" }],
+      "notes": [{ "label": "WASSER SENKT PUNKT", "series": 0, "t": 0.6, "side": "above" }],
+      "caption": "Erwartung: HART (Richtung)."
+    }
+  ]
+}

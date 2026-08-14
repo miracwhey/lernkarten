@@ -21,3 +21,6 @@ supabase/.temp/
 # Worker: Service-Role-Key und Job-Arbeitsverzeichnisse
 worker/.env
 worker/jobs/
+
+# Bench-Läufe (reproduzierbar, große Artefakt-Bäume)
+bench-runs/
