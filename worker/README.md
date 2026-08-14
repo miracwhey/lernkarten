@@ -89,7 +89,31 @@ Bei Fehlern bleiben die Artefakte liegen — sie sind die Diagnose.
 
 ## Tiefe
 
-`kompakt` · `standard` · `tief` steuern die **Dichte des Dossiers**, nicht die
-Kartenzahl: `validate-lesson.mjs` schreibt 7–8 Karten fest (Contract v2). Die
-Kartenzahl-Schätzungen der Tiefe-Kacheln im Erstellen-Sheet decken sich daher nicht
-mit dem Ergebnis, solange der Contract gilt.
+`kompakt` · `standard` · `tief` steuern die **Dichte des Dossiers** UND die
+**Kartenzahl** der Lektion. Die Bereiche stehen an einer Stelle
+(`validate-lesson.mjs → DEPTH_CARDS`) und speisen Generator-Auftrag, Contract und
+Ergänzungs-Runde:
+
+| Tiefe | Karten | Kachel im Erstellen-Sheet |
+|---|---|---|
+| kompakt | 6–8 | ca. 7 Karten · 4 Min |
+| standard | 11–13 | ca. 12 Karten · 7 Min |
+| tief | 18–22 | ca. 20 Karten · 12 Min |
+
+Ohne `--depth` (CLI-Blindtests, Alt-Lektionen) gilt der Bestands-Contract 7–8.
+Zu wenige Karten heilt die Pipeline **additiv**: eine Ergänzungs-Runde liefert nur
+die fehlenden Karten, die bestehenden bleiben unangetastet (eine Voll-Regeneration
+würde bereits geprüfte Karten neu würfeln). Die Titel-Karte bekommt ihre
+`stats`-Zeile deterministisch aus der echten Kartenzahl.
+
+## Zahlen-Gate der Dossier-Stufe
+
+Das Dossier ist die einzige Grundwahrheit — alle späteren Prüfungen messen GEGEN
+es, eine falsche Zahl darin findet danach niemand mehr. `dossier-check.mjs` zieht
+darum deterministisch jede Sachzahl (ohne Jahreszahlen, Auflagen, Formel- und
+Namensziffern) und lässt den unabhängigen Judge (DeepSeek, nie das Dossier-Modell)
+eine Zwangs-Checkliste abarbeiten: eine Prüfzeile pro Zahl, mit Einheit,
+Zeitbasis, Größenordnungs-Vergleich und interner Konsistenz. Befunde werden
+zeilenweise deterministisch gepatcht, danach läuft der Detektor **erneut** — was
+als „hart" überlebt, fliegt als Zeile raus, und das Format-Gate zählt neu.
+Einzeln fahren: `node worker/dossier-check.mjs <dossier.md> [--patch out.md]`.

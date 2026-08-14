@@ -1,7 +1,7 @@
 // Modell-Kette für Dossier- und Generator-Stufe: der erste Eintrag zuerst, bei
 // erschöpftem Kontingent der nächste. Der Judge bleibt in jedem Fall DeepSeek —
 // er darf nie das Generator-Modell sein (glm-generate.mjs bekommt --judgekey).
-import { loadKey, nimChat } from "../nim.mjs";
+import { attemptSignal, isAbortError, loadKey, nimChat, sleep, stripThink, throwIfAborted, warnAbgeschnitten, REQ_TIMEOUT_MS } from "../nim.mjs";
 
 export const NIM_BASE = "https://integrate.api.nvidia.com/v1";
 
@@ -17,6 +17,8 @@ export const JUDGE = { keyName: "NVIDIA_DS_PRO_KEY", id: "deepseek-ai/deepseek-v
 /// Ein Chat-Call gegen ein Kettenmitglied. NIM läuft über den Bestands-Helper
 /// (Pacing + Backoff + Null-Guard); fremde OpenAI-kompatible Endpunkte bekommen
 /// dieselbe Backoff-Form, weil nim.mjs auf die NIM-Basis festgelegt ist.
+/// `opts.signal` reicht bis in den fetch durch — eine Deadline bricht den Request
+/// wirklich ab, statt ihn im Hintergrund weiter Kontingent verbrennen zu lassen.
 export async function chat(model, messages, opts = {}) {
   const key = loadKey(model.keyName);
   const raw = model.base === NIM_BASE
@@ -24,11 +26,12 @@ export async function chat(model, messages, opts = {}) {
     : await openaiChat(key, model, messages, opts);
   // Thinking-Modelle liefern trotz Drosselung inline <think>-Blöcke; content kann
   // null sein, wenn das Denken das Output-Budget gefressen hat.
-  return (raw ?? "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+  return stripThink(raw);
 }
 
 async function openaiChat(key, model, messages, opts) {
   for (let i = 0; i < (opts.retries ?? 5); i++) {
+    throwIfAborted(opts.signal);
     let res;
     try {
       res = await fetch(`${model.base}/chat/completions`, {
@@ -40,19 +43,25 @@ async function openaiChat(key, model, messages, opts) {
           max_tokens: opts.maxTokens ?? 8000,
           ...model.body,
         }),
+        signal: attemptSignal(opts.signal, opts.timeoutMs ?? REQ_TIMEOUT_MS),
       });
     } catch (e) {
+      throwIfAborted(opts.signal);                     // Job-Deadline: nicht weiterprobieren
       const wait = 10000 * (i + 1);
-      console.log(`NETZ-FEHLER (${model.id}): ${e.message} — warte ${wait / 1000}s…`);
-      await new Promise((ok) => setTimeout(ok, wait));
+      console.log(`${isAbortError(e) ? "REQUEST-TIMEOUT" : "NETZ-FEHLER"} (${model.id}): ${e.message} — warte ${wait / 1000}s…`);
+      await sleep(wait, opts.signal);
       continue;
     }
-    if (res.ok) return (await res.json()).choices[0].message.content;
+    if (res.ok) {
+      const data = await res.json();
+      warnAbgeschnitten(data, model.id);
+      return data.choices?.[0]?.message?.content;
+    }
     const body = (await res.text()).slice(0, 300);
     if (res.status === 429 || res.status >= 500) {
       const wait = 20000 * (i + 1);
       console.log(`API ${res.status} (${model.id}) — warte ${wait / 1000}s…`);
-      await new Promise((ok) => setTimeout(ok, wait));
+      await sleep(wait, opts.signal);
       continue;
     }
     throw new Error(`API ${res.status}: ${body}`);

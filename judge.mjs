@@ -5,7 +5,7 @@
 // Nutzung: node judge.mjs <lesson.json> <dossier.md> [modell-id]  → Exit 0 / 2.
 // Als Modul: import { judgeLesson }.
 import { readFileSync } from "fs";
-import { loadKey, resolveModel, nimChat, extractJson } from "./nim.mjs";
+import { loadKey, resolveModel, nimChat, chatJson } from "./nim.mjs";
 import { factFlags } from "./factcheck.mjs";
 
 const JUDGE_SYSTEM = `Du bist Fakten-Prüfer für Lernkarten. Du erhältst ein Fakten-Dossier (die einzige zulässige Quelle), eine Lektion als JSON und eine Liste automatischer Prüfaufträge.
@@ -30,16 +30,19 @@ Regeln für fix: kompletter Ersatz-Text des Felds unter path (nicht nur das korr
 export async function judgeLesson(lesson, dossier, opts = {}) {
   const flags = opts.flags ?? factFlags(lesson, dossier);
   const key = loadKey(opts.keyName ?? "NVIDIA_DS_PRO_KEY");
-  const model = opts.model ?? await resolveModel(key, opts.modelFilter ?? "deepseek");
+  const model = opts.model ?? await resolveModel(key, opts.modelFilter ?? "deepseek", { signal: opts.signal });
   const user = `## Fakten-Dossier\n\n${dossier}\n\n## Lektion (JSON)\n\n${JSON.stringify(lesson, null, 2)}\n\n## Automatische Prüfaufträge\n\n${flags.length ? flags.map((f) => `- [${f.kind}] ${f.path}: ${f.detail}`).join("\n") : "(keine)"}`;
   const messages = [
     { role: "system", content: JUDGE_SYSTEM },
     { role: "user", content: user }
   ];
+  // Ein Judge-Call. Kaputtes JSON heilt der Chokepoint (Reparatur + EIN Korrektur-
+  // Retry) — vor der Härtung riss ein unescaptes " in einem deutschen Zitat den
+  // ganzen Generatorlauf ab.
+  const chat = (msgs) => nimChat(key, model, msgs, { temperature: 0.1, paceMs: opts.paceMs ?? 5000, signal: opts.signal });
   // Vollständigkeits-Gate: jeder Prüfauftrag braucht seine Check-Zeile — ein Retry bei Lücken.
   for (let attempt = 0; ; attempt++) {
-    const raw = await nimChat(key, model, messages, { temperature: 0.1, paceMs: opts.paceMs ?? 5000 });
-    const parsed = extractJson(raw);
+    const { value: parsed, raw } = await chatJson(chat, messages);
     if (!Array.isArray(parsed.findings) || !Array.isArray(parsed.checks)) throw new Error("Judge-Antwort ohne checks/findings-Arrays");
     if (parsed.checks.length >= flags.length || attempt >= 1)
       return { findings: parsed.findings, checks: parsed.checks, model, flags };
@@ -54,7 +57,7 @@ export async function judgeLesson(lesson, dossier, opts = {}) {
 export async function restoreMarkup(items, opts = {}) {
   if (!items.length) return {};
   const key = loadKey(opts.keyName ?? "NVIDIA_DS_PRO_KEY");
-  const model = opts.model ?? await resolveModel(key, opts.modelFilter ?? "deepseek");
+  const model = opts.model ?? await resolveModel(key, opts.modelFilter ?? "deepseek", { signal: opts.signal });
   const user = `In korrigierten Lernkarten-Feldern ist die HTML-Auszeichnung des Originals verloren gegangen. Setze sie sinngemäß in den NEUEN Text ein — der Wortlaut des neuen Texts bleibt EXAKT unverändert, du fügst nur Tags hinzu.
 
 Erlaubte Tags und Bedeutung: <b>…</b> (Indigo — Lösungs-/Kernbegriff), <span class="w-es">…</span> (Koralle — Problem/Gefahr/Verlust), <span class="w-ue">…</span> (Ocker — Belohnung/Wert), <strong>…</strong> (nur wo das Original <strong> nutzte). Markiere die Begriffe, die der Rolle der im Original markierten Begriffe entsprechen.
@@ -62,8 +65,9 @@ Erlaubte Tags und Bedeutung: <b>…</b> (Indigo — Lösungs-/Kernbegriff), <spa
 ${items.map((it) => `### ${it.path}\nOriginal (mit Tags): ${it.original}\nNeuer Text (Tags fehlen): ${it.value}`).join("\n\n")}
 
 Antworte AUSSCHLIESSLICH mit einem JSON-Objekt { "<path>": "<neuer Text mit Tags>", … } für alle Felder.`;
-  const raw = await nimChat(key, model, [{ role: "user", content: user }], { temperature: 0.1, paceMs: opts.paceMs ?? 5000 });
-  return extractJson(raw);
+  const chat = (msgs) => nimChat(key, model, msgs, { temperature: 0.1, paceMs: opts.paceMs ?? 5000, signal: opts.signal });
+  const { value } = await chatJson(chat, [{ role: "user", content: user }]);
+  return value;
 }
 
 // CLI

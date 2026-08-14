@@ -1,9 +1,31 @@
 // Türsteher der Pipeline: prüft Generator-JSON gegen den Karten-Contract v2.
 // v2: Diagramm-Karten tragen `relation` (das System leitet den Typ ab); `curve`
 // ist rein semantisch (Form, Niveaus, Ereignis-Zeitpunkt, Anker) — keine Koordinaten.
-// Nutzung: node validate-lesson.mjs <lesson.json>  → Exit 0 + "OK" oder Exit 1 + Fehlerliste.
-// Als Modul: import { RELATION_TO_TYPE, normalizeLesson, validateLesson }.
+// Nutzung: node validate-lesson.mjs <lesson.json> [--depth kompakt|standard|tief]
+//          → Exit 0 + "OK" oder Exit 1 + Fehlerliste.
+// Als Modul: import { RELATION_TO_TYPE, DEPTH_CARDS, normalizeLesson, validateLesson }.
 import { readFileSync } from "fs";
+
+// Kartenzahl je Tiefe — dieselbe Zusage, die die Kachel im Erstellen-Sheet macht
+// („ca. 7 / 12 / 20 Karten", CreateSheetView.Depth.estimate). EINE Quelle: Prompt,
+// Validator und Ergänzungs-Runde lesen ihren Sollwert hier.
+export const DEPTH_CARDS = { kompakt: [6, 8], standard: [11, 13], tief: [18, 22] };
+// Ohne Tiefe (Alt-Lektionen, CLI-Blindtests ohne --depth) gilt der Bestands-Contract.
+export const DEFAULT_CARDS = [7, 8];
+
+/// Soll-Bereich zu einer Tiefe. `null`/`undefined` = Bestands-Contract; ein
+/// unbekannter Wert ist ein Aufruf-Fehler und wird NICHT still auf einen
+/// Default gebogen (sonst trüge die neue Tiefe die Zusage der alten).
+export function cardRange(depth) {
+  if (depth === undefined || depth === null || depth === "") return DEFAULT_CARDS;
+  const r = DEPTH_CARDS[depth];
+  if (!r) throw new Error(`Unbekannte Tiefe "${depth}" (erlaubt: ${Object.keys(DEPTH_CARDS).join(", ")})`);
+  return r;
+}
+
+/// Minutenangabe der Titel-Karte, aus der Kartenzahl abgeleitet (≈36 s je Karte —
+/// trifft die Kachel-Zusagen 7→4, 12→7, 20→12 Minuten).
+export const lesezeit = (n) => Math.max(2, Math.round(n * 0.6));
 
 export const RELATION_TO_TYPE = {
   "trend": "curve",           // eine Größe entwickelt sich über Zeit/Menge
@@ -30,7 +52,12 @@ export function normalizeLesson(lesson) {
   };
 }
 
-export function validateLesson(lesson) {
+/// `opts.depth` schlägt `lesson.depth` — die Pipeline kennt die bestellte Tiefe,
+/// die Datei trägt sie nur mit. Beides fehlt = Bestands-Contract (7–8 Karten).
+export function validateLesson(lesson, opts = {}) {
+  const depth = opts.depth ?? lesson?.depth ?? null;
+  const [minCards, maxCards] = cardRange(depth);
+  const fuerTiefe = depth ? ` (Tiefe „${depth}")` : "";
   const errs = [];
   const err = (path, msg) => errs.push(`${path}: ${msg}`);
   const str = (v, path, max) => {
@@ -145,7 +172,17 @@ export function validateLesson(lesson) {
   };
 
   str(lesson.id, "id", 40); str(lesson.title, "title", 40); str(lesson.source, "source", 80);
-  if (arr(lesson.cards, "cards", 7, 8)) {
+  // Kartenzahl trägt die Korrektur im Fehlertext: zu wenige Karten heilt die
+  // Pipeline additiv (Ergänzungs-Runde), nicht durch Voll-Regeneration.
+  const n = Array.isArray(lesson.cards) ? lesson.cards.length : -1;
+  if (n < 0) err("cards", `braucht ${minCards}–${maxCards} Karten${fuerTiefe} (fehlt oder ist kein Array)`);
+  else if (n < minCards)
+    err("cards", `zu wenig Karten: ${n} < ${minCards}${fuerTiefe} — ergänze ${minCards - n} Karten zu weiteren `
+      + `Aspekten des Dossiers, die noch nicht vorkommen; bestehende Karten bleiben unverändert`);
+  else if (n > maxCards)
+    err("cards", `zu viele Karten: ${n} > ${maxCards}${fuerTiefe} — entferne ${n - maxCards} `
+      + `(die redundanteste Diagramm-Karte zuerst; title/quiz/insight bleiben)`);
+  if (n >= minCards && n <= maxCards) {
     lesson.cards.forEach((c, i) => {
       const p = `cards[${i}]`;
       if (!CARD_CHECKS[c.type]) {
@@ -170,8 +207,11 @@ export function validateLesson(lesson) {
 
 // CLI
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop())) {
+  const dIdx = process.argv.indexOf("--depth");
+  const depth = dIdx > -1 ? process.argv[dIdx + 1] : undefined;
   const lesson = normalizeLesson(JSON.parse(readFileSync(process.argv[2], "utf8")));
-  const errs = validateLesson(lesson);
+  const errs = validateLesson(lesson, { depth });
   if (errs.length) { console.log("FEHLER:\n" + errs.map((e) => "- " + e).join("\n")); process.exit(1); }
-  console.log(`OK — ${lesson.cards.length} Karten, Typen: ${lesson.cards.map((c) => c.type).join(", ")}`);
+  const [lo, hi] = cardRange(depth ?? lesson.depth ?? null);
+  console.log(`OK — ${lesson.cards.length} Karten (Soll ${lo}–${hi}), Typen: ${lesson.cards.map((c) => c.type).join(", ")}`);
 }

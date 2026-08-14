@@ -6,13 +6,14 @@
 // Nutzung: node glm-generate.mjs [modell-id] [dossier.md]
 //          node glm-generate.mjs --from <lesson.json> [dossier.md]   (nur Prüf-Stufen)
 //          zusätzlich: --topic <text> --dossier <pfad> --outdir <dir> (Worker-Betrieb)
+//          --depth <kompakt|standard|tief> steuert die Kartenzahl (Default: Bestand 7–8)
 import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import { execFileSync } from "child_process";
-import { normalizeLesson, validateLesson } from "./validate-lesson.mjs";
+import { cardRange, lesezeit, normalizeLesson, validateLesson } from "./validate-lesson.mjs";
 import { suspiciousWords, wordFindings } from "./spellcheck.mjs";
 import { factFlags } from "./factcheck.mjs";
 import { judgeLesson, restoreMarkup } from "./judge.mjs";
-import { loadKey } from "./nim.mjs";
+import { attemptSignal, chatJson, extractJson, isAbortError, loadKey, warnAbgeschnitten } from "./nim.mjs";
 
 const DIR = new URL(".", import.meta.url).pathname.replace(/\/$/, "");
 
@@ -45,6 +46,14 @@ const dossierArg = dIdx > -1 ? argv.splice(dIdx, 2)[1] : null;
 // parallele Worker-Jobs überschreiben einander sonst über den gemeinsamen TAG.
 const oIdx = argv.indexOf("--outdir");
 const outdirArg = oIdx > -1 ? argv.splice(oIdx, 2)[1] : null;
+// --depth <kompakt|standard|tief>: Tiefe der Lektion. Sie steuert die Kartenzahl —
+// Prompt-Auftrag UND Contract lesen denselben Bereich aus validate-lesson.mjs.
+// Ohne Flag bleibt alles wie bisher (Bestands-Contract 7–8, keine Tiefe im Artefakt).
+const depIdx = argv.indexOf("--depth");
+const depth = depIdx > -1 ? argv.splice(depIdx, 2)[1] : null;
+let CARDS;
+try { CARDS = cardRange(depth); } catch (e) { console.log(e.message); process.exit(2); }
+const [MIN_CARDS, MAX_CARDS] = CARDS;
 const judgeOpts = { ...(judgeModelArg && { model: judgeModelArg }), ...(judgeKeyArg && { keyName: judgeKeyArg }) };
 const fromFile = argv[0] === "--from" ? argv[1] : null;
 // --from <lesson.json> [modell] [dossier.md] — Prüf-Stufen mit beliebigem Fixer-Modell
@@ -87,7 +96,17 @@ const TAG = fromFile ? (fromModel ? slug(fromModel) + "-refix" : "glm") : slug(m
 
 const system = readFileSync(`${DIR}/generator-prompt.md`, "utf8");
 const TOPIC = topicArg ?? `„Why We Sleep" von Matthew Walker (2017) — warum wir schlafen, Schlafdruck, Koffein, was Schlafmangel anrichtet.`;
+// Der Soll-Bereich steht NUR hier im Auftrag (nicht im Systemprompt) — eine Quelle,
+// dieselbe Zahl, die der Validator gleich prüft.
+const diagramme = `${MIN_CARDS - 3}–${MAX_CARDS - 3}`;
+const kartenAuftrag = `## Umfang (Contract — wird geprüft)
+
+${MIN_CARDS}–${MAX_CARDS} Karten${depth ? ` (Tiefe „${depth}")` : ""}: Karte 1 = title, dazwischen ${diagramme} Diagramm-Karten, vorletzte = quiz, letzte = insight.
+Mehr Karten heißen feinere Gedanken-Schritte aus dem Dossier — nicht längere Karten und keine Wiederholungen.
+In "stats" der Titel-Karte steht die tatsächliche Kartenzahl: "<N> Karten · <M> Minuten".`;
 const userBase = `Thema: ${TOPIC}
+
+${kartenAuftrag}
 
 ## Fakten-Dossier (bindend — Regel 9)
 
@@ -152,12 +171,17 @@ async function llm(messages) {
     try {
       res = await fetch(`${BASE}/chat/completions`, {
         method: "POST", headers: HEADERS,
-        body: JSON.stringify({ model, messages, temperature: 0.6, max_tokens: 8000, ...bodyExtra })
+        // Ausgabe-Budget wächst mit der Kartenzahl (~700 Token je Karte inkl. Denk-
+        // Tokens): mit festen 8000 schneidet eine 20-Karten-Lektion mitten im JSON ab.
+        body: JSON.stringify({ model, messages, temperature: 0.6, max_tokens: Math.max(8000, MAX_CARDS * 700), ...bodyExtra }),
+        // Echter Abbruch statt hängender Socket: ohne Signal läuft ein toter Request
+        // weiter und frisst die Job-Deadline des Workers.
+        signal: attemptSignal(null),
       });
     } catch (e) {
-      // Netz kurz weg — transient, wie 5xx behandeln.
+      // Netz kurz weg oder Request-Timeout — transient, wie 5xx behandeln.
       const wait = 15000 * (i + 1);
-      console.log(`NETZ-FEHLER: ${e.message} — warte ${wait / 1000}s…`);
+      console.log(`${isAbortError(e) ? "REQUEST-TIMEOUT" : "NETZ-FEHLER"}: ${e.message} — warte ${wait / 1000}s…`);
       await new Promise((ok) => setTimeout(ok, wait));
       continue;
     }
@@ -166,8 +190,15 @@ async function llm(messages) {
     // und der Denk-Ballast bläht die Folge-Requests auf. content kann null sein,
     // wenn das Denken das komplette Output-Budget gefressen hat (z. B. gpt-oss).
     if (res.ok) {
-      const msg = (await res.json()).choices[0].message;
-      return (msg.content ?? "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+      const data = await res.json();
+      // Leere oder abgeschnittene Antwort benennen: sonst erscheint sie weiter
+      // unten nur als „kein JSON-Objekt" und die nächste Runde rät.
+      warnAbgeschnitten(data, model);
+      const msg = data.choices?.[0]?.message;
+      const text = (msg?.content ?? "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+      if (!text) console.log(`LEERE ANTWORT (${model}, finish_reason=${data.choices?.[0]?.finish_reason})`
+        + ` — ${data.usage?.completion_tokens ?? "?"} Ausgabe-Tokens`);
+      return text;
     }
     const body = (await res.text()).slice(0, 300);
     if (res.status === 429 || res.status >= 500) {
@@ -181,15 +212,17 @@ async function llm(messages) {
   throw new Error("API: Rate-Limit hält an.");
 }
 
+// Contract-Prüfung IMMER mit der bestellten Tiefe — sonst prüft die Pipeline gegen
+// einen anderen Bereich, als sie bestellt hat.
+const contract = (l) => validateLesson(l, { depth });
+
 function parseAndValidate(raw, tag) {
   writeFileSync(`${OUT}/${TAG}-raw-${tag}.txt`, raw);
-  const start = raw.indexOf("{"), end = raw.lastIndexOf("}");
-  if (start < 0 || end <= start) return { errors: ["Antwort enthält kein JSON-Objekt."] };
   let json;
-  try { json = JSON.parse(raw.slice(start, end + 1)); }
-  catch (e) { return { errors: ["JSON nicht parsebar: " + e.message] }; }
+  try { json = extractJson(raw); }         // Zäune/Denk-Blöcke/kaputte Quotes: nim.mjs
+  catch (e) { return { errors: [e.message] }; }
   const lesson = normalizeLesson(json);
-  const errs = validateLesson(lesson);
+  const errs = contract(lesson);
   if (errs.length) return { errors: errs, lesson };
   return { lesson };
 }
@@ -205,7 +238,40 @@ const setPath = (obj, path, value) => {
   cur[/^\d+$/.test(toks.at(-1)) ? Number(toks.at(-1)) : toks.at(-1)] = value;
 };
 
-const MAX_FULL = 3, MAX_PATCH = 3;
+// Fehlende Karten sind ein ADDITIVER Struktur-Fehler: sie heilen durch Anhängen,
+// nicht durch Voll-Regeneration (die würde die bereits geprüften Karten neu würfeln).
+const isTooFewCards = (e) => e.startsWith("cards: zu wenig Karten");
+
+/// Ergänzungs-Runde: das Modell liefert NUR die fehlenden Karten als JSON-Array.
+/// Sie werden vor quiz+insight eingesetzt; bestehende Karten bleiben unangetastet.
+async function addCardsRound(current, tag) {
+  const need = MIN_CARDS - current.cards.length;
+  const vorhanden = current.cards.map((c, i) => `${i + 1}. [${c.relation ?? c.type}] ${c.text ?? c.title ?? c.question ?? c.quote ?? ""}`.slice(0, 120)).join("\n");
+  const auftrag = `Deine Lektion hat ${current.cards.length} Karten, der Contract verlangt ${MIN_CARDS}–${MAX_CARDS}${depth ? ` (Tiefe „${depth}")` : ""}.
+
+Ergänze GENAU ${need} weitere Diagramm-Karten zu Aspekten des Dossiers, die noch nicht vorkommen. Ändere KEINE bestehende Karte — du sendest ausschließlich die neuen.
+
+Bereits vorhanden (nicht wiederholen):
+${vorhanden}
+
+Regeln wie gehabt: jede neue Karte trägt eine \`relation\` (kein \`type\`), einen Lehrsatz \`text\` mit genau einem Gedanken, eine \`caption\` mit Alltagsbeispiel, alle Längen-Limits, alle Fakten aus dem Dossier. Variiere die Relationen gegenüber den vorhandenen Karten.
+
+Antworte AUSSCHLIESSLICH mit einem JSON-Array der ${need} neuen Karten: [ { … }, … ]`;
+  const { value, raw: araw } = await chatJson(llm, [...messages, { role: "assistant", content: JSON.stringify(current) }, { role: "user", content: auftrag }]);
+  writeFileSync(`${OUT}/${TAG}-raw-v2-${tag}.txt`, araw);
+  // Nur so viele übernehmen wie angefordert: liefert das Modell großzügig mehr,
+  // kippt die Lektion sonst in „zu viele Karten" und damit in einen Voll-Retry.
+  const geliefert = Array.isArray(value) ? value : Array.isArray(value.cards) ? value.cards : null;
+  if (!geliefert?.length) throw new Error("Ergänzungs-Runde lieferte kein Karten-Array");
+  const neue = geliefert.slice(0, MAX_CARDS - current.cards.length);
+  // Einsetzen vor quiz+insight — die Reihenfolge-Regel des Contracts bleibt erhalten.
+  const kopf = current.cards.slice(0, -2), schwanz = current.cards.slice(-2);
+  const ergaenzt = normalizeLesson({ ...current, cards: [...kopf, ...neue, ...schwanz] });
+  console.log(`  ${neue.length} Karte(n) ergänzt (${current.cards.length} → ${ergaenzt.cards.length})`);
+  return ergaenzt;
+}
+
+const MAX_FULL = 3, MAX_PATCH = 3, MAX_ADD = 2;
 const messages = [{ role: "system", content: system }, { role: "user", content: userBase }];
 let lesson = null, raw = null, r = null;
 
@@ -214,7 +280,7 @@ if (fromFile) {
   lesson = normalizeLesson(JSON.parse(readFileSync(fromFile, "utf8")));
   raw = JSON.stringify(lesson);
   messages.push({ role: "assistant", content: raw });
-  const errs = validateLesson(lesson);
+  const errs = contract(lesson);
   console.log(errs.length ? `Eingangs-Contract: ${errs.length} Fehler (werden am Ende erneut geprüft)` : "Eingangs-Contract: PASS");
 }
 
@@ -224,21 +290,34 @@ full: for (let i = 1; fromFile ? false : i <= MAX_FULL; i++) {
   if (!r.errors) { console.log(`VERSUCH ${i}: Contract PASS`); break; }
   console.log(`VERSUCH ${i} — ${r.errors.length} Contract-Fehler:\n` + r.errors.map((e) => "- " + e).join("\n"));
 
+  // Zu wenig Karten: gezielt ergänzen statt neu würfeln. Danach normal weiter —
+  // Feld-Fehler der neuen Karten fangen die Patch-Runden unten ab.
+  for (let ar = 1; ar <= MAX_ADD && r.lesson && r.errors.some(isTooFewCards); ar++) {
+    console.log(`→ Ergänzungs-Runde ${ar} (bestehende Karten unangetastet)…`);
+    try {
+      const ergaenzt = await addCardsRound(r.lesson, `add${i}-${ar}`);
+      raw = JSON.stringify(ergaenzt);
+      const errs = contract(ergaenzt);
+      r = errs.length ? { lesson: ergaenzt, errors: errs } : { lesson: ergaenzt };
+    } catch (e) { console.log("Ergänzungs-Runde fehlgeschlagen:", e.message); break; }
+    if (!r.errors) { console.log(`Ergänzungs-Runde ${ar}: Contract PASS`); break full; }
+    console.log(`Ergänzungs-Runde ${ar} — ${r.errors.length} Fehler verbleiben:\n` + r.errors.map((e) => "- " + e).join("\n"));
+  }
+
   if (r.lesson && r.errors.every(isFieldError)) {
     lesson = r.lesson;
     for (let pr = 1; pr <= MAX_PATCH; pr++) {
       console.log(`→ Patch-Runde ${pr} (nur fehlerhafte Felder)…`);
       messages.push({ role: "assistant", content: raw });
       messages.push({ role: "user", content: `Korrigiere NUR die fehlerhaften Felder. Fehlerliste:\n${r.errors.map((e) => "- " + e).join("\n")}\n\nAntworte mit einem flachen JSON-Objekt { "<pfad>": <neuer Wert>, … } — Pfade exakt wie in der Fehlerliste (z. B. "cards[4].left.sub"). Nur das JSON, nichts sonst.` });
-      raw = await llm(messages);
-      writeFileSync(`${OUT}/${TAG}-raw-v2-patch${pr}.txt`, raw);
       let patch;
-      try { patch = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); }
+      try { const g = await chatJson(llm, messages); patch = g.value; raw = g.raw; }
       catch (e) { console.log("Patch nicht parsebar:", e.message); continue; }
+      writeFileSync(`${OUT}/${TAG}-raw-v2-patch${pr}.txt`, raw);
       for (const [path, value] of Object.entries(patch)) {
         try { setPath(lesson, path, value); } catch { console.log(`Patch-Pfad ungültig, übersprungen: ${path}`); }
       }
-      r = { lesson, errors: validateLesson(lesson) };
+      r = { lesson, errors: contract(lesson) };
       if (!r.errors.length) { r = { lesson }; console.log(`Patch-Runde ${pr}: Contract PASS`); break full; }
       console.log(`Patch-Runde ${pr} — ${r.errors.length} Fehler verbleiben:\n` + r.errors.map((e) => "- " + e).join("\n"));
     }
@@ -256,14 +335,13 @@ lesson = r?.lesson ?? lesson;
 async function generatorPatchRound(errorList) {
   messages.push({ role: "assistant", content: JSON.stringify(lesson) });
   messages.push({ role: "user", content: `Korrigiere NUR die fehlerhaften Felder. Fehlerliste:\n${errorList.map((e) => "- " + e).join("\n")}\n\nAntworte mit einem flachen JSON-Objekt { "<pfad>": <neuer Wert>, … } — Pfade exakt wie in der Fehlerliste. Nur das JSON, nichts sonst.` });
-  const praw = await llm(messages);
   let patch;
-  try { patch = JSON.parse(praw.slice(praw.indexOf("{"), praw.lastIndexOf("}") + 1)); }
-  catch (e) { console.log("Patch nicht parsebar:", e.message); return validateLesson(lesson); }
+  try { patch = (await chatJson(llm, messages)).value; }
+  catch (e) { console.log("Patch nicht parsebar:", e.message); return contract(lesson); }
   for (const [path, value] of Object.entries(patch)) {
     try { setPath(lesson, path, value); } catch { console.log(`Patch-Pfad ungültig, übersprungen: ${path}`); }
   }
-  return validateLesson(lesson);
+  return contract(lesson);
 }
 
 // Spellcheck-Prüfrunde als FELD-PATCH: die alte Voll-JSON-Antwort scheiterte am
@@ -278,16 +356,16 @@ if (wf.suspicious.length && fromFile && !fromModel) {
   try {
     messages.push({ role: "assistant", content: JSON.stringify(lesson) });
     messages.push({ role: "user", content: `Rechtschreib-Prüfung deiner Lektion. Diese Wörter sind verdächtig (können aber korrekte Fachbegriffe sein):\n${wf.suspicious.map((s) => `- "${s.word}" (${s.path})`).join("\n")}\n\nPrüfe jedes Wort im Kontext seines Felds. Sind alle korrekt geschrieben, antworte exakt mit: OK\nSonst antworte mit einem flachen Patch-JSON { "<pfad>": "<vollständiger korrigierter Feldwert>", … } NUR für die fehlerhaften Felder. Die Längen-Limits des Contracts gelten unverändert — sprengt die korrekte Schreibweise das Limit, wähle ein kürzeres Synonym; NIEMALS ein Wort abschneiden. Nur das JSON bzw. OK, nichts sonst.` });
-    const check = await llm(messages);
-    if (check.trim() !== "OK") {
+    const antwort = await llm(messages);
+    if (antwort.trim() !== "OK") {
       let patch = null;
-      try { patch = JSON.parse(check.slice(check.indexOf("{"), check.lastIndexOf("}") + 1)); }
+      try { patch = extractJson(antwort); }
       catch (e) { console.log("Spellfix-Patch nicht parsebar — behalte vorige Fassung:", e.message); }
       if (patch) {
         for (const [path, value] of Object.entries(patch)) {
           try { setPath(lesson, path, value); } catch { console.log(`Patch-Pfad ungültig, übersprungen: ${path}`); }
         }
-        let errs = validateLesson(lesson);
+        let errs = contract(lesson);
         if (errs.length) {
           console.log(`Spellfix verletzt Contract (${errs.length}) — Generator-Patch-Runde…`);
           errs = await generatorPatchRound(errs);
@@ -361,7 +439,7 @@ if (post.length) {
     process.exit(1);
   }
 }
-let finalErrs = validateLesson(lesson);
+let finalErrs = contract(lesson);
 if (finalErrs.length) {
   console.log(`Contract nach Fakten-Fixes — ${finalErrs.length} Fehler:\n` + finalErrs.map((e) => "- " + e).join("\n") + "\n→ Generator-Patch-Runde…");
   try { finalErrs = await generatorPatchRound(finalErrs); }
@@ -373,6 +451,18 @@ if (finalErrs.length) {
   }
   console.log("Contract PASS nach Patch-Runde");
 }
+
+// Die Titel-Karte verspricht dem Nutzer eine Kartenzahl — sie muss der Lektion
+// entsprechen. Deterministisch nachziehen statt das Modell darum zu bitten
+// (Modelle schreiben hier zuverlässig die Zahl aus dem Beispiel des Prompts).
+const titel = lesson.cards?.[0];
+if (titel?.type === "title" && typeof titel.stats === "string") {
+  const soll = `${lesson.cards.length} Karten · ${lesezeit(lesson.cards.length)} Minuten`;
+  if (titel.stats !== soll) { console.log(`stats korrigiert: "${titel.stats}" → "${soll}"`); titel.stats = soll; }
+}
+// Die Tiefe wandert ins Artefakt: nachgelagerte Prüfungen (Worker vor dem Insert)
+// kennen damit denselben Soll-Bereich, gegen den generiert wurde.
+if (depth) lesson.depth = depth;
 
 const file = `${OUT}/${TAG}-lesson-v2.json`;
 writeFileSync(file, JSON.stringify(lesson, null, 2));

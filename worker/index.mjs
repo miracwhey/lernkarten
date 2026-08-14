@@ -7,7 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 import { spawn } from "child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "fs";
 import { randomBytes } from "crypto";
-import { normalizeLesson, validateLesson } from "../validate-lesson.mjs";
+import { DEPTH_CARDS, normalizeLesson, validateLesson } from "../validate-lesson.mjs";
 import { CHAIN, JUDGE, NIM_BASE } from "./models.mjs";
 import { makeDossier } from "./make-dossier.mjs";
 
@@ -16,7 +16,11 @@ const REPO = `${DIR}/..`;
 const JOBS = `${DIR}/jobs`;
 
 const POLL_MS = 5000;
-const DOSSIER_TIMEOUT_MS = 6 * 60 * 1000;
+// Die Dossier-Stufe enthält seit dem Zahlen-Gate ZWEI Modell-Stufen (Erzeugung +
+// unabhängiger Judge, dazu ggf. eine Reparatur- und eine Detektor-Re-Run-Runde).
+// Gemessen: Tiefe „tief" braucht ~4 Min für beide zusammen — 6 Min wären die Frist
+// von vorher, gesetzt für die Erzeugung allein.
+const DOSSIER_TIMEOUT_MS = 12 * 60 * 1000;
 const PIPELINE_TIMEOUT_MS = 30 * 60 * 1000;
 const STALE_MS = 30 * 60 * 1000;
 const MAX_ATTEMPTS = 2;
@@ -77,11 +81,12 @@ async function requeueStale() {
 // ── Pipeline-Aufruf ──────────────────────────────────────────────────────────
 /// Startet glm-generate.mjs mit dem Job-Dossier und liest den Fortschritt mit.
 /// cwd = Repo-Wurzel, weil audit-lesson.mjs karten-grammatik.html relativ auflöst.
-function runPipeline({ model, topic, dossierPath, outdir, logPath, onStage }) {
+function runPipeline({ model, topic, depth, dossierPath, outdir, logPath, onStage }) {
   const args = [
     `${REPO}/glm-generate.mjs`, model.id,
     "--key", model.keyName,
     "--topic", topic,
+    "--depth", depth,
     "--dossier", dossierPath,
     "--outdir", outdir,
     "--judge", JUDGE.id, "--judgekey", JUDGE.keyName,
@@ -124,6 +129,13 @@ const asciiSlug = (s) => s.toLowerCase()
   .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32) || "lektion";
 
 async function runJob(job) {
+  // Die Tiefe steuert Dossier-Dichte UND Kartenzahl. Ein unbekannter Wert würde
+  // sonst erst tief in der Pipeline auffallen — und dort die ganze Modell-Kette
+  // durchbrennen, weil jeder Versuch am selben Argument scheitert.
+  if (!DEPTH_CARDS[job.depth]) {
+    console.error(`Job ${job.id}: unbekannte Tiefe "${job.depth}"`);
+    return failJob(job.id, `Unbekannte Tiefe „${job.depth}" — erlaubt: ${Object.keys(DEPTH_CARDS).join(", ")}.`);
+  }
   const dir = `${JOBS}/${job.id}`;
   mkdirSync(dir, { recursive: true });
   const logPath = `${dir}/run.log`;
@@ -139,8 +151,8 @@ async function runJob(job) {
   for (const model of CHAIN) {
     try {
       log(`Dossier mit ${model.id}…`);
-      const md = await withTimeout(
-        makeDossier({ kind: job.kind, input, depth: job.depth, model, log }),
+      const md = await mitDeadline(
+        (signal) => makeDossier({ kind: job.kind, input, depth: job.depth, model, log, signal }),
         DOSSIER_TIMEOUT_MS, `Dossier-Stufe (${model.id})`);
       writeFileSync(dossierPath, md);
       dossierModel = model;
@@ -157,7 +169,7 @@ async function runJob(job) {
   for (const model of CHAIN) {
     log(`Pipeline mit ${model.id}…`);
     const { code, out } = await runPipeline({
-      model, topic, dossierPath, outdir: dir, logPath,
+      model, topic, depth: job.depth, dossierPath, outdir: dir, logPath,
       onStage: () => { setStage(job.id, "pruefen"); log("Stufe → Fakten & Bilder prüfen"); },
     });
     const urteil = deuteExit(code, out);
@@ -178,7 +190,9 @@ async function speichern(job, dir, model, log) {
   if (!existsSync(file)) { log(`Pipeline meldet Erfolg, aber ${file} fehlt.`); return failJob(job.id, USER_ERROR.save); }
 
   const lesson = normalizeLesson(JSON.parse(readFileSync(file, "utf8")));
-  const errs = validateLesson(lesson);
+  // Mit der bestellten Tiefe prüfen — sonst misst der Insert-Gate die 20-Karten-
+  // Lektion am 7–8-Karten-Bestandscontract und lehnt sie ab.
+  const errs = validateLesson(lesson, { depth: job.depth });
   if (errs.length) { log("Contract-Fehler nach der Pipeline:\n" + errs.join("\n")); return failJob(job.id, USER_ERROR.reject); }
 
   // Slug ist die Identität der Lektion im SRS (CardKey.slug) — global eindeutig
@@ -197,9 +211,15 @@ async function speichern(job, dir, model, log) {
   return doneJob(job.id, data.id);
 }
 
-const withTimeout = (p, ms, was) => Promise.race([
-  p, new Promise((_, bad) => setTimeout(() => bad(new Error(`${was}: Zeitüberschreitung nach ${ms / 60000} Min`)), ms)),
-]);
+/// Deadline mit ECHTEM Abbruch: das Signal geht bis in den fetch. Ein Promise.race
+/// beendet nur das Warten — der verlorene Request lief weiter und verbrannte
+/// Kontingent, während die Kette schon das nächste Modell anfasste.
+async function mitDeadline(fn, ms, was) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(new Error(`${was}: Zeitüberschreitung nach ${ms / 60000} Min`)), ms);
+  try { return await fn(ctl.signal); }
+  finally { clearTimeout(timer); }
+}
 
 // ── Schleife ─────────────────────────────────────────────────────────────────
 mkdirSync(JOBS, { recursive: true });

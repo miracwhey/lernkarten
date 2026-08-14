@@ -4,8 +4,11 @@
 // drin, darf er nicht in die Lektion. Darum steht vor der Weitergabe ein
 // deterministisches Format-Gate: fehlende oder zu dünne Sektion = kein Dossier.
 // Nutzung: node worker/make-dossier.mjs --kind topic --depth standard --input "Photosynthese" [--out d.md]
+//          --kein-zahlen-gate überspringt die Judge-Prüfung der Zahlen (Debug).
 import { readFileSync, writeFileSync } from "fs";
+import { cardRange } from "../validate-lesson.mjs";
 import { CHAIN, chat } from "./models.mjs";
+import { pruefeZahlen } from "./dossier-check.mjs";
 
 const DIR = new URL(".", import.meta.url).pathname.replace(/\/$/, "");
 const VORBILD_PATH = `${DIR}/../facts/why-we-sleep.md`;
@@ -19,12 +22,18 @@ export const SEKTIONEN = [
   { head: "## Typische Fehler (nicht schreiben)", name: "Typische Fehler" },
 ];
 
-// Tiefe steuert die Dichte des Dossiers. Die Kartenzahl steuert sie NICHT — der
-// Karten-Contract ist auf 7–8 Karten festgenagelt (validate-lesson.mjs).
+// Tiefe steuert die Dichte des Dossiers UND die Kartenzahl der Lektion
+// (validate-lesson.mjs: DEPTH_CARDS). Das Dossier muss so viel Stoff tragen, wie
+// die Lektion Karten hat — sonst wiederholt der Generator sich, um den Contract
+// zu erfüllen. Faustregel: jeder Mechanismus und jede Zahl trägt ~eine Karte.
+// `tokens` = Ausgabe-Budget der Stufe. Es MUSS mit der geforderten Dichte wachsen:
+// Denk-Tokens zählen bei Thinking-Modellen mit, und ein zu knappes Budget schneidet
+// die Antwort mitten im Dossier ab — das Format-Gate meldet dann „Sektion fehlt"
+// und schickt das Modell auf die falsche Fährte.
 export const DEPTHS = {
-  kompakt:  { Mechanismen: 3, Zahlen: 3, Zitate: 1, "Typische Fehler": 3, soll: "3–4 Mechanismen, 3–4 Zahlen" },
-  standard: { Mechanismen: 4, Zahlen: 4, Zitate: 1, "Typische Fehler": 3, soll: "5–6 Mechanismen, 5–6 Zahlen" },
-  tief:     { Mechanismen: 6, Zahlen: 5, Zitate: 1, "Typische Fehler": 4, soll: "7–9 Mechanismen, 7–9 Zahlen" },
+  kompakt:  { Mechanismen: 3, Zahlen: 3, Zitate: 1, "Typische Fehler": 3, tokens: 4000, soll: "3–4 Mechanismen, 3–4 Zahlen" },
+  standard: { Mechanismen: 5, Zahlen: 5, Zitate: 1, "Typische Fehler": 3, tokens: 6000, soll: "6–8 Mechanismen, 5–7 Zahlen" },
+  tief:     { Mechanismen: 8, Zahlen: 7, Zitate: 1, "Typische Fehler": 5, tokens: 10000, soll: "9–12 Mechanismen, 8–10 Zahlen" },
 };
 
 /// Zählt die Aufzählungspunkte je Sektion (eine Zeile, die mit "- " beginnt).
@@ -45,6 +54,12 @@ export function sektionsPunkte(md) {
 export function pruefeDossier(md, depth) {
   const min = DEPTHS[depth] ?? DEPTHS.standard;
   const errs = [];
+  if (!md.trim()) return ["Leere Antwort — kein Dossier."];
+  // Abgeschnittene Antwort erkennen, bevor die Zählungen sie als „Sektion fehlt"
+  // fehldeuten: ein vollständiges Dossier endet mit einem abgeschlossenen Satz.
+  const letzte = md.trimEnd().split("\n").at(-1).trim();
+  if (!/[.)\]"“”»)]$/.test(letzte))
+    errs.push(`Dossier endet mitten im Satz ("…${letzte.slice(-40)}") — die Antwort war abgeschnitten. Sende sie vollständig und kürzer gefasst.`);
   if (!/^# Fakten-Dossier: \S/m.test(md)) errs.push('Kopfzeile fehlt — erste Zeile muss "# Fakten-Dossier: <Titel>" sein.');
   const punkte = sektionsPunkte(md);
   for (const { head, name } of SEKTIONEN) {
@@ -75,7 +90,9 @@ ${readFileSync(VORBILD_PATH, "utf8")}
 
 function auftrag({ kind, input, depth }) {
   const min = DEPTHS[depth] ?? DEPTHS.standard;
-  const umfang = `Umfang für Tiefe „${depth}": ${min.soll}, mindestens 1 Zitat, mindestens ${min["Typische Fehler"]} typische Fehler.`;
+  const [lo, hi] = cardRange(DEPTHS[depth] ? depth : "standard");
+  const umfang = `Umfang für Tiefe „${depth}": ${min.soll}, mindestens 1 Zitat, mindestens ${min["Typische Fehler"]} typische Fehler.`
+    + `\nAus diesem Dossier entsteht eine Lektion mit ${lo}–${hi} Karten, und jede Karte trägt genau einen Gedanken — liefere so viele eigenständige Mechanismen und Zahlen, dass der Stoff dafür reicht, ohne dass sich etwas wiederholt.`;
   if (kind === "text") {
     return `Erstelle das Dossier AUSSCHLIESSLICH aus dem folgenden Text des Nutzers.
 
@@ -91,33 +108,50 @@ ${input}`;
 
 ${umfang}
 
-Nimm den etablierten Wissensstand des Fachgebiets. Ist das Thema breit, wähle den Kern, den man in sieben Karten wirklich verstehen kann, und geh dort in die Tiefe — statt alles flach zu streifen.`;
+Nimm den etablierten Wissensstand des Fachgebiets. Ist das Thema breit, wähle den Kern, den man in ${lo}–${hi} Karten wirklich verstehen kann, und geh dort in die Tiefe — statt alles flach zu streifen.`;
 }
 
 /// Erzeugt ein Dossier mit dem gegebenen Modell. Bei Gate-Fehlern eine Reparatur-
 /// Runde mit der konkreten Fehlerliste (Markdown kennt keinen Feld-Patch).
-export async function makeDossier({ kind, input, depth, model, log = console.log }) {
+/// Zwei Gates hintereinander: FORMAT (deterministisch, hier) und ZAHLEN
+/// (unabhängiger Judge, dossier-check.mjs) — Letzteres kann Zeilen streichen,
+/// darum läuft das Format-Gate danach ein zweites Mal.
+export async function makeDossier({ kind, input, depth, model, log = console.log, signal, zahlenGate = true }) {
   const messages = [
     { role: "system", content: SYSTEM },
     { role: "user", content: `${VORBILD()}\n\n---\n\n${auftrag({ kind, input, depth })}` },
   ];
   let md = "", errs = [];
   for (let runde = 1; runde <= 2; runde++) {
-    // retries knapp halten: der Zeit-Backstop im Worker ist ein Promise.race und kann
-    // den verlorenen Call NICHT abbrechen (nim.mjs nimmt kein AbortSignal) — ein Modell
-    // mit totem Kontingent würde sonst nach dem Timeout weiter gegen die API laufen.
-    md = stripFences(await chat(model, messages, { temperature: 0.3, maxTokens: 4000, retries: 3 }));
+    // Das Signal des Aufrufers reicht bis in den fetch: läuft die Job-Deadline ab,
+    // wird der Request wirklich abgebrochen statt im Hintergrund weiterzulaufen.
+    md = stripFences(await chat(model, messages, { temperature: 0.3, maxTokens: (DEPTHS[depth] ?? DEPTHS.standard).tokens, retries: 3, signal }));
     errs = pruefeDossier(md, depth);
     if (!errs.length) {
-      log(`Dossier OK (${md.length} Zeichen, ${JSON.stringify(sektionsPunkte(md))})`);
-      return md;
+      log(`Dossier-Format OK (${md.length} Zeichen, ${JSON.stringify(sektionsPunkte(md))})`);
+      if (!zahlenGate) return md;
+      const geprueft = await pruefeZahlen(md, { log, signal, dossierModel: model.id });
+      const nachErrs = pruefeDossier(geprueft.md, depth);
+      if (nachErrs.length) {
+        // Streichungen haben eine Sektion unter das Minimum gedrückt — lieber ein
+        // dünneres Dossier als eine falsche Zahl, aber nicht unter das Format-Gate.
+        log(`Nach dem Zahlen-Gate verletzt das Dossier das Format:\n` + nachErrs.map((e) => "- " + e).join("\n"));
+        errs = nachErrs;
+        if (runde === 2) break;
+        messages.push({ role: "assistant", content: md });
+        messages.push({ role: "user", content: `Ein unabhängiger Prüfer hat diese Zahlen beanstandet:\n${geprueft.befunde.map((b) => `- [${b.schwere}] ${b.problem}`).join("\n")}\n\nDie beanstandeten Zeilen wurden entfernt, dadurch fehlt jetzt Substanz:\n${nachErrs.map((e) => "- " + e).join("\n")}\n\nSende das VOLLSTÄNDIGE Dossier erneut — mit belegbaren Ersatz-Punkten für die entfernten. Nur das Markdown, nichts sonst.` });
+        continue;
+      }
+      log(`Dossier OK (${geprueft.md.length} Zeichen, ${JSON.stringify(sektionsPunkte(geprueft.md))}`
+        + `, Zahlen-Gate: ${geprueft.pruefungen.length} Prüfungen / ${geprueft.befunde.length} Befund(e) / ${geprueft.gestrichen.length} gestrichen)`);
+      return geprueft.md;
     }
-    log(`Dossier-Gate Runde ${runde} — ${errs.length} Verstoß/Verstöße:\n` + errs.map((e) => "- " + e).join("\n"));
+    log(`Dossier-Format Runde ${runde} — ${errs.length} Verstoß/Verstöße:\n` + errs.map((e) => "- " + e).join("\n"));
     if (runde === 2) break;
     messages.push({ role: "assistant", content: md });
     messages.push({ role: "user", content: `Das Dossier verletzt das Format. Fehlerliste:\n${errs.map((e) => "- " + e).join("\n")}\n\nSende das VOLLSTÄNDIGE korrigierte Dossier erneut — nur das Markdown, nichts sonst.` });
   }
-  throw new Error(`Dossier-Format nach 2 Runden nicht erfüllt: ${errs.join(" | ")}`);
+  throw new Error(`Dossier nach 2 Runden nicht brauchbar: ${errs.join(" | ")}`);
 }
 
 const stripFences = (s) => s.replace(/^\s*```(?:markdown|md)?\s*\n/, "").replace(/\n```\s*$/, "").trim();
@@ -130,6 +164,7 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()
     input: arg("input"),
     depth: arg("depth") ?? "standard",
     model: CHAIN.find((m) => m.id === arg("model")) ?? CHAIN[0],
+    zahlenGate: !process.argv.includes("--kein-zahlen-gate"),
   });
   const out = arg("out");
   if (out) { writeFileSync(out, md); console.log("→", out); } else console.log(md);
