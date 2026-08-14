@@ -1,0 +1,165 @@
+{
+  "id": "naval-almanack",
+  "title": "Der Almanack von Naval Ravikant",
+  "source": "Nach: Eric Jorgenson, The Almanack of Naval Ravikant (2020)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Wealth · Naval Ravikant",
+      "title": "Reich werden ohne Glück",
+      "sub": "Warum Zeit verkaufen nicht reicht — und was stattdessen skaliert.",
+      "stats": "8 Karten · 3 Minuten"
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Ein Gehalt bezahlt deine <span class=\"w-es\">Stunden</span>. Hörst du auf zu arbeiten, hört das Geld auf — egal, wie gut du bist.",
+      "xlabel": "STUNDEN",
+      "ylabel": "EINKOMMEN",
+      "stop": {
+        "t": 0.55,
+        "label": "DU HÖRST AUF"
+      },
+      "series": [
+        {
+          "label": "Gehalt",
+          "color": "es",
+          "shape": "linear-rise",
+          "from": "low",
+          "to": "mid",
+          "afterStop": "collapse",
+          "area": true
+        }
+      ],
+      "caption": "Der Zahnarzt verdient gut — aber nur, solange er bohrt."
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Ein <b>Asset</b> trennt Arbeit von Einkommen: einmal gebaut, verkauft es sich weiter — auch während du schläfst.",
+      "xlabel": "STUNDEN",
+      "ylabel": "EINKOMMEN",
+      "stop": {
+        "t": 0.55,
+        "label": "DU HÖRST AUF"
+      },
+      "series": [
+        {
+          "label": "Gehalt",
+          "color": "es",
+          "shape": "linear-rise",
+          "from": "low",
+          "to": "mid",
+          "afterStop": "collapse",
+          "dash": true,
+          "faded": true
+        },
+        {
+          "label": "Produkt",
+          "color": "ich",
+          "shape": "compound-rise",
+          "from": "low",
+          "to": "high",
+          "area": true
+        }
+      ],
+      "caption": "Buch, App, Video: Am Anfang verdienst du weniger — dann entkoppelt sich die Kurve."
+    },
+    {
+      "type": "fanout",
+      "relation": "multiplication",
+      "text": "<b>Hebel</b> heißt: einmal tun, millionenfach wirken. Code und Media vervielfältigen sich fast gratis.",
+      "source": {
+        "label": "1× erklärt",
+        "sub": "ein Video, eine Nacht",
+        "color": "ich"
+      },
+      "count": 6,
+      "result": {
+        "label": "×1.000.000"
+      },
+      "caption": "Ein Video erklärt es einer Million Menschen — ohne dich."
+    },
+    {
+      "type": "compare",
+      "relation": "contrast",
+      "text": "<span class=\"w-es\">Kapital und Teams</span> sind Hebel, die man dir geben muss. <b>Code und Media</b> gehören dir — niemand kann Nein sagen.",
+      "left": {
+        "title": "MUSS MAN DIR GEBEN",
+        "color": "es",
+        "items": [
+          {
+            "label": "Kapital",
+            "sub": "Investoren sagen Ja — oder Nein"
+          },
+          {
+            "label": "Team",
+            "sub": "Menschen müssen dir folgen"
+          }
+        ]
+      },
+      "right": {
+        "title": "GEHÖRT DIR",
+        "color": "ich",
+        "items": [
+          {
+            "label": "Code",
+            "sub": "läuft, während du schläfst"
+          },
+          {
+            "label": "Media",
+            "sub": "Video, Text, Podcast"
+          }
+        ]
+      },
+      "caption": "Naval: Die neuen Hebel brauchen keine Erlaubnis."
+    },
+    {
+      "type": "venn",
+      "relation": "intersection",
+      "text": "Baue auf <b>Spezialwissen</b>: das, was sich für dich wie Spielen anfühlt — und für andere wie Arbeit ist. Das kann dir niemand kopieren.",
+      "a": {
+        "label": "FÜR DICH: SPIEL",
+        "color": "es"
+      },
+      "b": {
+        "label": "FÜR ANDERE: ARBEIT",
+        "color": "ueberich"
+      },
+      "overlap": {
+        "label": [
+          "SPEZIAL-",
+          "WISSEN"
+        ],
+        "color": "ich"
+      },
+      "caption": "Navals Test: Wobei vergisst du die Zeit — während andere stöhnen?"
+    },
+    {
+      "type": "quiz",
+      "question": "Ein Bäcker will mehr verdienen — ohne mehr Stunden und ohne dass ihm jemand etwas geben muss. Was ist der Naval-Weg?",
+      "options": [
+        {
+          "label": "Backkurs als Video — verkauft sich nachts",
+          "correct": true
+        },
+        {
+          "label": "Kredit für eine zweite Filiale",
+          "correct": false
+        },
+        {
+          "label": "Zwei neue Angestellte einstellen",
+          "correct": false
+        }
+      ],
+      "explain": "Der Kurs ist <strong>Media</strong>: einmal gemacht, gehört er ihm und skaliert ohne Erlaubnis. Kredit (Kapital) und Angestellte (Team) muss man ihm erst geben.",
+      "wrong": "Das ist auch ein Hebel — aber einer, den ihm jemand geben muss (Geld oder Menschen). Ohne Erlaubnis skaliert nur der <strong>Videokurs</strong>."
+    },
+    {
+      "type": "insight",
+      "quote": "Verdiene mit deinem Verstand, nicht mit deiner Zeit.",
+      "cite": "Naval Ravikant",
+      "explain": "Der Verstand baut <b>Assets mit Hebel</b>. Deine Zeit ist ausverkauft, sobald du schläfst."
+    }
+  ]
+}

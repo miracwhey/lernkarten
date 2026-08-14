@@ -1,0 +1,120 @@
+{
+  "id": "thinking-fast-slow",
+  "title": "Schnell und langsam denken",
+  "source": "Nach: Daniel Kahneman, Thinking, Fast and Slow (2011)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Psychologie · Daniel Kahneman",
+      "title": "Schnell und langsam denken",
+      "sub": "Zwei Systeme steuern dich. Du merkst nur eines.",
+      "stats": "7 Karten · 2 Minuten"
+    },
+    {
+      "type": "compare",
+      "relation": "contrast",
+      "text": "<span class=\"w-es\">System 1</span> antwortet sofort und mühelos. <b>System 2</b> kann rechnen — ist aber faul und übernimmt nur, wenn System 1 stolpert.",
+      "left": {
+        "title": "SYSTEM 1 — SCHNELL",
+        "color": "es",
+        "items": [
+          {
+            "label": "Automatisch",
+            "sub": "2 + 2, Gesichter lesen"
+          },
+          {
+            "label": "Immer an",
+            "sub": "mühelos, sofort, intuitiv"
+          }
+        ]
+      },
+      "right": {
+        "title": "SYSTEM 2 — LANGSAM",
+        "color": "ich",
+        "items": [
+          {
+            "label": "Bewusst",
+            "sub": "17 × 24, Parallelparken"
+          },
+          {
+            "label": "Faul",
+            "sub": "springt nur an, wenn es muss"
+          }
+        ]
+      },
+      "caption": "2 + 2? Sofort da. 17 × 24? Jetzt spürst du System 2 arbeiten."
+    },
+    {
+      "type": "balance",
+      "relation": "weighing",
+      "text": "Verlust und Gewinn sind gleich groß — aber nicht gleich schwer: Ein <span class=\"w-es\">Verlust</span> wiegt im Gefühl etwa <b>doppelt</b>.",
+      "left": {
+        "label": "−100 €",
+        "sub": "schmerzt doppelt",
+        "color": "es"
+      },
+      "right": {
+        "label": "+100 €",
+        "sub": "freut einfach",
+        "color": "ueberich"
+      },
+      "pivot": {
+        "label": "GEFÜHL",
+        "sub": "wiegt schief",
+        "color": "ich"
+      }
+    },
+    {
+      "type": "flow",
+      "relation": "descent",
+      "text": "Eine <span class=\"w-ue\">zufällige Zahl</span> im Raum zieht deine <b>Schätzung</b> zu sich — selbst wenn du weißt, dass sie bedeutungslos ist: der <b>Anker-Effekt</b>.",
+      "steps": [
+        {
+          "label": "Glücksrad: 65",
+          "sub": "eine zufällige Zahl",
+          "color": "ueberich"
+        },
+        {
+          "label": "Schätzfrage",
+          "sub": "Afrika-Anteil in der UNO?",
+          "color": "ich"
+        },
+        {
+          "label": "Schätzung: 45 %",
+          "sub": "verankert an der 65",
+          "color": "es",
+          "submerged": true
+        }
+      ],
+      "sink": {
+        "label": "LÄUFT UNBEWUSST"
+      }
+    },
+    {
+      "type": "quiz",
+      "question": "Schläger und Ball kosten zusammen 1,10 €. Der Schläger kostet 1 € mehr als der Ball. Was kostet der Ball?",
+      "options": [
+        {
+          "label": "10 Cent",
+          "correct": false
+        },
+        {
+          "label": "5 Cent",
+          "correct": true
+        },
+        {
+          "label": "1 Euro",
+          "correct": false
+        }
+      ],
+      "explain": "System 2 hat gerechnet: 1,05 € + 0,05 € = 1,10 €. Die meisten sagen „10 Cent“ — das ist <strong>System 1</strong>.",
+      "wrong": "Das war <strong>System 1</strong>: schnell, plausibel, falsch. Dann läge die Summe bei 1,20 €. Der Ball kostet 5 Cent."
+    },
+    {
+      "type": "insight",
+      "quote": "Wir sind blind für das Offensichtliche — und blind für unsere Blindheit.",
+      "cite": "Daniel Kahneman",
+      "explain": "System 1 liefert immer eine Antwort. <b>Zweifeln ist System-2-Arbeit</b> — und die kostet Kraft."
+    }
+  ]
+}

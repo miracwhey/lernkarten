@@ -7,24 +7,57 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		09C4F36E9F8B04C2114BBB49 /* warum-wir-schlafen.json in Resources */ = {isa = PBXBuildFile; fileRef = C7D10A04C4C52025F397B005 /* warum-wir-schlafen.json */; };
+		0C026B2BD5E81500EB17A528 /* naval-almanack.json in Resources */ = {isa = PBXBuildFile; fileRef = 2D305933BD21BB675A990F22 /* naval-almanack.json */; };
+		223D8B347CAF937593884A96 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D4A1972413A760A219FE22B /* Models.swift */; };
 		25FE56403E69E569C7C0BEE5 /* CardCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF82282AB3268E594575BD3D /* CardCanvas.swift */; };
-		4D1BB3908C46E335ECAAC1D8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE29A446FF10395F920ACC47 /* ContentView.swift */; };
-		7BF21FE62343A62322287C24 /* sleep-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = 3F538547236897C5FA621879 /* sleep-v2.json */; };
+		6BE27A51EF757AC5B76D9F22 /* CreateSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFCD135BBA46E129DD6DDA67 /* CreateSheetView.swift */; };
+		792B05C7E8170EB341FFF2D3 /* ShellUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD501803B72160AB28841312 /* ShellUITests.swift */; };
 		82C58AC50066AA8ED795A2F2 /* card-canvas.html in Resources */ = {isa = PBXBuildFile; fileRef = C17FF59B5DF6884CB7CA6BD2 /* card-canvas.html */; };
+		89FBFA1875ED26C8084BFAC9 /* thinking-fast-slow.json in Resources */ = {isa = PBXBuildFile; fileRef = A14B7E4D4F6A3B907A47E9C6 /* thinking-fast-slow.json */; };
+		91EAF7B08FBAA1F047B74898 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6615B8C6E2E8C6DAE495056F /* LibraryView.swift */; };
 		91FE8C0CBE2654E6212ADEF2 /* renderer.css in Resources */ = {isa = PBXBuildFile; fileRef = 3926387654453140F6732E34 /* renderer.css */; };
+		92AAC74DCED77B0E5AD013F7 /* atomic-habits.json in Resources */ = {isa = PBXBuildFile; fileRef = 08068EE8CCE8899534E92848 /* atomic-habits.json */; };
+		9338E3D4D2697ED4BBBBEAEB /* PracticeSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43F66DEABC4A79EBAC1090BA /* PracticeSessionView.swift */; };
+		96FF01CB807F120D5DCC8BB4 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AE9C9A915672447F4A20D95 /* RootView.swift */; };
+		A04608834BA224062B757886 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BBE94FFEA2671A052C1EC48 /* Theme.swift */; };
+		A89AB26EF00BAF3C6CA84667 /* LearnSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CA1462341CC5F1D05443F45 /* LearnSessionView.swift */; };
 		E86F91863670D25E6AA9759D /* LernkartenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FAB3C95C6CFC06CF2E5DC3A /* LernkartenApp.swift */; };
 		EECFB664A3333EB8D3AAFF50 /* renderer.js in Resources */ = {isa = PBXBuildFile; fileRef = 3B92975EA141BD7A01504B18 /* renderer.js */; };
+		FE0F5E11E51D9E96EEAF232A /* freud-psyche.json in Resources */ = {isa = PBXBuildFile; fileRef = A1C3650A7766038E6A4A3E73 /* freud-psyche.json */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		7CACA604B96592084AD170A4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D1D0A75D4D8C3D26B3DA79C7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6A5A4968A21A91219CA3974E;
+			remoteInfo = Lernkarten;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		08068EE8CCE8899534E92848 /* atomic-habits.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "atomic-habits.json"; sourceTree = "<group>"; };
+		0AE9C9A915672447F4A20D95 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		2D305933BD21BB675A990F22 /* naval-almanack.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "naval-almanack.json"; sourceTree = "<group>"; };
+		2D4A1972413A760A219FE22B /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		2FAB3C95C6CFC06CF2E5DC3A /* LernkartenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LernkartenApp.swift; sourceTree = "<group>"; };
 		3926387654453140F6732E34 /* renderer.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = renderer.css; sourceTree = "<group>"; };
 		3B92975EA141BD7A01504B18 /* renderer.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = renderer.js; sourceTree = "<group>"; };
-		3F538547236897C5FA621879 /* sleep-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "sleep-v2.json"; sourceTree = "<group>"; };
+		3CA1462341CC5F1D05443F45 /* LearnSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnSessionView.swift; sourceTree = "<group>"; };
+		43F66DEABC4A79EBAC1090BA /* PracticeSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeSessionView.swift; sourceTree = "<group>"; };
+		6615B8C6E2E8C6DAE495056F /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		71DC5DFDD05D66211FEE27F4 /* Lernkarten.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lernkarten.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8BBE94FFEA2671A052C1EC48 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		A14B7E4D4F6A3B907A47E9C6 /* thinking-fast-slow.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "thinking-fast-slow.json"; sourceTree = "<group>"; };
+		A1C3650A7766038E6A4A3E73 /* freud-psyche.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "freud-psyche.json"; sourceTree = "<group>"; };
+		AD501803B72160AB28841312 /* ShellUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellUITests.swift; sourceTree = "<group>"; };
 		AF82282AB3268E594575BD3D /* CardCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCanvas.swift; sourceTree = "<group>"; };
+		C0A0ADB6977076D548B9CD42 /* LernkartenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LernkartenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C17FF59B5DF6884CB7CA6BD2 /* card-canvas.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "card-canvas.html"; sourceTree = "<group>"; };
-		FE29A446FF10395F920ACC47 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		C7D10A04C4C52025F397B005 /* warum-wir-schlafen.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "warum-wir-schlafen.json"; sourceTree = "<group>"; };
+		EFCD135BBA46E129DD6DDA67 /* CreateSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateSheetView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -34,25 +67,48 @@
 				C17FF59B5DF6884CB7CA6BD2 /* card-canvas.html */,
 				3926387654453140F6732E34 /* renderer.css */,
 				3B92975EA141BD7A01504B18 /* renderer.js */,
-				3F538547236897C5FA621879 /* sleep-v2.json */,
 			);
 			name = lernkarten;
 			path = ..;
+			sourceTree = "<group>";
+		};
+		0EACB41215D1B05EF70FAB77 /* lessons */ = {
+			isa = PBXGroup;
+			children = (
+				08068EE8CCE8899534E92848 /* atomic-habits.json */,
+				A1C3650A7766038E6A4A3E73 /* freud-psyche.json */,
+				2D305933BD21BB675A990F22 /* naval-almanack.json */,
+				A14B7E4D4F6A3B907A47E9C6 /* thinking-fast-slow.json */,
+				C7D10A04C4C52025F397B005 /* warum-wir-schlafen.json */,
+			);
+			name = lessons;
+			path = ../lessons;
 			sourceTree = "<group>";
 		};
 		13AF22E6B9690BB21FB88475 = {
 			isa = PBXGroup;
 			children = (
 				046F61E16039EFF3D0AAE7A9 /* lernkarten */,
+				0EACB41215D1B05EF70FAB77 /* lessons */,
 				F2B95A85265CC72A644B24D0 /* Sources */,
+				1C3D28189ECEF52077DC9693 /* UITests */,
 				DCAE57B8DE4F0124FEB8192F /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		1C3D28189ECEF52077DC9693 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				AD501803B72160AB28841312 /* ShellUITests.swift */,
+			);
+			path = UITests;
 			sourceTree = "<group>";
 		};
 		DCAE57B8DE4F0124FEB8192F /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				71DC5DFDD05D66211FEE27F4 /* Lernkarten.app */,
+				C0A0ADB6977076D548B9CD42 /* LernkartenUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,8 +117,14 @@
 			isa = PBXGroup;
 			children = (
 				AF82282AB3268E594575BD3D /* CardCanvas.swift */,
-				FE29A446FF10395F920ACC47 /* ContentView.swift */,
+				EFCD135BBA46E129DD6DDA67 /* CreateSheetView.swift */,
+				3CA1462341CC5F1D05443F45 /* LearnSessionView.swift */,
 				2FAB3C95C6CFC06CF2E5DC3A /* LernkartenApp.swift */,
+				6615B8C6E2E8C6DAE495056F /* LibraryView.swift */,
+				2D4A1972413A760A219FE22B /* Models.swift */,
+				43F66DEABC4A79EBAC1090BA /* PracticeSessionView.swift */,
+				0AE9C9A915672447F4A20D95 /* RootView.swift */,
+				8BBE94FFEA2671A052C1EC48 /* Theme.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -70,6 +132,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		4844C97A0ABB40368FA53D8E /* LernkartenUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D5E6A7AD5CEFBC2A59E2243A /* Build configuration list for PBXNativeTarget "LernkartenUITests" */;
+			buildPhases = (
+				1F59A71CF17BB7E8F1AA8910 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				086527C6A39360A538B10BAC /* PBXTargetDependency */,
+			);
+			name = LernkartenUITests;
+			packageProductDependencies = (
+			);
+			productName = LernkartenUITests;
+			productReference = C0A0ADB6977076D548B9CD42 /* LernkartenUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		6A5A4968A21A91219CA3974E /* Lernkarten */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = BE91FE2FE6F059C10B6C8AC1 /* Build configuration list for PBXNativeTarget "Lernkarten" */;
@@ -97,6 +177,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					4844C97A0ABB40368FA53D8E = {
+						TestTargetID = 6A5A4968A21A91219CA3974E;
+					};
 				};
 			};
 			buildConfigurationList = 7FA3491686C8F58DD97B576E /* Build configuration list for PBXProject "Lernkarten" */;
@@ -114,6 +197,7 @@
 			projectRoot = "";
 			targets = (
 				6A5A4968A21A91219CA3974E /* Lernkarten */,
+				4844C97A0ABB40368FA53D8E /* LernkartenUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -123,27 +207,53 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				92AAC74DCED77B0E5AD013F7 /* atomic-habits.json in Resources */,
 				82C58AC50066AA8ED795A2F2 /* card-canvas.html in Resources */,
+				FE0F5E11E51D9E96EEAF232A /* freud-psyche.json in Resources */,
+				0C026B2BD5E81500EB17A528 /* naval-almanack.json in Resources */,
 				91FE8C0CBE2654E6212ADEF2 /* renderer.css in Resources */,
 				EECFB664A3333EB8D3AAFF50 /* renderer.js in Resources */,
-				7BF21FE62343A62322287C24 /* sleep-v2.json in Resources */,
+				89FBFA1875ED26C8084BFAC9 /* thinking-fast-slow.json in Resources */,
+				09C4F36E9F8B04C2114BBB49 /* warum-wir-schlafen.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		1F59A71CF17BB7E8F1AA8910 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				792B05C7E8170EB341FFF2D3 /* ShellUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6FF1A15847D554F9960C94B1 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				25FE56403E69E569C7C0BEE5 /* CardCanvas.swift in Sources */,
-				4D1BB3908C46E335ECAAC1D8 /* ContentView.swift in Sources */,
+				6BE27A51EF757AC5B76D9F22 /* CreateSheetView.swift in Sources */,
+				A89AB26EF00BAF3C6CA84667 /* LearnSessionView.swift in Sources */,
 				E86F91863670D25E6AA9759D /* LernkartenApp.swift in Sources */,
+				91EAF7B08FBAA1F047B74898 /* LibraryView.swift in Sources */,
+				223D8B347CAF937593884A96 /* Models.swift in Sources */,
+				9338E3D4D2697ED4BBBBEAEB /* PracticeSessionView.swift in Sources */,
+				96FF01CB807F120D5DCC8BB4 /* RootView.swift in Sources */,
+				A04608834BA224062B757886 /* Theme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		086527C6A39360A538B10BAC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6A5A4968A21A91219CA3974E /* Lernkarten */;
+			targetProxy = 7CACA604B96592084AD170A4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		1DE67103964F87F056E9001C /* Debug */ = {
@@ -230,6 +340,23 @@
 			};
 			name = Release;
 		};
+		B5B6460C0BFCA8BFF5EC94B2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.leonvalentin.LernkartenUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Lernkarten;
+			};
+			name = Release;
+		};
 		C63FA1D9D3226263151D1929 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -307,6 +434,23 @@
 			};
 			name = Debug;
 		};
+		EB92A047A4FF842EE6154555 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.leonvalentin.LernkartenUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Lernkarten;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -324,6 +468,15 @@
 			buildConfigurations = (
 				CE9A8AB6A694F76EE681BDB9 /* Debug */,
 				ABBBB4851E0989FF93DBCEBB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D5E6A7AD5CEFBC2A59E2243A /* Build configuration list for PBXNativeTarget "LernkartenUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EB92A047A4FF842EE6154555 /* Debug */,
+				B5B6460C0BFCA8BFF5EC94B2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

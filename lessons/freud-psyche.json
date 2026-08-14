@@ -1,0 +1,125 @@
+{
+  "id": "freud-psyche",
+  "title": "Freuds Modell der Psyche",
+  "source": "Nach: Sigmund Freud, Das Ich und das Es (1923)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Psychologie · Grundlagen",
+      "title": "Freuds Modell der Psyche",
+      "sub": "Es, Ich und Über-Ich — und warum wir uns selbst im Weg stehen.",
+      "stats": "6 Karten · 2 Minuten"
+    },
+    {
+      "type": "layers",
+      "relation": "depth-layers",
+      "text": "Freud teilte die Psyche in drei Instanzen: <span class=\"w-es\">Es</span>, <b>Ich</b> und <span class=\"w-ue\">Über-Ich</span>. Nur ein kleiner Teil davon ist bewusst — der Rest arbeitet unter der Oberfläche.",
+      "zones": [
+        {
+          "id": "bewusst",
+          "label": "BEWUSST"
+        },
+        {
+          "id": "vorbewusst",
+          "label": "VORBEWUSST"
+        },
+        {
+          "id": "unbewusst",
+          "label": "UNBEWUSST"
+        }
+      ],
+      "body": {
+        "shape": "iceberg",
+        "regions": [
+          {
+            "id": "ich",
+            "label": "ICH",
+            "color": "ich"
+          },
+          {
+            "id": "ueberich",
+            "label": "ÜBER-ICH",
+            "color": "ueberich"
+          },
+          {
+            "id": "es",
+            "label": "ES",
+            "color": "es"
+          }
+        ]
+      }
+    },
+    {
+      "type": "balance",
+      "relation": "weighing",
+      "text": "Das <span class=\"w-es\">Es</span> fordert sofortige Befriedigung. Das <span class=\"w-ue\">Über-Ich</span> verbietet. Das <b>Ich</b> vermittelt zwischen beiden — nach dem Realitätsprinzip.",
+      "left": {
+        "label": "ES",
+        "sub": "Lustprinzip",
+        "color": "es"
+      },
+      "right": {
+        "label": "ÜBER-ICH",
+        "sub": "Moral",
+        "color": "ueberich"
+      },
+      "pivot": {
+        "label": "ICH",
+        "sub": "Realitätsprinzip",
+        "color": "ich"
+      }
+    },
+    {
+      "type": "flow",
+      "relation": "descent",
+      "text": "Kollidiert ein Wunsch des <span class=\"w-es\">Es</span> mit dem <span class=\"w-ue\">Über-Ich</span>, schiebt das <b>Ich</b> ihn unter die Oberfläche: <b>Verdrängung</b> — der grundlegendste Abwehrmechanismus.",
+      "steps": [
+        {
+          "label": "Impuls",
+          "sub": "aus dem Es",
+          "color": "es"
+        },
+        {
+          "label": "Konflikt",
+          "sub": "mit dem Über-Ich",
+          "color": "ueberich"
+        },
+        {
+          "label": "Verdrängung",
+          "sub": "durch das Ich",
+          "color": "ich",
+          "submerged": true
+        }
+      ],
+      "sink": {
+        "label": "UNBEWUSST"
+      }
+    },
+    {
+      "type": "quiz",
+      "question": "Welche Instanz folgt ausschließlich dem Lustprinzip?",
+      "options": [
+        {
+          "label": "Das Es",
+          "correct": true
+        },
+        {
+          "label": "Das Ich",
+          "correct": false
+        },
+        {
+          "label": "Das Über-Ich",
+          "correct": false
+        }
+      ],
+      "explain": "Das <strong>Es</strong> kennt weder Logik noch Aufschub — nur den Wunsch. Erst das Ich prüft ihn an der Realität.",
+      "wrong": "Nicht ganz — diese Instanz prüft und reguliert. Reines Wollen sitzt im <strong>Es</strong>."
+    },
+    {
+      "type": "insight",
+      "quote": "Das Ich ist nicht Herr im eigenen Haus.",
+      "cite": "Sigmund Freud, 1917",
+      "explain": "Das <b>Ich</b> dient drei Herren zugleich: der Außenwelt, dem Über-Ich und dem Es."
+    }
+  ]
+}

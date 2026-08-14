@@ -1,0 +1,162 @@
+{
+  "id": "atomic-habits",
+  "title": "Die Macht der 1 %",
+  "source": "Nach: James Clear, Atomic Habits (2018)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Verhalten · James Clear",
+      "title": "Die Macht der 1 %",
+      "sub": "Warum kleine Gewohnheiten mehr bewegen als große Ziele.",
+      "stats": "7 Karten · 2 Minuten"
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Gewohnheiten sind der <b>Zinseszins</b> der Selbstverbesserung: 1 % täglich klingt nach nichts — und ist nach einem Jahr das 37-Fache.",
+      "xlabel": "365 TAGE",
+      "ylabel": "ERGEBNIS",
+      "series": [
+        {
+          "label": "1 % besser täglich",
+          "color": "ich",
+          "shape": "compound-rise",
+          "from": "low",
+          "to": "high",
+          "area": true
+        },
+        {
+          "label": "1 % schlechter",
+          "color": "es",
+          "shape": "decay-halflife",
+          "from": "low",
+          "to": "floor"
+        }
+      ],
+      "caption": "Dieselbe Startlinie — nach einem Jahr liegt das 37-Fache dazwischen."
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Fortschritt fühlt sich lange nach nichts an: Du erwartest eine <span class=\"w-es\">Gerade</span> — und bekommst eine <b>Kurve</b>. Die meisten geben genau im Tal auf.",
+      "xlabel": "ZEIT",
+      "ylabel": "ERGEBNIS",
+      "notes": [
+        {
+          "label": "TAL DER ENTTÄUSCHUNG",
+          "series": "Realität",
+          "t": 0.55,
+          "side": "above"
+        }
+      ],
+      "series": [
+        {
+          "label": "Erwartung",
+          "color": "es",
+          "shape": "linear-rise",
+          "from": "low",
+          "to": "high",
+          "dash": true,
+          "faded": true
+        },
+        {
+          "label": "Realität",
+          "color": "ich",
+          "shape": "compound-rise",
+          "from": "low",
+          "to": "high",
+          "area": true
+        }
+      ],
+      "caption": "Eis schmilzt erst bei null Grad — bis dahin sieht Erwärmen nach nichts aus."
+    },
+    {
+      "type": "cycle",
+      "relation": "loop",
+      "text": "Jede Gewohnheit läuft im selben Kreis: <span class=\"w-es\">Auslöser</span>, <b>Verlangen</b>, <b>Reaktion</b>, <span class=\"w-ue\">Belohnung</span> — und die Belohnung schärft den nächsten Auslöser.",
+      "steps": [
+        {
+          "label": "Auslöser",
+          "sub": "Handy summt",
+          "color": "es"
+        },
+        {
+          "label": "Verlangen",
+          "sub": "Was ist es?",
+          "color": "ich"
+        },
+        {
+          "label": "Reaktion",
+          "sub": "du checkst",
+          "color": "ich"
+        },
+        {
+          "label": "Belohnung",
+          "sub": "kleiner Dopamin-Kick",
+          "color": "ueberich"
+        }
+      ],
+      "caption": "Die Belohnung trainiert den nächsten Auslöser — der Kreis schließt sich."
+    },
+    {
+      "type": "compare",
+      "relation": "contrast",
+      "text": "Gewinner und Verlierer haben <span class=\"w-es\">dieselben Ziele</span> — das Ziel macht den Unterschied nicht. Dauerhaft wird, was zur <b>Identität</b> wird.",
+      "left": {
+        "title": "ZIEL",
+        "color": "es",
+        "items": [
+          {
+            "label": "„Ich will abnehmen“",
+            "sub": "endet am Ziel — und dann?"
+          },
+          {
+            "label": "Braucht Motivation",
+            "sub": "jeden Tag aufs Neue"
+          }
+        ]
+      },
+      "right": {
+        "title": "IDENTITÄT",
+        "color": "ich",
+        "items": [
+          {
+            "label": "„Ich bin Sportler“",
+            "sub": "jede Einheit ist ein Beweis"
+          },
+          {
+            "label": "Trägt sich selbst",
+            "sub": "Handeln bestätigt das Selbstbild"
+          }
+        ]
+      },
+      "caption": "Jede Handlung ist eine Stimme für die Person, die du sein willst."
+    },
+    {
+      "type": "quiz",
+      "question": "Du willst morgens laufen gehen. Was nutzt den Habit Loop am besten?",
+      "options": [
+        {
+          "label": "Schuhe abends sichtbar vor die Tür",
+          "correct": true
+        },
+        {
+          "label": "Dir fest vornehmen, diszipliniert zu sein",
+          "correct": false
+        },
+        {
+          "label": "Ein großes Ziel setzen: Marathon",
+          "correct": false
+        }
+      ],
+      "explain": "Du designst den <strong>Auslöser</strong>: Die Schuhe starten den Loop, bevor Motivation überhaupt nötig ist.",
+      "wrong": "Vorsätze und Ziele verbrauchen sich. Der Loop startet beim <strong>Auslöser</strong> — mach ihn sichtbar."
+    },
+    {
+      "type": "insight",
+      "quote": "Du steigst nicht auf das Niveau deiner Ziele. Du fällst auf das Niveau deiner Systeme.",
+      "cite": "James Clear",
+      "explain": "Der Loop läuft sowieso — <b>design ihn</b>, statt auf Disziplin zu hoffen."
+    }
+  ]
+}
