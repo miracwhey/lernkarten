@@ -12,3 +12,7 @@ ref-v1/
 app/build/
 app/DerivedData/
 *.xcuserdatad/
+canvas-webkit-*.png
+refA/
+refB/
+refC/

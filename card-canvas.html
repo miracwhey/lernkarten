@@ -1,0 +1,33 @@
+<meta charset="utf-8">
+<title>Karten-Canvas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="renderer.css">
+<style>
+  /* Canvas-Host: das WKWebView IST die Karten-Fläche — die Shell (SwiftUI) rahmt mit Topbar/Progress. */
+  html, body { height: 100%; }
+  body { display: block; min-height: 100%; background: var(--card); }
+  #cardhost { position: fixed; inset: 0; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+</style>
+<div id="cardhost" class="cardarea"></div>
+<script src="renderer.js"></script>
+<script>
+const host = document.getElementById("cardhost");
+function post(msg) {
+  if (window.webkit && webkit.messageHandlers && webkit.messageHandlers.card)
+    webkit.messageHandlers.card.postMessage(msg);
+}
+window.renderCard = (card) => {
+  renderCardInto(host, card, {
+    onAdvance: () => post({ type: "advance" }),
+    onQuizResult: (correct) => post({ type: "quizResult", correct }),
+    onSave: (saved) => post({ type: "save", saved }),
+  });
+};
+// Tap-Zonen wie im Mockup (links 35 % zurück, rechts weiter) — was passiert, entscheidet die Shell.
+host.addEventListener("click", (e) => {
+  if (e.target.closest("button")) return;
+  const r = host.getBoundingClientRect();
+  post({ type: "tap", dir: (e.clientX - r.left) / r.width < 0.35 ? -1 : 1 });
+});
+post({ type: "ready" });
+</script>
