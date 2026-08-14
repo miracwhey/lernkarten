@@ -138,6 +138,90 @@ for (const [bn, base] of EVENT_BASES) for (const t of STOPS) {
 // Text-Kollision/Clipping, Geometrie-Clipping, Zuordenbarkeit, Leader-Deckel und das
 // Sticky-Gate der Serien-Label-Bindung.
 
+// ————— Sequenz-Stresstests: Prüfling ist der SCHRITT-Endzustand —————
+// Konstruktionen, die Zwischenzustände hart machen. Zwei Erwartungen sind möglich:
+//   erwartet: null      — jeder Schritt muss sauber sein; jeder Befund ist ein Fehler.
+//   erwartet: {schritt, muster} — NEGATIV-KONTROLLE: dieser Schritt MUSS den Befund
+//                         tragen. Bleibt er aus, ist das Gate blind und der Fall fällt
+//                         durch — ein Gate, das nie feuert, beweist nichts.
+const SEQ_CASES = [
+  // Note vor ihrer Kurve: der Leader zeigt auf eine Serie, die dieser Schritt noch
+  // nicht gezogen hat. Die unsichtbare Kurve darf dabei KEINE Kollision erzeugen.
+  ["seq-note-vor-trace", {
+    type: "curve", text: "Note erscheint vor ihrer Serie.",
+    xlabel: "ZEIT", ylabel: "WERT",
+    series: [
+      { label: "SCHON DA", color: "es", shape: "linear-rise", from: "low", to: "high" },
+      { label: "KOMMT SPAET", color: "ich", shape: "decay-halflife", from: "high", to: "floor" }
+    ],
+    notes: [{ label: "HAENGT IN DER LUFT", series: 1, t: 0.5, side: "above" }],
+    trigger: "auto",
+    sequence: [
+      { verb: "reveal", target: "note:haengt-in-der-luft" },
+      { verb: "trace", target: "series:kommt-spaet" }
+    ]
+  }, { schritt: 1, muster: /^LEER/ }],
+  // Apex-Note auf dem Nach-Stop-Ast, gezeigt bevor der Ast gezogen ist: die Serie IST
+  // sichtbar (Hauptast), ihr Punkt aber nicht — Serien-Sichtbarkeit allein genügt nicht.
+  ["seq-note-auf-ungezogenem-ast", {
+    type: "curve", text: "Apex-Note vor dem Nach-Stop-Ast.",
+    xlabel: "ZEIT", ylabel: "PEGEL",
+    stop: { t: 0.5, label: "EREIGNIS" },
+    series: [{ label: "STEIGT DANN FAELLT", color: "ueberich", shape: "linear-rise", from: "low", to: "mid", afterStop: "rebound", reboundTo: "high" }],
+    notes: [{ label: "APEX-NOTE", series: 0, at: "apex" }],
+    trigger: "auto",
+    sequence: [
+      { verb: "trace", target: "series:steigt-dann-faellt" },
+      { verb: "reveal", target: "note:apex-note" },
+      { verb: "trace", target: "series:steigt-dann-faellt" }
+    ]
+  }, { schritt: 2, muster: /^LEER/ }],
+  // dim nimmt zurück, es entfernt nicht: die gedimmte Serie bleibt Geometrie, über die
+  // eine später gezeigte Note nicht laufen darf.
+  ["seq-dim-unter-note", {
+    type: "curve", text: "Note über gedimmter Serie.",
+    xlabel: "ZEIT", ylabel: "WERT",
+    series: [
+      { label: "TRITT ZURUECK", color: "es", shape: "saturating-rise", from: "low", to: "high", area: true },
+      { label: "BLEIBT VORN", color: "ich", shape: "linear-rise", from: "low", to: "mid" }
+    ],
+    notes: [{ label: "SPAETE NOTIZ", series: 0, t: 0.62, side: "above" }],
+    trigger: "auto",
+    sequence: [
+      { verb: "dim", target: "series:tritt-zurueck" },
+      { verb: "reveal", target: "note:spaete-notiz" }
+    ]
+  }, null],
+  // highlight legt eine sichtbare Kontur um die Glyphen — das Label wächst. Direkt
+  // daneben steht ein zweites; die Tinte darf es nicht erreichen.
+  ["seq-highlight-dichter-nachbar", {
+    type: "curve", text: "Aufglühen neben dichtem Nachbarn.",
+    xlabel: "ZEIT", ylabel: "WERT",
+    series: [
+      { label: "OBERE SERIE", color: "es", shape: "saturating-rise", from: "mid", to: "high" },
+      { label: "UNTERE SERIE", color: "ich", shape: "saturating-rise", from: "mid", to: "high", dash: true }
+    ],
+    notes: [{ label: "ENG DANEBEN", series: 0, t: 0.5, side: "above" }],
+    trigger: "auto",
+    sequence: [
+      { verb: "highlight", target: "label:obere-serie" },
+      { verb: "highlight", target: "label:untere-serie" }
+    ]
+  }, null],
+  // Der Zug leiht sich die Strichelung der Serie für seine Bewegung. Am Ende muss die
+  // Gestaltung wieder gelten — sonst stehen „gestrichelt" und „durchgezogen" gleich da.
+  ["seq-trace-dash-serie", {
+    type: "curve", text: "Zug auf einer gestrichelten Serie.",
+    xlabel: "ZEIT", ylabel: "WERT",
+    series: [
+      { label: "GESTRICHELT", color: "ich", shape: "linear-rise", from: "low", to: "high", dash: true },
+      { label: "DURCHGEZOGEN", color: "es", shape: "flat", from: "mid" }
+    ],
+    trigger: "auto",
+    sequence: [{ verb: "trace", target: "series:gestrichelt" }]
+  }, null]
+];
+
 const url = "file://" + resolve("karten-grammatik.html");
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 560, height: 1000 } });
@@ -159,6 +243,31 @@ const run = async (name, card, shot) => {
 
 console.log("——— Solver-Stresstests ———");
 for (const [name, card] of CASES) await run(name, card, true);
+
+console.log("——— Sequenz-Stresstests (je Schritt-Endzustand) ———");
+for (const [name, card, erwartet] of SEQ_CASES) {
+  const N = card.sequence.length;
+  let gefeuert = false;
+  for (let s = 0; s <= N; s++) {
+    const { out } = await page.evaluate(auditCurveCard, { card, seqStep: s });
+    if (out === null) { console.log(`${name} s${s}: (keine SVG-Geometrie)`); continue; }
+    const passt = (o) => erwartet && s === erwartet.schritt && erwartet.muster.test(o);
+    const echt = out.filter((o) => !o.startsWith("INFO") && !passt(o));
+    if (out.some(passt)) gefeuert = true;
+    findings += echt.length;
+    const st = card.sequence[s - 1];
+    const was = s === 0 ? "(Ausgangszustand)" : `${st.verb} ${st.target ?? `${st.from}→${st.to}`}`;
+    console.log(`${name} s${s}/${N} ${was}: ${echt.length ? "" : "OK"}`
+      + (out.length ? "\n  " + out.join("\n  ") : ""));
+  }
+  await page.evaluate(auditCurveCard, { card, seqStep: N });
+  await page.locator(".phone").screenshot({ path: `${outdir}/${name}-s${N}.png` });
+  // Eine Negativ-Kontrolle, die nicht feuert, hat nichts geprüft.
+  if (erwartet && !gefeuert) {
+    findings++;
+    console.log(`${name}: NEGATIV-KONTROLLE STUMM — Schritt ${erwartet.schritt} sollte ${erwartet.muster} tragen`);
+  }
+}
 
 console.log("——— Ereignis-Matrix ———");
 const asts = [];

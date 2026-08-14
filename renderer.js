@@ -1140,6 +1140,9 @@ function wireSequence(root, card) {
         if (e.tagName === "polyline" || e.tagName === "path") {
           const L = e.getTotalLength();
           e.classList.add("seq-trace");
+          // Die eigene Strichelung wird für den Zug geliehen, nicht enteignet — sie
+          // steht hier, damit der gezeichnete Zustand sie zurückbekommt.
+          e.dataset.seqDash = e.getAttribute("stroke-dasharray") || "";
           e.style.strokeDasharray = L;
           e.dataset.seqLen = L;
         }
@@ -1170,12 +1173,36 @@ function wireSequence(root, card) {
     }
   });
 
+  // Für den Zug trägt der Strich seine VOLLE Länge als dasharray — nur so lässt sich der
+  // ungezeichnete Rest wegschieben. Bliebe sie liegen, stünde eine `dash: true`-Serie am
+  // Ende solide da und die Karte unterschiede ihre Serien nicht mehr, obwohl ihre Daten
+  // es sagen. Im gezeichneten Zustand gilt deshalb wieder die Gestaltung — beim Sprung
+  // sofort, in der Bewegung, sobald der Zug angekommen ist.
+  const zugDash = (e, on, animiert) => {
+    const L = e.dataset.seqLen, gestaltung = e.dataset.seqDash || "";
+    const lief = e.dataset.seqOn === "1";
+    e.dataset.seqOn = on ? "1" : "0";
+    if (!on) { e.style.strokeDasharray = L; e.style.strokeDashoffset = L; return; }
+    e.style.strokeDashoffset = 0;
+    if (!animiert) { e.style.strokeDasharray = gestaltung; return; }
+    if (lief) return;                                 // zieht bereits oder ist angekommen
+    e.style.strokeDasharray = L;
+    const fertig = (ev) => {
+      // NUR das Ende der Zug-Transition zählt: die Deckkraft desselben Elements läuft
+      // kürzer, ihr Ende käme mitten im Strich und machte ihn schlagartig gestrichelt.
+      if (ev.propertyName !== "stroke-dashoffset") return;
+      e.removeEventListener("transitionend", fertig);
+      if (e.dataset.seqOn === "1") e.style.strokeDasharray = gestaltung;
+    };
+    e.addEventListener("transitionend", fertig);
+  };
+
   const apply = (s, animiert) => {
     SEQ.cur = s;
     root.querySelectorAll("[data-seq-step]").forEach((e) => {
       const on = Number(e.dataset.seqStep) <= s;
       e.classList.toggle("on", on);
-      if (e.dataset.seqLen) e.style.strokeDashoffset = on ? 0 : e.dataset.seqLen;
+      if (e.dataset.seqLen) zugDash(e, on, animiert);
     });
     dims.forEach(({ n, els: ee }) => ee.forEach((e) => e.classList.toggle("seq-dim", n <= s)));
     lits.forEach(({ n, els: ee, hl }) => ee.forEach((e) => {

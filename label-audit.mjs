@@ -13,16 +13,64 @@
 //   LEAD                 — Leader zu steil/flach oder länger als der Deckel
 //   STICKY               — die Bindung Serien-Label ↔ eigener Strich ist verletzt
 //   INFO                 — beschreibend, kein Fehler (Bandlage, Degradation)
-export const auditCurveCard = ({ card, limits }) => {
+// Nur im Schritt-Modus (seqStep):
+//   SEQ                  — der verlangte Schritt wurde gar nicht eingenommen
+//   LEER                 — sichtbares Label ohne sichtbaren Bezug (Leader ins Leere)
+//   PULS                 — der Puls-Punkt ist im eingefrorenen Zustand sichtbar
+//   DASH                 — der Zug hat die Gestaltungs-Strichelung aufgefressen
+//
+// `seqStep` (0 = Ausgangszustand, N = nach dem letzten Schritt) misst den ENDZUSTAND
+// eines Sequenz-Schritts. OHNE seqStep bleibt der Bestandspfad unberührt: dieselbe
+// Render-Zeile, dieselben Element-Mengen, dieselben Zahlen — jede Erweiterung unten
+// hängt an `SEQ` und ist im Bestandsfall die Identität.
+export const auditCurveCard = ({ card, limits, seqStep }) => {
   // nah/winkel = harte Grenzen (auch die degradierte Lage muss sie halten),
   // nahIdeal/winkelIdeal = die Regellage; dazwischen meldet das Gate INFO statt Fehler.
   const L = Object.assign({ nah: 17, nahIdeal: 11, winkel: 19, winkelIdeal: 14, leader: 40 }, limits || {});
   const RAD = Math.PI / 180;
-  area.innerHTML = RENDERERS[card.type](card);
+  const SEQ = seqStep != null;
+  // Der Schritt-Modus rendert über den ECHTEN Karten-Pfad: `renderCardInto` verdrahtet
+  // die Sequenz, ein blankes innerHTML tut das nicht — gemessen würde sonst immer der
+  // Zustand „alles sichtbar", also genau das, was das Schritt-Gate finden soll.
+  let cur = null, steps = 0;
+  if (SEQ) {
+    renderCardInto(area, card, { onAdvance: () => {} });
+    steps = window.__seqSteps;
+    cur = window.__seqGoto(seqStep);
+  } else area.innerHTML = RENDERERS[card.type](card);
   const svg = document.querySelector(".diagram svg");
-  if (!svg) return { out: null, ast: null };   // reine HTML-Karte — kein Geometrie-Audit
+  if (!svg) return { out: null, ast: null, cur, steps };   // reine HTML-Karte — kein Geometrie-Audit
   const vb = svg.viewBox.baseVal;
   const out = [];
+  // Ein Schritt-Lauf, der den Schritt nicht einnimmt, misst still den falschen Zustand
+  // und meldete „OK" für ein Bild, das nie geprüft wurde.
+  if (SEQ) {
+    const soll = Array.isArray(card.sequence) ? card.sequence.length : 0;
+    if (steps !== soll) out.push(`SEQ   __seqSteps=${steps}, der Contract nennt ${soll} Schritte`);
+    if (cur !== seqStep) out.push(`SEQ   Schritt ${seqStep} nicht eingenommen (__seqGoto meldet ${cur})`);
+  }
+
+  // ——— Sichtbarkeit: gemessen wird, was der Nutzer in DIESEM Zustand sieht ———
+  // Ein noch nicht erreichter Schritt steht auf opacity:0, der Puls-Punkt ist im
+  // eingefrorenen Bild unsichtbar, ein Halo glüht nur mit `.lit`. Gelesen wird die
+  // BERECHNETE Deckkraft die Elternkette hoch — nicht die Klassenliste: eine Klasse ist
+  // eine Absicht, die Deckkraft das Ergebnis. `.seq-dim` bleibt sichtbar (es färbt über
+  // `filter`, nicht über opacity) — zurückgenommen ist nicht weg und kollidiert weiter.
+  const deckkraft = (el) => {
+    let o = 1;
+    for (let e = el; e && e !== svg.parentNode; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if (cs.display === "none" || cs.visibility === "hidden") return 0;
+      o *= parseFloat(cs.opacity);
+      if (!(o > 0.05)) return 0;
+    }
+    return o;
+  };
+  // Ein seq-Halo ist die Aura SEINES Elements — ein Klon derselben Geometrie. Als
+  // eigenes Objekt gezählt wäre es ein Fremd-Overlap, den niemand sieht; das Element
+  // darunter wird ohnehin gemessen.
+  const sichtbar = (el) => !SEQ || (!el.classList.contains("seq-halo") && deckkraft(el) > 0);
+  const sichtbare = (sel) => [...svg.querySelectorAll(sel)].filter(sichtbar);
 
   // ——— Messwerkzeug ———
   // Textkörper als ORIENTIERTES Rechteck: getBBox liefert die Box im lokalen System des
@@ -30,13 +78,19 @@ export const auditCurveCard = ({ card, limits }) => {
   // 25°-Kurve ein Vielfaches zu groß und meldete Treffer, die der Text nie hat.
   const obbOf = (el) => {
     const b = el.getBBox();
+    // Ein aufgeglühtes Label (`.seq-hl.lit`) trägt eine sichtbare Kontur in seinem Ton:
+    // die Tinte steht um die halbe Strichstärke über der getBBox-Kante. Der Papier-Halo
+    // (.halo) bleibt außen vor — er verdeckt, ohne Farbe hinzuzufügen.
+    const p = SEQ && el.classList.contains("seq-hl") && el.classList.contains("lit")
+      ? (parseFloat(getComputedStyle(el).strokeWidth) || 0) / 2 : 0;
     const m = svg.getScreenCTM().inverse().multiply(el.getScreenCTM());
     const pt = (x, y) => [m.a * x + m.c * y + m.e, m.b * x + m.d * y + m.f];
     const [cx, cy] = pt(b.x + b.width / 2, b.y + b.height / 2);
     return {
-      el, label: el.textContent.trim(), cx, cy, w: b.width, h: b.height,
+      el, label: el.textContent.trim(), cx, cy, w: b.width + 2 * p, h: b.height + 2 * p,
       deg: Math.atan2(m.b, m.a) / RAD,
-      corners: [[b.x, b.y], [b.x + b.width, b.y], [b.x + b.width, b.y + b.height], [b.x, b.y + b.height]]
+      corners: [[b.x - p, b.y - p], [b.x + b.width + p, b.y - p],
+        [b.x + b.width + p, b.y + b.height + p], [b.x - p, b.y + b.height + p]]
         .map(([x, y]) => pt(x, y))
     };
   };
@@ -72,21 +126,43 @@ export const auditCurveCard = ({ card, limits }) => {
     }
     return true;
   };
+  // Ein per `trace` gezogener Strich ist nur so weit da, wie die dash-Geometrie ihn
+  // zeichnet — der ungezeichnete Rest ist kein Hindernis. Welche Abschnitte gezeichnet
+  // sind, sagt das Paar dasharray/dashoffset; abgetastet wird nur in ihnen.
+  // NUR für seq-Traces: die Strichelung einer `dash: true`-Serie ist die Gestaltung
+  // einer Linie, die ganz da ist — sie wird wie im Bestand über die volle Länge gemessen.
+  const spans = (el, len) => {
+    if (!SEQ || !el.classList.contains("seq-trace")) return [[0, len]];
+    const cs = getComputedStyle(el);
+    const roh = (cs.strokeDasharray || "").split(/[\s,]+/).map(parseFloat).filter((n) => Number.isFinite(n) && n >= 0);
+    if (!roh.some((n) => n > 0)) return [[0, len]];
+    const p = roh.length % 2 ? roh.concat(roh) : roh;     // ungerade Muster wiederholen sich versetzt
+    const per = p.reduce((a, b) => a + b, 0);
+    const off = ((parseFloat(cs.strokeDashoffset) || 0) % per + per) % per;
+    const raus = [];
+    for (let at = -off, i = 0; at < len; i++) {
+      const bis = at + p[i % p.length];
+      if (i % 2 === 0 && Math.min(len, bis) > Math.max(0, at)) raus.push([Math.max(0, at), Math.min(len, bis)]);
+      at = bis;
+    }
+    return raus;
+  };
   const sample = (el, step) => {
     const pts = [];
     const len = el.getTotalLength ? el.getTotalLength() : 0;
     if (!len) return pts;
-    for (let d = 0; d <= len; d += step) { const p = el.getPointAtLength(d); pts.push([p.x, p.y]); }
+    for (const [a, b] of spans(el, len))
+      for (let d = a; d <= b; d += step) { const p = el.getPointAtLength(d); pts.push([p.x, p.y]); }
     return pts;
   };
 
-  const texts = [...svg.querySelectorAll("text")].map(obbOf);
+  const texts = sichtbare("text").map(obbOf);
   // Die Achse gehört dazu: ein Label auf der x-Achse liest sich als deren Beschriftung.
   // Sie ist ein `path` und fiel deshalb aus der alten Auswahl heraus — das Gate sah
   // die Kollision nicht, weil es an der falschen Stelle suchte.
-  const strokes = [...svg.querySelectorAll("polyline, line:not(.leader), path.c-axis")]
+  const strokes = sichtbare("polyline, line:not(.leader), path.c-axis")
     .map((el) => ({ el, pts: sample(el, 3) }));
-  const kurven = [...svg.querySelectorAll("polyline[data-series]")];
+  const kurven = sichtbare("polyline[data-series]");
   // Zwei Ebenen: je Serie ALLE Punkte (Abstände) und je Serie die EINZELNEN Striche
   // (Haupt- und Nach-Stop-Ast). Eine Tangente wird entlang EINES Strichs gemessen —
   // über den Knick zwischen beiden hinweg gemittelt ergäbe sie eine dritte Richtung,
@@ -129,7 +205,7 @@ export const auditCurveCard = ({ card, limits }) => {
       const raus = sample(el, 4).find(([x, y]) => x < vb.x || y < vb.y || x > vb.x + vb.width || y > vb.y + vb.height);
       if (raus) out.push(`GEOM  Serie ${el.dataset.series} ragt aus der viewBox (${raus[0].toFixed(0)},${raus[1].toFixed(0)})`);
     }
-    for (const el of svg.querySelectorAll("circle")) {
+    for (const el of sichtbare("circle")) {
       const cx = +el.getAttribute("cx"), cy = +el.getAttribute("cy"), r = +el.getAttribute("r");
       if (cx - r < vb.x || cy - r < vb.y || cx + r > vb.x + vb.width || cy + r > vb.y + vb.height)
         out.push(`GEOM  Punkt (${cx.toFixed(0)},${cy.toFixed(0)}) ragt aus der viewBox`);
@@ -139,7 +215,7 @@ export const auditCurveCard = ({ card, limits }) => {
   // ——— Leader: Winkel UND Länge ———
   // Der Deckel ist die eigentliche Regel: ein 150-px-Strich quer durchs Bild verbindet
   // formal, wird aber als eigene Geometrie gelesen statt als Zeigefinger.
-  for (const l of svg.querySelectorAll("line.leader")) {
+  for (const l of sichtbare("line.leader")) {
     const dx = Math.abs(+l.getAttribute("x2") - +l.getAttribute("x1"));
     const dy = Math.abs(+l.getAttribute("y2") - +l.getAttribute("y1"));
     const deg = Math.atan2(dy, dx) / RAD, len = Math.hypot(dx, dy);
@@ -157,6 +233,9 @@ export const auditCurveCard = ({ card, limits }) => {
   for (const a of texts) {
     const own = a.el.dataset.seriesLabel ?? a.el.dataset.noteSeries;
     if (own === undefined || Object.keys(bySeries).length < 2) continue;
+    // Ist die eigene Serie in diesem Schritt gar nicht gezeichnet, gibt es keinen
+    // Abstand zu ihr — das ist kein Zuordnungs-, sondern ein LEER-Befund (unten).
+    if (SEQ && !(bySeries[own] || []).length) continue;
     const dOwn = naechster(bySeries[own] || [], a).d;
     let dOther = Infinity, whoOther = null;
     for (const k of Object.keys(bySeries)) if (k !== own) {
@@ -244,6 +323,52 @@ export const auditCurveCard = ({ card, limits }) => {
       out.push(`INFO  Sticky degradiert (Regellage ${L.nahIdeal} px / ${L.winkelIdeal}°): ${mess}`);
   }
 
+  // ——— Sequenz-Zustand: was sichtbar ist, muss seinen Bezug zeigen ———
+  if (SEQ) {
+    // Ein Label ohne seinen Gegenstand ist eine Aussage ins Leere: die Note hängt an
+    // einer Serie, die dieser Schritt noch nicht gezeichnet hat — Punkt und Leader
+    // zeigen auf nichts. Die unsichtbare Kurve KOLLIDIERT nicht (sie ist nicht da);
+    // der fehlende Bezug ist trotzdem ein Befund, und zwar ein eigener.
+    for (const a of texts) {
+      const own = a.el.dataset.seriesLabel ?? a.el.dataset.noteSeries;
+      if (own === undefined) continue;
+      const pts = bySeries[own] || [];
+      const leader = a.el.dataset.leader === "1" ? " — der Leader zeigt ins Leere" : "";
+      if (!pts.length) {
+        out.push(`LEER  "${a.label}" hängt an Serie ${own}, die in diesem Zustand nicht gezeichnet ist${leader}`);
+        continue;
+      }
+      // Eine Note nennt IHREN Punkt (data-ax/ay). Es reicht nicht, dass die Serie
+      // irgendwo liegt: gezogen wird Ast für Ast, und ein Punkt auf dem noch
+      // ungezogenen Nach-Stop-Ast ist genauso leer wie eine ganz fehlende Kurve.
+      const ax = +a.el.dataset.ax, ay = +a.el.dataset.ay;
+      if (!Number.isFinite(ax) || !Number.isFinite(ay)) continue;
+      let d = Infinity;
+      for (const [x, y] of pts) d = Math.min(d, Math.hypot(x - ax, y - ay));
+      if (d > 6) out.push(`LEER  "${a.label}" zeigt auf (${ax.toFixed(0)},${ay.toFixed(0)}) — dort ist von Serie ${own}`
+        + ` nichts gezeichnet (nächste Tinte ${d.toFixed(1)} px)${leader}`);
+    }
+    // Der Puls-Punkt ist im eingefrorenen Bild unsichtbar — sein Endzustand IST das
+    // Verschwinden. Hier gemessen statt geglaubt: stünde er doch im Bild, wäre er ein
+    // Objekt ohne Aussage (und ohne cx/cy ein Dauergast im Clipping-Befund).
+    for (const d of svg.querySelectorAll(".seq-pulse")) {
+      const o = deckkraft(d);
+      if (o > 0) out.push(`PULS  Puls-Punkt im Endzustand sichtbar (Deckkraft ${o.toFixed(2)})`);
+    }
+    // Für den Zug trägt der Strich eine Voll-Länge als dasharray. Bleibt sie liegen,
+    // steht eine `dash: true`-Serie am Ende SOLIDE da — die Karte unterscheidet ihre
+    // Serien dann nicht mehr, obwohl ihre Daten es sagen. Verglichen wird die
+    // GESTALTUNG (Attribut) mit der WIRKUNG (computed), nicht Renderer-Code mit sich.
+    const zahlen = (s) => JSON.stringify((String(s).match(/[\d.]+/g) || []).map(Number));
+    for (const el of sichtbare(".seq-trace")) {
+      const soll = el.getAttribute("stroke-dasharray") || "";
+      const cs = getComputedStyle(el);
+      if (!soll || (parseFloat(cs.strokeDashoffset) || 0) > 0.5) continue;   // noch im Ziehen
+      if (zahlen(cs.strokeDasharray) !== zahlen(soll))
+        out.push(`DASH  Serie ${el.dataset.series ?? "?"} steht gezogen solide (${cs.strokeDasharray}) statt gestrichelt (${soll})`);
+    }
+  }
+
   // ——— Kennzahlen des Nach-Stop-Asts: Apex-Niveau und steilster Winkel ———
   let ast = null;
   const tail = svg.querySelector("polyline[data-tail]");
@@ -257,5 +382,5 @@ export const auditCurveCard = ({ card, limits }) => {
     const end = pts[pts.length - 1];
     ast = { art: tail.dataset.tail, apexY: +end[1].toFixed(1), niveau: +((244 - end[1]) / 210 * 100).toFixed(1), maxDeg: +maxDeg.toFixed(1) };
   }
-  return { out, ast };
+  return { out, ast, cur, steps };
 };

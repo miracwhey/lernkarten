@@ -1,0 +1,78 @@
+{
+  "id": "seq-kollision-fixture",
+  "title": "Kaputte Sequenz (Negativ-Beweis)",
+  "source": "ABSICHTLICH DEFEKTE FIXTURE — kein Lehrstoff. Beide Karten zeigen ein Label, bevor der Schritt seinen Gegenstand gezeichnet hat: im ZWISCHENSCHRITT hängt es in der Luft, im Endzustand ist alles sauber. Das Endzustand-Audit sieht davon nichts, das Schritt-Audit muss es finden. Erwartung: AUDIT FAIL mit LEER-Befunden.",
+  "cards": [
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Die Note gehört zur zweiten Serie, erscheint aber einen Schritt vor ihr — solange zeigt sie auf eine Kurve, die es im Bild noch nicht gibt.",
+      "xlabel": "ZEIT",
+      "ylabel": "WERT",
+      "series": [
+        {
+          "label": "FRUEHE SERIE",
+          "color": "es",
+          "shape": "linear-rise",
+          "from": "low",
+          "to": "high"
+        },
+        {
+          "label": "SPAETE SERIE",
+          "color": "ich",
+          "shape": "decay-halflife",
+          "from": "high",
+          "to": "floor"
+        }
+      ],
+      "notes": [
+        {
+          "label": "ZEIGT INS LEERE",
+          "series": 1,
+          "t": 0.5,
+          "side": "above"
+        }
+      ],
+      "caption": "Schritt 1 ist der Defekt, Schritt 2 verdeckt ihn wieder.",
+      "trigger": "auto",
+      "sequence": [
+        {
+          "verb": "reveal",
+          "target": "note:zeigt-ins-leere"
+        },
+        {
+          "verb": "trace",
+          "target": "series:spaete-serie"
+        }
+      ]
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Dasselbe eine Ebene höher: Der explizite reveal holt das Serien-Label vor seinen eigenen Strich.",
+      "xlabel": "ZEIT",
+      "ylabel": "WERT",
+      "series": [
+        {
+          "label": "NUR EINE",
+          "color": "ueberich",
+          "shape": "saturating-rise",
+          "from": "low",
+          "to": "high"
+        }
+      ],
+      "caption": "Das Label klebt an einem Strich, den dieser Schritt noch nicht gezogen hat.",
+      "trigger": "auto",
+      "sequence": [
+        {
+          "verb": "reveal",
+          "target": "label:nur-eine"
+        },
+        {
+          "verb": "trace",
+          "target": "series:nur-eine"
+        }
+      ]
+    }
+  ]
+}
