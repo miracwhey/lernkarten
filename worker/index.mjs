@@ -91,6 +91,7 @@ function runPipeline({ model, topic, depth, dossierPath, outdir, logPath, onStag
     "--outdir", outdir,
     "--judge", JUDGE.id, "--judgekey", JUDGE.keyName,
   ];
+  if (JUDGE.base) args.push("--judgebase", JUDGE.base);
   if (model.base !== NIM_BASE) args.push("--base", model.base);
   if (Object.keys(model.body).length) args.push("--body", JSON.stringify(model.body));
 

@@ -5,14 +5,21 @@ import { attemptSignal, isAbortError, loadKey, nimChat, sleep, stripThink, throw
 
 export const NIM_BASE = "https://integrate.api.nvidia.com/v1";
 
+export const OR_BASE = "https://openrouter.ai/api/v1";
+
+// Produktion = OpenRouter, ein Key (Leon-Lock; NIM-Free/Groq = Dev-only, aus der
+// Kette entfernt). Wahl aus dem Modell-Bench 14.08. (18 Läufe, bench-runs/…/report.md):
+// Luna 2× pass mit 0 schweren Judge-Befunden (Leon-Lock: Standard-Generator),
+// DeepSeek-Pro als Fallback (zweitbeste Fakten-Bilanz, anderer Anbieter).
+// Die GPT-5.6-Reihe kennt KEIN temperature (HTTP 400) — explizites null löscht
+// das Feld vor dem Request (openaiChat unten, wie glm-generate.requestBody).
 export const CHAIN = [
-  { id: "minimaxai/minimax-m3", keyName: "NVIDIA_QWEN_KEY", base: NIM_BASE, body: {} },
-  // gpt-oss frisst ohne gedrosseltes Denken das komplette Output-Budget (content: null).
-  { id: "openai/gpt-oss-120b", keyName: "NVIDIA_KIMI_KEY", base: NIM_BASE, body: { reasoning_effort: "low" } },
-  { id: "llama-3.3-70b-versatile", keyName: "GROQ_API_KEY", base: "https://api.groq.com/openai/v1", body: { max_tokens: 3000 } },
+  { id: "openai/gpt-5.6-luna-pro", keyName: "OPENROUTER_API_KEY", base: OR_BASE, body: { max_tokens: 16000, temperature: null } },
+  { id: "deepseek/deepseek-v4-pro-0813", keyName: "OPENROUTER_API_KEY", base: OR_BASE, body: { max_tokens: 16000 } },
 ];
 
-export const JUDGE = { keyName: "NVIDIA_DS_PRO_KEY", id: "deepseek-ai/deepseek-v4-flash-0731" };
+// Judge fix und nie Mitglied der Generator-Kette (Bench-Setup unverändert).
+export const JUDGE = { keyName: "OPENROUTER_API_KEY", id: "openai/gpt-oss-120b", base: OR_BASE };
 
 /// Ein Chat-Call gegen ein Kettenmitglied. NIM läuft über den Bestands-Helper
 /// (Pacing + Backoff + Null-Guard); fremde OpenAI-kompatible Endpunkte bekommen
@@ -37,12 +44,15 @@ async function openaiChat(key, model, messages, opts) {
       res = await fetch(`${model.base}/chat/completions`, {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: model.id, messages,
-          temperature: opts.temperature ?? 0.2,
-          max_tokens: opts.maxTokens ?? 8000,
-          ...model.body,
-        }),
+        body: JSON.stringify((() => {
+          const b = { model: model.id, messages,
+            temperature: opts.temperature ?? 0.2,
+            max_tokens: opts.maxTokens ?? 8000,
+            ...model.body };
+          // Explizites null löscht ein Feld (GPT-5.6: temperature → HTTP 400).
+          for (const k of Object.keys(b)) if (b[k] === null) delete b[k];
+          return b;
+        })()),
         signal: attemptSignal(opts.signal, opts.timeoutMs ?? REQ_TIMEOUT_MS),
       });
       // Body-Read unter demselben Abbruch-Signal wie der fetch: Header kommen früh,
