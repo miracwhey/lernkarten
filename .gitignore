@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+
+# Prüf-/Benchmark-Artefakte (reproduzierbar aus Pipeline-Läufen)
+*-shots/
+adv/
+v2/
+ref-v1/
+*-raw-*.txt
+
+# Xcode
+app/build/
+app/DerivedData/
+*.xcuserdatad/

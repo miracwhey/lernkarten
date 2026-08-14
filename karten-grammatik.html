@@ -1,0 +1,1704 @@
+<meta charset="utf-8">
+<title>Karten-Grammatik — Machbarkeitsprobe</title>
+<style>
+  :root {
+    --paper: #F2F1EC;
+    --card: #FBFAF7;
+    --ink: #1E2230;
+    --muted: #6B6F7E;
+    --line: #DCDAD1;
+    --chrome: #E7E5DD;
+    --es: #D4553E;
+    --ich: #4759C7;
+    --ueberich: #A87A25;
+    --es-soft: #F3D9D2;
+    --ich-soft: #DDE1F6;
+    --ueberich-soft: #EDE2C8;
+    --water1: #6E7CD8;
+    --water2: #4553B8;
+    --water3: #2C3684;
+    --berg: #EDEEFA;
+    --berg-deep: #D6DAF3;
+    --ok: #2E7D4F;
+    --bad: #B3402E;
+    --shadow: 0 24px 60px rgba(30, 34, 48, 0.18);
+  }
+  /* Bewusst light-only: helle Lernwelt wie Imprint, hält auf jedem Host-Theme. */
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .stage {
+    width: 100%;
+    max-width: 520px;
+    padding: 20px 16px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .meta {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: center;
+  }
+  .meta strong { color: var(--ink); font-weight: 600; }
+
+  /* ——— Phone ——— */
+  .phone {
+    width: 100%;
+    max-width: 420px;
+    height: min(844px, calc(100vh - 120px));
+    min-height: 620px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 34px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 18px 10px;
+  }
+  .xbtn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .progress { display: flex; gap: 5px; flex: 1; }
+  .progress span {
+    height: 4px; flex: 1; border-radius: 2px;
+    background: var(--chrome);
+    overflow: hidden; position: relative;
+  }
+  .progress span::after {
+    content: ""; position: absolute; inset: 0;
+    background: var(--ich);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform 0.35s ease;
+  }
+  .progress span.done::after { transform: scaleX(1); }
+
+  .cardarea {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cardarea:focus-visible { outline: 3px solid var(--ich); outline-offset: -3px; }
+  .card {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    padding: 10px 26px 18px;
+    animation: cardin 0.4s ease;
+  }
+  @keyframes cardin {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card { animation: none; }
+    .balance-swing { animation: none !important; }
+  }
+
+  .lehrsatz {
+    font-family: "Iowan Old Style", "Palatino Nova", Palatino, Georgia, serif;
+    font-size: 21px;
+    line-height: 1.42;
+    text-wrap: balance;
+    margin: 8px 0 4px;
+  }
+  .lehrsatz b { color: var(--ich); font-weight: 600; }
+  .lehrsatz .w-es { color: var(--es); font-weight: 600; }
+  .lehrsatz .w-ue { color: var(--ueberich); font-weight: 600; }
+  .diagram { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+  .diagram svg { width: 100%; height: 100%; max-height: 460px; display: block; }
+  .svglabel {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+  .caption {
+    font-size: 13px; color: var(--muted); text-align: center;
+    line-height: 1.45; margin: 2px 0 6px;
+  }
+  .compare { display: flex; gap: 12px; width: 100%; }
+  .cpanel {
+    flex: 1; border: 2px solid; border-radius: 16px;
+    padding: 14px 12px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .cpanel h3 {
+    margin: 0 0 2px; font-size: 11px; letter-spacing: 0.1em;
+    text-align: center; color: var(--ink);
+  }
+  .citem {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 10px;
+  }
+  .citem b { display: block; font-size: 14px; }
+  .citem span { font-size: 11.5px; color: var(--muted); line-height: 1.35; display: block; }
+
+  /* Titelkarte */
+  .card--title { justify-content: center; text-align: center; gap: 10px; padding-bottom: 60px; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .card--title h1 {
+    font-family: "Iowan Old Style", "Palatino Nova", Palatino, Georgia, serif;
+    font-size: 34px; line-height: 1.15; margin: 4px 0;
+    text-wrap: balance; font-weight: 600;
+  }
+  .card--title .sub {
+    font-size: 15px; color: var(--muted); line-height: 1.5;
+    max-width: 30ch; margin: 0 auto;
+  }
+  .titlemotif { margin: 18px auto 6px; display: block; }
+  .startcue { font-size: 12px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 22px; }
+
+  /* Quiz */
+  .quizopts { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .qopt {
+    padding: 15px 18px;
+    border-radius: 14px;
+    border: 1.5px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    font-size: 16px; font-weight: 600;
+    text-align: left; cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+  .qopt:focus-visible { outline: 3px solid var(--ich); outline-offset: 2px; }
+  .qopt.sel { border-color: var(--ich); background: var(--ich-soft); }
+  .qopt.right { border-color: var(--ok); background: var(--ich-soft); }
+  .qopt.wrong { border-color: var(--bad); background: var(--es-soft); }
+  .qcheck {
+    margin-top: 16px;
+    padding: 15px;
+    border-radius: 14px;
+    border: none;
+    background: var(--ink);
+    color: var(--card);
+    font-size: 15px; font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    opacity: 0.35;
+  }
+  .qcheck.ready { opacity: 1; }
+  .qcheck:focus-visible { outline: 3px solid var(--ich); outline-offset: 2px; }
+  .qfeedback {
+    margin-top: 14px; font-size: 14.5px; line-height: 1.5;
+    color: var(--muted); min-height: 44px;
+  }
+  .qfeedback strong { color: var(--ink); }
+
+  /* Insight */
+  .card--insight { justify-content: center; text-align: center; padding-bottom: 40px; }
+  .insight-rule { width: 42px; height: 2px; background: var(--ueberich); margin: 0 auto 22px; }
+  .card--insight blockquote {
+    font-family: "Iowan Old Style", "Palatino Nova", Palatino, Georgia, serif;
+    font-size: 28px; line-height: 1.3; margin: 0;
+    text-wrap: balance; font-weight: 600;
+  }
+  .card--insight cite { display: block; font-style: normal; font-size: 13px; color: var(--muted); margin-top: 18px; letter-spacing: 0.06em; }
+  .card--insight .expl { font-size: 15px; color: var(--muted); line-height: 1.55; max-width: 32ch; margin: 26px auto 0; }
+  .card--insight .expl b { color: var(--ink); }
+  .savebtn {
+    margin: 30px auto 0;
+    width: 54px; height: 54px; border-radius: 50%;
+    border: 1.5px solid var(--line);
+    background: var(--card);
+    font-size: 22px; cursor: pointer;
+    color: var(--es);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .savebtn.saved { background: var(--es); border-color: var(--es); color: #fff; }
+  .savebtn:focus-visible { outline: 3px solid var(--ich); outline-offset: 2px; }
+  .savehint { font-size: 11px; color: var(--muted); margin-top: 8px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* Footer */
+  .footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px 20px;
+    font-size: 12px; color: var(--muted);
+  }
+  .jsonbtn {
+    border: 1px solid var(--line);
+    background: var(--card); color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11.5px;
+    padding: 7px 12px; border-radius: 999px; cursor: pointer;
+    letter-spacing: 0.04em;
+  }
+  .jsonbtn:focus-visible { outline: 3px solid var(--ich); outline-offset: 2px; }
+  .cardindex { font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
+
+  /* JSON-Overlay */
+  .jsonoverlay {
+    position: absolute; inset: 0;
+    background: var(--card);
+    display: none;
+    flex-direction: column;
+    padding: 22px;
+    z-index: 30;
+  }
+  .jsonoverlay.open { display: flex; }
+  .jsonoverlay header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .jsonoverlay h2 { font-size: 13px; margin: 0; letter-spacing: 0.12em; text-transform: uppercase; }
+  .jsonoverlay .thesis { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 0 0 14px; }
+  .jsonoverlay pre {
+    flex: 1; overflow: auto; margin: 0;
+    background: var(--chrome);
+    border-radius: 14px; padding: 16px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11.5px; line-height: 1.55;
+    color: var(--ink);
+  }
+  .jsonclose {
+    border: none; background: none; color: var(--ich);
+    font-size: 13px; font-weight: 700; cursor: pointer; padding: 4px;
+  }
+
+  .lessonswitch { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .lessonbtn {
+    border: 1px solid var(--line);
+    background: var(--card); color: var(--muted);
+    font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+    padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  }
+  .lessonbtn.active { background: var(--ink); border-color: var(--ink); color: var(--card); }
+  .lessonbtn:focus-visible { outline: 3px solid var(--ich); outline-offset: 2px; }
+
+  .keyhint { font-size: 11.5px; color: var(--muted); }
+  kbd {
+    font-family: inherit; border: 1px solid var(--line); border-radius: 5px;
+    padding: 1px 6px; font-size: 10.5px; background: var(--card);
+  }
+</style>
+
+<div class="stage">
+  <div class="meta"><strong>Karten-Grammatik</strong> · Machbarkeitsprobe · Lektion aus JSON gerendert</div>
+  <div class="lessonswitch" role="tablist" aria-label="Lektion wählen">
+    <button class="lessonbtn" role="tab">Freud</button>
+    <button class="lessonbtn" role="tab">Naval</button>
+    <button class="lessonbtn" role="tab">Habits</button>
+    <button class="lessonbtn" role="tab">Kahneman</button>
+    <button class="lessonbtn" role="tab">Schlaf</button>
+    <button class="lessonbtn" role="tab">Schlaf·GLM</button>
+    <button class="lessonbtn" role="tab">Schlaf·GLM v2</button>
+  </div>
+
+  <div class="phone">
+    <div class="topbar">
+      <button class="xbtn" aria-label="Lektion schließen">✕</button>
+      <div class="progress" id="progress" aria-hidden="true"></div>
+    </div>
+    <div class="cardarea" id="cardarea" tabindex="0" aria-label="Lernkarte — rechts tippen für weiter, links für zurück"></div>
+    <div class="footer">
+      <button class="jsonbtn" id="jsonbtn" aria-label="Quelldaten dieser Karte anzeigen">{ } JSON</button>
+      <span class="cardindex" id="cardindex"></span>
+    </div>
+    <div class="jsonoverlay" id="jsonoverlay" role="dialog" aria-label="Quelldaten der Karte">
+      <header>
+        <h2>Diese Karte als Daten</h2>
+        <button class="jsonclose" id="jsonclose">Schließen</button>
+      </header>
+      <p class="thesis">Die Karte ist ein JSON-Objekt. Der Renderer ist generisch — Qualität kommt aus der Diagramm-Grammatik, Skalierung aus der Generierung.</p>
+      <pre id="jsoncode"></pre>
+    </div>
+  </div>
+
+  <div class="keyhint"><kbd>←</kbd> <kbd>→</kbd> oder tippen · rechts weiter, links zurück</div>
+</div>
+
+<script>
+// ————————————————————————————————————————————————
+// DIE LEKTION IST DATEN. Alles unterhalb von LESSONS ist generischer Renderer.
+// Probe 2: zweite Lektion (Naval) nur als Daten — RENDERERS unangetastet.
+// ————————————————————————————————————————————————
+const LESSON_NAVAL = {
+  id: "naval-almanack",
+  title: "Der Almanack von Naval Ravikant",
+  source: "Nach: Eric Jorgenson, The Almanack of Naval Ravikant (2020)",
+  cards: [
+    {
+      type: "title",
+      eyebrow: "Wealth · Naval Ravikant",
+      title: "Reich werden ohne Glück",
+      sub: "Warum Zeit verkaufen nicht reicht — und was stattdessen skaliert.",
+      stats: "8 Karten · 3 Minuten"
+    },
+    {
+      type: "curve", relation: "trend",
+      text: 'Ein Gehalt bezahlt deine <span class="w-es">Stunden</span>. Hörst du auf zu arbeiten, hört das Geld auf — egal, wie gut du bist.',
+      xlabel: "STUNDEN", ylabel: "EINKOMMEN",
+      stop: { t: 0.55, label: "DU HÖRST AUF" },
+      series: [
+        { label: "Gehalt", color: "es", shape: "linear-rise", from: "low", to: "mid", afterStop: "collapse", area: true }
+      ],
+      caption: "Der Zahnarzt verdient gut — aber nur, solange er bohrt."
+    },
+    {
+      type: "curve", relation: "trend",
+      text: 'Ein <b>Asset</b> trennt Arbeit von Einkommen: einmal gebaut, verkauft es sich weiter — auch während du schläfst.',
+      xlabel: "STUNDEN", ylabel: "EINKOMMEN",
+      stop: { t: 0.55, label: "DU HÖRST AUF" },
+      series: [
+        { label: "Gehalt", color: "es", shape: "linear-rise", from: "low", to: "mid", afterStop: "collapse", dash: true, faded: true },
+        { label: "Produkt", color: "ich", shape: "compound-rise", from: "low", to: "high", area: true }
+      ],
+      caption: "Buch, App, Video: Am Anfang verdienst du weniger — dann entkoppelt sich die Kurve."
+    },
+    {
+      type: "fanout", relation: "multiplication",
+      text: '<b>Hebel</b> heißt: einmal tun, millionenfach wirken. Code und Media vervielfältigen sich fast gratis.',
+      source: { label: "1× erklärt", sub: "ein Video, eine Nacht", color: "ich" },
+      count: 6,
+      result: { label: "×1.000.000" },
+      caption: "Ein Video erklärt es einer Million Menschen — ohne dich."
+    },
+    {
+      type: "compare", relation: "contrast",
+      text: '<span class="w-es">Kapital und Teams</span> sind Hebel, die man dir geben muss. <b>Code und Media</b> gehören dir — niemand kann Nein sagen.',
+      left: {
+        title: "MUSS MAN DIR GEBEN", color: "es",
+        items: [
+          { label: "Kapital", sub: "Investoren sagen Ja — oder Nein" },
+          { label: "Team", sub: "Menschen müssen dir folgen" }
+        ]
+      },
+      right: {
+        title: "GEHÖRT DIR", color: "ich",
+        items: [
+          { label: "Code", sub: "läuft, während du schläfst" },
+          { label: "Media", sub: "Video, Text, Podcast" }
+        ]
+      },
+      caption: "Naval: Die neuen Hebel brauchen keine Erlaubnis."
+    },
+    {
+      type: "venn", relation: "intersection",
+      text: 'Baue auf <b>Spezialwissen</b>: das, was sich für dich wie Spielen anfühlt — und für andere wie Arbeit ist. Das kann dir niemand kopieren.',
+      a: { label: "FÜR DICH: SPIEL", color: "es" },
+      b: { label: "FÜR ANDERE: ARBEIT", color: "ueberich" },
+      overlap: { label: ["SPEZIAL-", "WISSEN"], color: "ich" },
+      caption: "Navals Test: Wobei vergisst du die Zeit — während andere stöhnen?"
+    },
+    {
+      type: "quiz",
+      question: "Ein Bäcker will mehr verdienen — ohne mehr Stunden und ohne dass ihm jemand etwas geben muss. Was ist der Naval-Weg?",
+      options: [
+        { label: "Backkurs als Video — verkauft sich nachts", correct: true },
+        { label: "Kredit für eine zweite Filiale", correct: false },
+        { label: "Zwei neue Angestellte einstellen", correct: false }
+      ],
+      explain: "Der Kurs ist <strong>Media</strong>: einmal gemacht, gehört er ihm und skaliert ohne Erlaubnis. Kredit (Kapital) und Angestellte (Team) muss man ihm erst geben.",
+      wrong: "Das ist auch ein Hebel — aber einer, den ihm jemand geben muss (Geld oder Menschen). Ohne Erlaubnis skaliert nur der <strong>Videokurs</strong>."
+    },
+    {
+      type: "insight",
+      quote: "Verdiene mit deinem Verstand, nicht mit deiner Zeit.",
+      cite: "Naval Ravikant",
+      explain: 'Der Verstand baut <b>Assets mit Hebel</b>. Deine Zeit ist ausverkauft, sobald du schläfst.'
+    }
+  ]
+};
+
+const LESSON_SLEEP = {
+  "id": "warum-wir-schlafen",
+  "title": "Warum wir schlafen",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Gesundheit · Matthew Walker",
+      "title": "Warum wir schlafen",
+      "sub": "Schlafdruck, Koffein und der wahre Preis der kurzen Nacht",
+      "stats": "8 Karten · 4 Minuten"
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Je länger du wach bist, desto müder wirst du. Kein Zufall: Ein Stoff sammelt sich stündlich im Gehirn und erzeugt <span class=\"w-es\">Schlafdruck</span> — er heißt Adenosin, und nur Schlaf baut ihn ab.",
+      "xlabel": "TAGESZEIT",
+      "ylabel": "SCHLAFDRUCK",
+      "series": [
+        { "label": "ADENOSIN", "color": "es", "shape": "saturating-rise", "from": "low", "to": "high", "afterStop": "reset", "area": true }
+      ],
+      "stop": { "t": 0.8, "label": "DU SCHLÄFST" },
+      "notes": [
+        { "label": "SCHLAF RÄUMT AUF", "series": 0, "t": 0.92, "side": "above" }
+      ],
+      "caption": "Nach dem langen Tag fallen dir um 23 Uhr die Augen zu — der Tank ist voll."
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "<span class=\"w-ue\">Koffein</span> weckt dich nicht — es blockiert nur die Andockstellen von <span class=\"w-es\">Adenosin</span>. Der Druck wächst verdeckt weiter; fällt die Blockade, trifft er dich gesammelt.",
+      "xlabel": "UHRZEIT",
+      "ylabel": "MÜDIGKEIT",
+      "series": [
+        { "label": "ADENOSIN", "color": "es", "shape": "linear-rise", "from": "low", "to": "high", "dash": true },
+        { "label": "MIT KOFFEIN", "color": "ueberich", "shape": "suppressed", "from": "low", "afterStop": "rebound" }
+      ],
+      "stop": { "t": 0.75, "label": "WIRKUNG ENDET" },
+      "notes": [
+        { "label": "DER CRASH", "series": 1, "t": 0.9, "side": "above" }
+      ],
+      "caption": "Espresso um 16 Uhr, Absturz um 22 Uhr: Die Müdigkeit war nie weg, nur verdeckt."
+    },
+    {
+      "type": "compare",
+      "relation": "contrast",
+      "text": "Warum du überhaupt schläfst? Unter anderem fürs Gedächtnis: Im <b>Schlaf</b> verschiebt dein Gehirn frisch Gelerntes vom flüchtigen Zwischenspeicher in den Langzeitspeicher. Wer wach bleibt, verliert.",
+      "left": {
+        "title": "MIT SCHLAF",
+        "color": "ich",
+        "items": [
+          {
+            "label": "Gespeichert",
+            "sub": "vom Hippocampus in den Kortex"
+          },
+          {
+            "label": "Platz für Neues",
+            "sub": "Zwischenspeicher geleert"
+          }
+        ]
+      },
+      "right": {
+        "title": "NACHT DURCHGEMACHT",
+        "color": "es",
+        "items": [
+          {
+            "label": "40 % geht verloren",
+            "sub": "Gelerntes verblasst"
+          },
+          {
+            "label": "Speicher bleibt voll",
+            "sub": "Neues prallt ab"
+          }
+        ]
+      },
+      "caption": "Durchmachen vor der Prüfung: 40 Prozent weniger bleibt hängen als ausgeschlafen."
+    },
+    {
+      "type": "flow",
+      "relation": "descent",
+      "text": "Die Tücke des Schlafmangels: Dein Maßstab wandert mit. Nach Wochen kurzer Nächte fühlst du dich <span class=\"w-ue\">normal</span> — obwohl deine <span class=\"w-es\">Leistung</span> messbar auf Betrunkenen-Niveau liegt.",
+      "steps": [
+        {
+          "label": "Kurze Nächte",
+          "sub": "Woche für Woche",
+          "color": "es"
+        },
+        {
+          "label": "Leistung sinkt",
+          "sub": "messbar, stetig",
+          "color": "es"
+        },
+        {
+          "label": "Gefühl: normal",
+          "sub": "Maßstab verschoben",
+          "color": "ueberich",
+          "submerged": true
+        }
+      ],
+      "sink": {
+        "label": "UNTER DEINEM RADAR"
+      },
+      "caption": "Zehn Tage à sechs Stunden schlafen — du leistest wie nach einer durchwachten Nacht."
+    },
+    {
+      "type": "cycle",
+      "relation": "loop",
+      "text": "So füttert sich Schlafmangel selbst: Die <span class=\"w-es\">kurze Nacht</span> macht das Tief, das Tief ruft nach <span class=\"w-ue\">Kaffee</span> — und der späte Kaffee macht den nächsten Schlaf flach.",
+      "steps": [
+        {
+          "label": "Kurze Nacht",
+          "sub": "Wecker um 6",
+          "color": "es"
+        },
+        {
+          "label": "Müdes Tief",
+          "sub": "Adenosin-Rest",
+          "color": "es"
+        },
+        {
+          "label": "Kaffee um 16",
+          "sub": "blockt Adenosin",
+          "color": "ueberich"
+        },
+        {
+          "label": "Leichtschlaf",
+          "sub": "Tiefschlaf fehlt",
+          "color": "es"
+        }
+      ],
+      "caption": "Der 16-Uhr-Kaffee wirkt um Mitternacht noch halb — dein Tiefschlaf zahlt die Rechnung."
+    },
+    {
+      "type": "quiz",
+      "question": "23 Uhr, du bist seit 19 Stunden wach und fühlst dich klar. Kannst du noch bedenkenlos Auto fahren?",
+      "options": [
+        {
+          "label": "Ja — du fühlst dich doch hellwach",
+          "correct": false
+        },
+        {
+          "label": "Nein — du fährst wie mit 0,8 Promille",
+          "correct": true
+        },
+        {
+          "label": "Fast — die Reaktion leidet nur minimal",
+          "correct": false
+        }
+      ],
+      "explain": "Nach 19 Stunden wach reagierst du wie mit <strong>0,8 Promille</strong> — nur merkt dein geeichter Maßstab davon nichts.",
+      "wrong": "Genau das ist die Falle: Dein Wach-Gefühl ist der schlechteste Zeuge — der Maßstab ist längst mitgewandert."
+    },
+    {
+      "type": "insight",
+      "quote": "Je kürzer dein Schlaf, desto kürzer dein Leben.",
+      "cite": "Matthew Walker, 2017",
+      "explain": "Schlaf ist kein Luxus, sondern <b>Grundpflege</b>: das wirksamste Reset für Gehirn und Körper — jede Nacht neu."
+    }
+  ]
+};
+
+const LESSON_GLM = {
+  "id": "why-we-sleep",
+  "title": "Warum wir schlafen",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Schlaf · Matthew Walker",
+      "title": "Die Nacht-Reset",
+      "sub": "Was im Verborgenen passiert, entscheidet über deinen Tag",
+      "stats": "7 Karten · 4 Minuten"
+    },
+    {
+      "type": "balance",
+      "relation": "weighing",
+      "text": "Zwei Kräfte steuern, wann du müde wirst: der <b>Rhythmus</b> der Uhr und der <span class=\"w-es\">Druck</span> im Gehirn.",
+      "left": {
+        "label": "DRUCK",
+        "sub": "Wächst stetig",
+        "color": "es"
+      },
+      "right": {
+        "label": "RYTHMUS",
+        "sub": "Pendelt 24 Std.",
+        "color": "ueberich"
+      },
+      "pivot": {
+        "label": "SCHLAF",
+        "sub": "Schnittmenge",
+        "color": "ich"
+      }
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Wachsein lässt ein Müdigkeits-Molekül ansteigen. <span class=\"w-es\">Adenosin</span> stapelt sich — bis der <b>Schlaf</b> es abbaut.",
+      "xlabel": "STUNDEN WACH",
+      "ylabel": "SCHLAFDRUCK",
+      "series": [
+        { "label": "Adenosin", "color": "es", "shape": "saturating-rise", "from": "low", "to": "high", "area": true },
+        { "label": "Nach Schlaf", "color": "ich", "shape": "flat", "from": "low", "dash": true }
+      ],
+      "stop": { "t": 0.85, "label": "DU SCHLÄFST" },
+      "caption": "Wie ein volles Glas — stündlich tropft es voller."
+    },
+    {
+      "type": "compare",
+      "relation": "contrast",
+      "text": "Kaffee blockiert nicht die Müdigkeit, sondern tarnt sie. <span class=\"w-ue\">Koffein</span> verdrängt das <span class=\"w-es\">Adenosin</span>.",
+      "left": {
+        "title": "OHNE KAFFEE",
+        "color": "es",
+        "items": [
+          {
+            "label": "Adenosin dockt an",
+            "sub": "Müdigkeit wird gemeldet"
+          },
+          {
+            "label": "Gehirn weiß Bescheid",
+            "sub": "Du gehst schlafen"
+          }
+        ]
+      },
+      "right": {
+        "title": "MIT KAFFEE",
+        "color": "ueberich",
+        "items": [
+          {
+            "label": "Koffein blockt",
+            "sub": "Adenosin bleibt draußen"
+          },
+          {
+            "label": "Falsche Wachheit",
+            "sub": "Druck staut sich weiter auf"
+          }
+        ]
+      },
+      "caption": "Du spürst den vollen Eimer nicht — bis er überläuft."
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Koffein hat lange Finger: Halbwertszeit 5 Std. Eine Dose um 15 Uhr lähmt um Mitternacht noch dein <b>Schlafhormon</b>.",
+      "xlabel": "ZEIT",
+      "ylabel": "WIRKSAMKEIT",
+      "series": [
+        { "label": "Koffein im Blut", "color": "ueberich", "shape": "decay-halflife", "from": "high", "to": "floor", "area": true }
+      ],
+      "notes": [
+        { "label": "NOCH 50% AKTIV", "series": 0, "t": 0.27, "side": "above" }
+      ],
+      "caption": "Ein Espresso um 16 Uhr — um 21 Uhr ist noch die Hälfte aktiv."
+    },
+    {
+      "type": "flow",
+      "relation": "descent",
+      "text": "Wer zu wenig schläft, verliert seinen <b>Rhythmus</b>. Die Kontrolle sinkt unter die Oberfläche — und bleibt dort.",
+      "steps": [
+        {
+          "label": "Zu wenig Schlaf",
+          "sub": "Adenosin bleibt hoch",
+          "color": "es"
+        },
+        {
+          "label": "Körper im Stress",
+          "sub": "Hormonsystem leidet",
+          "color": "ich"
+        },
+        {
+          "label": "Erschöpfung",
+          "sub": "Konzentration bricht ein",
+          "color": "es",
+          "submerged": true
+        }
+      ],
+      "sink": {
+        "label": "VERBORGENE FOLGEN"
+      },
+      "caption": "Du fühlst dich wach — bis du am Steuer für Sekunden ausknickst."
+    },
+    {
+      "type": "quiz",
+      "question": "Du trinkst um 16 Uhr einen Kaffee und liegst um 23 Uhr wach im Bett. Warum?",
+      "options": [
+        {
+          "label": "Koffein blockiert noch Adenosin-Rezeptoren",
+          "correct": true
+        },
+        {
+          "label": "Dein Schlafdruck ist um 23 Uhr zu gering",
+          "correct": false
+        },
+        {
+          "label": "Kaffee fügt neues Adenosin hinzu",
+          "correct": false
+        }
+      ],
+      "explain": "Mit einer Halbwertszeit von 5 Std. sind um 23 Uhr noch 25% des Koffeins aktiv. Es tarnt den vollen Schlafdruck.",
+      "wrong": "Du spürst den Schlafdruck — aber das Koffein blockt das Signal ab."
+    },
+    {
+      "type": "insight",
+      "quote": "Je kürzer dein Schlaf, desto kürzer dein Leben.",
+      "cite": "Matthew Walker, 2017",
+      "explain": "Schlaf ist kein Luxus, sondern die <b>wichtigste Wartung</b> für Körper und Geist."
+    }
+  ]
+};
+
+const LESSON_HABITS = {
+  id: "atomic-habits",
+  title: "Die Macht der 1 %",
+  source: "Nach: James Clear, Atomic Habits (2018)",
+  cards: [
+    {
+      type: "title",
+      eyebrow: "Verhalten · James Clear",
+      title: "Die Macht der 1 %",
+      sub: "Warum kleine Gewohnheiten mehr bewegen als große Ziele.",
+      stats: "7 Karten · 2 Minuten"
+    },
+    {
+      type: "curve", relation: "trend",
+      text: 'Gewohnheiten sind der <b>Zinseszins</b> der Selbstverbesserung: 1 % täglich klingt nach nichts — und ist nach einem Jahr das 37-Fache.',
+      xlabel: "365 TAGE", ylabel: "ERGEBNIS",
+      series: [
+        { label: "1 % besser täglich", color: "ich", shape: "compound-rise", from: "low", to: "high", area: true },
+        { label: "1 % schlechter", color: "es", shape: "decay-halflife", from: "low", to: "floor" }
+      ],
+      caption: "Dieselbe Startlinie — nach einem Jahr liegt das 37-Fache dazwischen."
+    },
+    {
+      type: "curve", relation: "trend",
+      text: 'Fortschritt fühlt sich lange nach nichts an: Du erwartest eine <span class="w-es">Gerade</span> — und bekommst eine <b>Kurve</b>. Die meisten geben genau im Tal auf.',
+      xlabel: "ZEIT", ylabel: "ERGEBNIS",
+      notes: [{ label: "TAL DER ENTTÄUSCHUNG", series: "Realität", t: 0.55, side: "above" }],
+      series: [
+        { label: "Erwartung", color: "es", shape: "linear-rise", from: "low", to: "high", dash: true, faded: true },
+        { label: "Realität", color: "ich", shape: "compound-rise", from: "low", to: "high", area: true }
+      ],
+      caption: "Eis schmilzt erst bei null Grad — bis dahin sieht Erwärmen nach nichts aus."
+    },
+    {
+      type: "cycle", relation: "loop",
+      text: 'Jede Gewohnheit läuft im selben Kreis: <span class="w-es">Auslöser</span>, <b>Verlangen</b>, <b>Reaktion</b>, <span class="w-ue">Belohnung</span> — und die Belohnung schärft den nächsten Auslöser.',
+      steps: [
+        { label: "Auslöser", sub: "Handy summt", color: "es" },
+        { label: "Verlangen", sub: "Was ist es?", color: "ich" },
+        { label: "Reaktion", sub: "du checkst", color: "ich" },
+        { label: "Belohnung", sub: "kleiner Dopamin-Kick", color: "ueberich" }
+      ],
+      caption: "Die Belohnung trainiert den nächsten Auslöser — der Kreis schließt sich."
+    },
+    {
+      type: "compare", relation: "contrast",
+      text: 'Gewinner und Verlierer haben <span class="w-es">dieselben Ziele</span> — das Ziel macht den Unterschied nicht. Dauerhaft wird, was zur <b>Identität</b> wird.',
+      left: {
+        title: "ZIEL", color: "es",
+        items: [
+          { label: "„Ich will abnehmen“", sub: "endet am Ziel — und dann?" },
+          { label: "Braucht Motivation", sub: "jeden Tag aufs Neue" }
+        ]
+      },
+      right: {
+        title: "IDENTITÄT", color: "ich",
+        items: [
+          { label: "„Ich bin Sportler“", sub: "jede Einheit ist ein Beweis" },
+          { label: "Trägt sich selbst", sub: "Handeln bestätigt das Selbstbild" }
+        ]
+      },
+      caption: "Jede Handlung ist eine Stimme für die Person, die du sein willst."
+    },
+    {
+      type: "quiz",
+      question: "Du willst morgens laufen gehen. Was nutzt den Habit Loop am besten?",
+      options: [
+        { label: "Schuhe abends sichtbar vor die Tür", correct: true },
+        { label: "Dir fest vornehmen, diszipliniert zu sein", correct: false },
+        { label: "Ein großes Ziel setzen: Marathon", correct: false }
+      ],
+      explain: "Du designst den <strong>Auslöser</strong>: Die Schuhe starten den Loop, bevor Motivation überhaupt nötig ist.",
+      wrong: "Vorsätze und Ziele verbrauchen sich. Der Loop startet beim <strong>Auslöser</strong> — mach ihn sichtbar."
+    },
+    {
+      type: "insight",
+      quote: "Du steigst nicht auf das Niveau deiner Ziele. Du fällst auf das Niveau deiner Systeme.",
+      cite: "James Clear",
+      explain: 'Der Loop läuft sowieso — <b>design ihn</b>, statt auf Disziplin zu hoffen.'
+    }
+  ]
+};
+
+const LESSON_KAHNEMAN = {
+  id: "thinking-fast-slow",
+  title: "Schnell und langsam denken",
+  source: "Nach: Daniel Kahneman, Thinking, Fast and Slow (2011)",
+  cards: [
+    {
+      type: "title",
+      eyebrow: "Psychologie · Daniel Kahneman",
+      title: "Schnell und langsam denken",
+      sub: "Zwei Systeme steuern dich. Du merkst nur eines.",
+      stats: "7 Karten · 2 Minuten"
+    },
+    {
+      type: "compare", relation: "contrast",
+      text: '<span class="w-es">System 1</span> antwortet sofort und mühelos. <b>System 2</b> kann rechnen — ist aber faul und übernimmt nur, wenn System 1 stolpert.',
+      left: {
+        title: "SYSTEM 1 — SCHNELL", color: "es",
+        items: [
+          { label: "Automatisch", sub: "2 + 2, Gesichter lesen" },
+          { label: "Immer an", sub: "mühelos, sofort, intuitiv" }
+        ]
+      },
+      right: {
+        title: "SYSTEM 2 — LANGSAM", color: "ich",
+        items: [
+          { label: "Bewusst", sub: "17 × 24, Parallelparken" },
+          { label: "Faul", sub: "springt nur an, wenn es muss" }
+        ]
+      },
+      caption: "2 + 2? Sofort da. 17 × 24? Jetzt spürst du System 2 arbeiten."
+    },
+    {
+      type: "balance", relation: "weighing",
+      text: 'Verlust und Gewinn sind gleich groß — aber nicht gleich schwer: Ein <span class="w-es">Verlust</span> wiegt im Gefühl etwa <b>doppelt</b>.',
+      left:  { label: "−100 €", sub: "schmerzt doppelt", color: "es" },
+      right: { label: "+100 €", sub: "freut einfach", color: "ueberich" },
+      pivot: { label: "GEFÜHL", sub: "wiegt schief", color: "ich" }
+    },
+    {
+      type: "flow", relation: "descent",
+      text: 'Eine <span class="w-ue">zufällige Zahl</span> im Raum zieht deine <b>Schätzung</b> zu sich — selbst wenn du weißt, dass sie bedeutungslos ist: der <b>Anker-Effekt</b>.',
+      steps: [
+        { label: "Glücksrad: 65", sub: "eine zufällige Zahl", color: "ueberich" },
+        { label: "Schätzfrage", sub: "Afrika-Anteil in der UNO?", color: "ich" },
+        { label: "Schätzung: 45 %", sub: "verankert an der 65", color: "es", submerged: true }
+      ],
+      sink: { label: "LÄUFT UNBEWUSST" }
+    },
+    {
+      type: "quiz",
+      question: "Schläger und Ball kosten zusammen 1,10 €. Der Schläger kostet 1 € mehr als der Ball. Was kostet der Ball?",
+      options: [
+        { label: "10 Cent", correct: false },
+        { label: "5 Cent", correct: true },
+        { label: "1 Euro", correct: false }
+      ],
+      explain: "System 2 hat gerechnet: 1,05 € + 0,05 € = 1,10 €. Die meisten sagen „10 Cent“ — das ist <strong>System 1</strong>.",
+      wrong: "Das war <strong>System 1</strong>: schnell, plausibel, falsch. Dann läge die Summe bei 1,20 €. Der Ball kostet 5 Cent."
+    },
+    {
+      type: "insight",
+      quote: "Wir sind blind für das Offensichtliche — und blind für unsere Blindheit.",
+      cite: "Daniel Kahneman",
+      explain: 'System 1 liefert immer eine Antwort. <b>Zweifeln ist System-2-Arbeit</b> — und die kostet Kraft.'
+    }
+  ]
+};
+
+const LESSON_FREUD = {
+  id: "freud-psyche",
+  title: "Freuds Modell der Psyche",
+  source: "Nach: Sigmund Freud, Das Ich und das Es (1923)",
+  cards: [
+    {
+      type: "title",
+      eyebrow: "Psychologie · Grundlagen",
+      title: "Freuds Modell der Psyche",
+      sub: "Es, Ich und Über-Ich — und warum wir uns selbst im Weg stehen.",
+      stats: "6 Karten · 2 Minuten"
+    },
+    {
+      type: "layers", relation: "depth-layers",
+      text: 'Freud teilte die Psyche in drei Instanzen: <span class="w-es">Es</span>, <b>Ich</b> und <span class="w-ue">Über-Ich</span>. Nur ein kleiner Teil davon ist bewusst — der Rest arbeitet unter der Oberfläche.',
+      zones: [
+        { id: "bewusst", label: "BEWUSST" },
+        { id: "vorbewusst", label: "VORBEWUSST" },
+        { id: "unbewusst", label: "UNBEWUSST" }
+      ],
+      body: {
+        shape: "iceberg",
+        regions: [
+          { id: "ich", label: "ICH", color: "ich" },
+          { id: "ueberich", label: "ÜBER-ICH", color: "ueberich" },
+          { id: "es", label: "ES", color: "es" }
+        ]
+      }
+    },
+    {
+      type: "balance", relation: "weighing",
+      text: 'Das <span class="w-es">Es</span> fordert sofortige Befriedigung. Das <span class="w-ue">Über-Ich</span> verbietet. Das <b>Ich</b> vermittelt zwischen beiden — nach dem Realitätsprinzip.',
+      left:  { label: "ES", sub: "Lustprinzip", color: "es" },
+      right: { label: "ÜBER-ICH", sub: "Moral", color: "ueberich" },
+      pivot: { label: "ICH", sub: "Realitätsprinzip", color: "ich" }
+    },
+    {
+      type: "flow", relation: "descent",
+      text: 'Kollidiert ein Wunsch des <span class="w-es">Es</span> mit dem <span class="w-ue">Über-Ich</span>, schiebt das <b>Ich</b> ihn unter die Oberfläche: <b>Verdrängung</b> — der grundlegendste Abwehrmechanismus.',
+      steps: [
+        { label: "Impuls", sub: "aus dem Es", color: "es" },
+        { label: "Konflikt", sub: "mit dem Über-Ich", color: "ueberich" },
+        { label: "Verdrängung", sub: "durch das Ich", color: "ich", submerged: true }
+      ],
+      sink: { label: "UNBEWUSST" }
+    },
+    {
+      type: "quiz",
+      question: "Welche Instanz folgt ausschließlich dem Lustprinzip?",
+      options: [
+        { label: "Das Es", correct: true },
+        { label: "Das Ich", correct: false },
+        { label: "Das Über-Ich", correct: false }
+      ],
+      explain: "Das <strong>Es</strong> kennt weder Logik noch Aufschub — nur den Wunsch. Erst das Ich prüft ihn an der Realität.",
+      wrong: "Nicht ganz — diese Instanz prüft und reguliert. Reines Wollen sitzt im <strong>Es</strong>."
+    },
+    {
+      type: "insight",
+      quote: "Das Ich ist nicht Herr im eigenen Haus.",
+      cite: "Sigmund Freud, 1917",
+      explain: 'Das <b>Ich</b> dient drei Herren zugleich: der Außenwelt, dem Über-Ich und dem Es.'
+    }
+  ]
+};
+
+const LESSON_GLM_V2 = {
+  "id": "why-we-sleep",
+  "title": "Warum wir schlafen",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Schlaf · Matthew Walker",
+      "title": "Die Nacht ist deine Werkstatt",
+      "sub": "Schlaf ist kein Luxus, sondern das Fundament von Gesundheit.",
+      "stats": "7 Karten · 4 Minuten"
+    },
+    {
+      "relation": "trend",
+      "text": "Je länger du wach bist, sammelt sich <span class=\"w-es\">Adenosin</span> im Kopf und erzeugt den Druck, die Augen zu schließen.",
+      "xlabel": "WACHZEIT",
+      "ylabel": "SCHLAFDRUCK",
+      "series": [
+        {
+          "label": "Adenosin",
+          "color": "es",
+          "shape": "linear-rise",
+          "from": "floor",
+          "to": "high",
+          "area": true
+        }
+      ],
+      "stop": {
+        "label": "KOFFEIN",
+        "t": 0.5
+      },
+      "notes": [
+        {
+          "label": "KOFFEIN BLOCKIERT",
+          "series": 0,
+          "t": 0.5,
+          "side": "above"
+        }
+      ],
+      "caption": "Büro-Kaffee um 15 Uhr leugnet den Druck — er löscht ihn nicht, er versteckt ihn.",
+      "type": "curve"
+    },
+    {
+      "relation": "contrast",
+      "text": "Koffein überlistet den Schlafdruck, indem es die <span class=\"w-es\">Adenosin-Rezeptoren</span> blockiert. Der <b>Platzhalter</b> hält dich wach.",
+      "left": {
+        "title": "OHNE KOFFEIN",
+        "color": "ich",
+        "items": [
+          {
+            "label": "Adenosin bindet",
+            "sub": "Rezeptoren melden Erschöpfung"
+          },
+          {
+            "label": "Schlafdruck steigt",
+            "sub": "Du gehst ins Bett"
+          }
+        ]
+      },
+      "right": {
+        "title": "MIT KOFFEIN",
+        "color": "es",
+        "items": [
+          {
+            "label": "Rezeptoren blockiert",
+            "sub": "Adenosin findet keinen Platz"
+          },
+          {
+            "label": "Falsche Wachheit",
+            "sub": "Druck staut sich dahinter auf"
+          }
+        ]
+      },
+      "caption": "Wie ein Zettel vor der Türklinge: Der Bote klingelt nicht, steht aber weiter vor der Tür.",
+      "type": "compare"
+    },
+    {
+      "relation": "trend",
+      "text": "Koffein hat eine Halbwertszeit von 5 Stunden. Ein Kaffee um 16 Uhr hält um 21 Uhr noch <span class=\"w-es\">ein Viertel</span> deiner Dosis im Blut.",
+      "xlabel": "STUNDEN",
+      "ylabel": "KOFFEIN",
+      "series": [
+        {
+          "label": "Koffein im Blut",
+          "color": "es",
+          "shape": "decay-halflife",
+          "from": "high",
+          "to": "floor",
+          "area": true
+        }
+      ],
+      "notes": [
+        {
+          "label": "NOCH 25% AKTIV",
+          "series": 0,
+          "t": 0.5,
+          "side": "above"
+        }
+      ],
+      "caption": "Der Espresso zum Dessert sabotiert die Tiefschlafphase, die drei Stunden später beginnt.",
+      "type": "curve"
+    },
+    {
+      "relation": "weighing",
+      "text": "Eine Nacht mit nur 4 Stunden halbiert deine <b>Killerzellen</b>. Schlafmangel schaltet die <span class=\"w-es\">Immunabwehr</span> fast ab.",
+      "left": {
+        "label": "4 STD",
+        "sub": "50% Aktivität",
+        "color": "es"
+      },
+      "right": {
+        "label": "8 STD",
+        "sub": "100% Aktivität",
+        "color": "ich"
+      },
+      "pivot": {
+        "label": "Abwehrzellen",
+        "sub": "Viren-Abwehr",
+        "color": "ueberich"
+      },
+      "type": "balance"
+    },
+    {
+      "relation": "loop",
+      "text": "Schlafmangel treibt den <span class=\"w-es\">Cortisolspiegel</span> hoch, was dich am Abend wach hält — ein Teufelskreis aus Erschöpfung und Schlaflosigkeit.",
+      "steps": [
+        {
+          "label": "Schlafmangel",
+          "sub": "Zu wenig Tiefschlaf",
+          "color": "es"
+        },
+        {
+          "label": "Stress",
+          "sub": "Cortisol steigt an",
+          "color": "ueberich"
+        },
+        {
+          "label": "Wachliegen",
+          "sub": "Körper in Alarm",
+          "color": "es"
+        },
+        {
+          "label": "Erschöpfung",
+          "sub": "Nächste Nacht futsch",
+          "color": "ich"
+        }
+      ],
+      "caption": "Der Manager liegt wach, weil der Stress von heute der Kaffee von morgen ist.",
+      "type": "cycle"
+    },
+    {
+      "type": "quiz",
+      "question": "Du trinkst um 16 Uhr einen Kaffee und liegst um 23 Uhr stundenlang wach. Warum?",
+      "options": [
+        {
+          "label": "Um 23 Uhr sind noch 25% des Koffeins aktiv",
+          "correct": true
+        },
+        {
+          "label": "Dein Adenosin war längst abgebaut",
+          "correct": false
+        },
+        {
+          "label": "Koffein baut sich in 2 Stunden restlos ab",
+          "correct": false
+        }
+      ],
+      "explain": "Koffein hat eine Halbwertszeit von 5 Stunden. Um 23 Uhr ist noch ein Viertel aktiv und blockiert deine <strong>Adenosin-Rezeptoren</strong>.",
+      "wrong": "Du fühlst dich vielleicht nicht mehr wach — aber das Koffein blockiert noch immer den Müdigkeits-Rezeptor."
+    },
+    {
+      "type": "insight",
+      "quote": "Je kürzer dein Schlaf, desto kürzer dein Leben.",
+      "cite": "Matthew Walker, 2017",
+      "explain": "Schlaf ist der wichtigste <b>Reset</b> für Körper und Geist — er ist nicht verhandelbar."
+    }
+  ]
+};
+
+// ————— Generischer Renderer —————
+const C = (key) => `var(--${key})`;
+const SOFT = (key) => `var(--${key}-soft)`;
+const MEASURE_CTX = document.createElement("canvas").getContext("2d");
+
+const RENDERERS = {
+
+  title(card) {
+    return `<div class="card card--title">
+      <div class="eyebrow">${card.eyebrow}</div>
+      <svg class="titlemotif" width="150" height="96" viewBox="0 0 150 96" aria-hidden="true">
+        <circle cx="48" cy="48" r="34" fill="${C("es")}" opacity="0.82"/>
+        <circle cx="102" cy="48" r="34" fill="${C("ueberich")}" opacity="0.82"/>
+        <circle cx="75" cy="40" r="34" fill="${C("ich")}" opacity="0.86"/>
+      </svg>
+      <h1>${card.title}</h1>
+      <p class="sub">${card.sub}</p>
+      <div class="startcue">${card.stats} — tippen zum Start</div>
+    </div>`;
+  },
+
+  layers(card) {
+    const [rIch, rUe, rEs] = card.body.regions;
+    const [zB, zV, zU] = card.zones;
+    // Grenz-Konstruktion (Imprint-Prinzip): die Übergangszone ist ein durchgehender,
+    // beidseitig konturierter Streifen VOR dem Berg — die Zonengrenze existiert als
+    // Objekt. Alle Regionsgrenzen teilen sich EINE Geometrie-Quelle.
+    const wave1 = "M0,150 C60,139 150,161 225,149 C300,137 352,157 400,146";   // Oberkante Band = Wasserlinie
+    const wave2 = "M0,218 C60,208 150,228 225,217 C300,206 352,224 400,214";   // Unterkante Band = Grenze zum Unbewussten
+    const wave2rev = "L400,214 C352,224 300,206 225,217 C150,228 60,208 0,218";
+    const SPLIT_X = 225;        // Mittellinie Berg
+    const ES_TOP_Y = 268;       // Ich/Es-Grenze
+    const berg = "M225,46 L248,96 L258,132 L268,158 L306,196 L322,258 L300,330 L260,378 L226,392 L180,386 L140,356 L112,298 L106,238 L126,186 L158,156 L186,110 L206,72 Z";
+    return `<div class="card">
+      <p class="lehrsatz">${card.text}</p>
+      <div class="diagram"><svg viewBox="0 0 400 432" role="img" aria-label="Eisberg-Diagramm: Ich größtenteils bewusst, Über-Ich und Es unter der Oberfläche">
+        <defs>
+          <path id="wavetop" d="${wave1}"/>
+          <path id="wavemid" d="${wave2}"/>
+          <clipPath id="bergclip"><path d="${berg}"/></clipPath>
+        </defs>
+        <path d="${wave2} L400,432 L0,432 Z" fill="${C("water3")}"/>
+        <path d="M24,300 q10,-7 20,0 q10,7 20,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.3"/>
+        <path d="M330,264 q10,-7 20,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.3"/>
+        <path d="M44,392 q10,-7 20,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.3"/>
+        <g clip-path="url(#bergclip)">
+          <rect x="90" y="30" width="245" height="410" fill="${C("berg")}"/>
+          <rect x="90" y="182" width="${SPLIT_X - 90}" height="258" fill="${SOFT(rUe.color)}"/>
+          <rect x="${SPLIT_X}" y="182" width="120" height="${ES_TOP_Y - 182}" fill="${C("berg-deep")}"/>
+          <rect x="${SPLIT_X}" y="${ES_TOP_Y}" width="120" height="140" fill="${SOFT(rEs.color)}"/>
+          <path d="M225,46 L248,96 L232,112 Z" fill="${C("water1")}" opacity="0.25"/>
+          <line x1="${SPLIT_X}" y1="46" x2="${SPLIT_X}" y2="440" stroke="${C("ink")}" stroke-width="2"/>
+          <line x1="${SPLIT_X}" y1="${ES_TOP_Y}" x2="330" y2="${ES_TOP_Y}" stroke="${C("ink")}" stroke-width="2"/>
+        </g>
+        <path d="${berg}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
+        <path d="${wave1} ${wave2rev} Z" fill="${C("water1")}"/>
+        <path d="${wave1}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
+        <path d="${wave2}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
+        <text class="svglabel" font-size="20" fill="${C("ink")}"><textPath href="#wavetop" startOffset="5%"><tspan dy="-13">${zB.label}</tspan></textPath></text>
+        <text class="svglabel" font-size="17" fill="#FFFFFF"><textPath href="#wavetop" startOffset="3%"><tspan dy="42">${zV.label}</tspan></textPath></text>
+        <text class="svglabel" font-size="17" fill="#FFFFFF"><textPath href="#wavemid" startOffset="2%"><tspan dy="32">${zU.label}</tspan></textPath></text>
+        ${rIch.at === "peak"
+          ? `<line x1="262" y1="84" x2="240" y2="92" stroke="${C("ink")}" stroke-width="1.6"/>
+             <text class="svglabel" x="268" y="90" font-size="17" fill="${C("ink")}" text-anchor="start">${rIch.label}</text>`
+          : `<text class="svglabel" x="272" y="250" font-size="21" fill="${C("ink")}" text-anchor="middle">${rIch.label}</text>`}
+        <text class="svglabel" x="164" y="308" font-size="${rUe.label.length > 7 ? 15 : 18}" fill="${C("ink")}" text-anchor="middle">${rUe.label}</text>
+        <text class="svglabel" x="${rEs.label.length > 4 ? 276 : 270}" y="${rEs.label.length > 4 ? 318 : 336}" font-size="${rEs.label.length > 4 ? 15 : 21}" fill="${C("ink")}" text-anchor="middle">${rEs.label}</text>
+      </svg></div>
+    </div>`;
+  },
+
+  balance(card) {
+    // Balken statisch gekippt (linke Seite unten = wiegt schwerer), V-Seile zu echten Schalen.
+    // Seile werden am Schalenrand geclippt statt übermalt — Geometrie sauber, nicht nur Optik.
+    const ropeSegs = (ax, ay, bx, by, mx, my, r) => {
+      const dx = bx - ax, dy = by - ay, fx = ax - mx, fy = ay - my;
+      const a = dx * dx + dy * dy, b = 2 * (fx * dx + fy * dy), c = fx * fx + fy * fy - r * r;
+      const disc = b * b - 4 * a * c;
+      if (disc <= 0) return [[ax, ay, bx, by]];
+      const t1 = Math.max(0, (-b - Math.sqrt(disc)) / (2 * a)), t2 = Math.min(1, (-b + Math.sqrt(disc)) / (2 * a));
+      const segs = [];
+      if (t1 > 0.02) segs.push([ax, ay, ax + dx * t1, ay + dy * t1]);
+      if (t2 < 0.98) segs.push([ax + dx * t2, ay + dy * t2, bx, by]);
+      return segs;
+    };
+    const arm = (side, x, yEnd) => `
+      ${[[x - 35, yEnd + 52], [x + 35, yEnd + 52]].flatMap(([bx, by]) =>
+        ropeSegs(x, yEnd, bx, by, x, yEnd + 36, 31.5).map(([x1, y1, x2, y2]) =>
+          `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${C("ink")}" stroke-width="1.6"/>`)).join("")}
+      <circle cx="${x}" cy="${yEnd + 36}" r="29" fill="${SOFT(side.color)}" stroke="${C(side.color)}" stroke-width="2.5"/>
+      <text class="svglabel" x="${x}" y="${yEnd + 41}" font-size="${side.label.length > 6 ? 9.5 : 11.5}" letter-spacing="0" fill="${C("ink")}" text-anchor="middle">${side.label}</text>
+      <path d="M${x - 35},${yEnd + 52} A35,15 0 0 0 ${x + 35},${yEnd + 52}" fill="${C("card")}" stroke="${C("ink")}" stroke-width="2"/>
+      <text x="${x}" y="${yEnd + 86}" font-size="10.5" fill="${C("muted")}" text-anchor="middle" font-weight="600">${side.sub}</text>`;
+    return `<div class="card">
+      <p class="lehrsatz">${card.text}</p>
+      <div class="diagram"><svg viewBox="0 50 400 210" role="img" aria-label="Waage: ${card.left.label} wiegt schwerer als ${card.right.label}, ${card.pivot.label} am Drehpunkt">
+        <line x1="72" y1="107" x2="328" y2="85" stroke="${C("ink")}" stroke-width="4" stroke-linecap="round"/>
+        ${arm(card.left, 72, 107)}
+        ${arm(card.right, 328, 85)}
+        <path d="M200,96 L176,152 L224,152 Z" fill="${C("ink")}"/>
+        <line x1="140" y1="152" x2="260" y2="152" stroke="${C("ink")}" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="200" cy="96" r="7" fill="${C("card")}" stroke="${C("ink")}" stroke-width="3"/>
+        <rect x="139" y="176" width="122" height="58" rx="14" fill="${SOFT(card.pivot.color)}" stroke="${C(card.pivot.color)}" stroke-width="2.5"/>
+        <text class="svglabel" x="200" y="202" font-size="16" fill="${C("ink")}" text-anchor="middle">${card.pivot.label}</text>
+        <text x="200" y="221" font-size="11" fill="${C("muted")}" text-anchor="middle" font-weight="600">${card.pivot.sub}</text>
+      </svg></div>
+    </div>`;
+  },
+
+  flow(card) {
+    const ys = [46, 138, 262];
+    const nodes = card.steps.map((s, i) => `
+      ${i > 0 ? `<line x1="200" y1="${ys[i-1] + 32}" x2="200" y2="${ys[i] - 34}" stroke="${C("ink")}" stroke-width="1.8" marker-end="url(#arrow)"/>` : ""}
+      <rect x="96" y="${ys[i] - 30}" width="208" height="62" rx="16"
+            fill="${SOFT(card.steps[i].color)}" stroke="${C(card.steps[i].color)}" stroke-width="2.5"/>
+      <text class="svglabel" x="200" y="${ys[i] - 2}" font-size="16" fill="${C("ink")}" text-anchor="middle">${s.label}</text>
+      <text x="200" y="${ys[i] + 18}" font-size="11.5" fill="${C("muted")}" text-anchor="middle" font-weight="600">${s.sub}</text>`).join("");
+    return `<div class="card">
+      <p class="lehrsatz">${card.text}</p>
+      <div class="diagram"><svg viewBox="0 0 400 340" role="img" aria-label="Ablauf der Verdrängung: Impuls, Konflikt, Verdrängung ins Unbewusste">
+        <defs><marker id="arrow" markerWidth="9" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="${C("ink")}"/>
+        </marker></defs>
+        <rect x="0" y="216" width="400" height="124" fill="${C("water3")}" opacity="0.92"/>
+        <path d="M24,302 q9,-6 18,0 q9,6 18,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.35"/>
+        <path d="M334,252 q9,-6 18,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.35"/>
+        <line x1="0" y1="216" x2="400" y2="216" stroke="${C("card")}" stroke-width="2" stroke-dasharray="7 6"/>
+        <text class="svglabel" x="14" y="326" font-size="14" fill="${C("card")}">${card.sink.label}</text>
+        ${nodes}
+      </svg></div>
+    </div>`;
+  },
+
+  curve(card) {
+    // Contract v2: das LLM liefert nur Semantik (Form, Niveaus, Ereignis-Zeitpunkt,
+    // Anker). Punkte UND Label-Positionen berechnet das System — Kollisionen sind
+    // damit konstruktiv ausgeschlossen, nicht nachträglich gelintet.
+    const PLOT = { x0: 52, x1: 382, y0: 244, y1: 34 };
+    const sx = (t) => PLOT.x0 + t * (PLOT.x1 - PLOT.x0);
+    const sy = (v) => PLOT.y0 - (v / 100) * (PLOT.y0 - PLOT.y1);
+    const LEVELS = { floor: 2, low: 8, mid: 52, high: 88 };
+    const NORM = {
+      "linear-rise": (t) => t,
+      "compound-rise": (t) => (Math.exp(3 * t) - 1) / (Math.exp(3) - 1),
+      "saturating-rise": (t) => (1 - Math.exp(-2.6 * t)) / (1 - Math.exp(-2.6)),
+      "decay-halflife": (t) => (1 - Math.exp(-2.6 * t)) / (1 - Math.exp(-2.6)),
+      "flat": () => 0,
+      "suppressed": () => 0
+    };
+    const defFrom = (s) => s.shape === "decay-halflife" ? "high" : "low";
+    const defTo = (s) => s.shape === "decay-halflife" ? "floor"
+      : (s.shape === "flat" || s.shape === "suppressed") ? (s.from ?? defFrom(s)) : "high";
+    const tStop = card.stop ? card.stop.t : null;
+
+    // 1) Sample-Punkte je Serie: Form lebt bis zum Stop (wenn afterStop), sonst bis 1.
+    const samples = card.series.map((s) => {
+      const from = LEVELS[s.from ?? defFrom(s)];
+      const to = LEVELS[s.to ?? defTo(s)];
+      const tEnd = s.afterStop && tStop != null ? tStop : 1;
+      const N = 56, pts = [];
+      for (let i = 0; i <= N; i++) {
+        const u = i / N;
+        let y = from + (to - from) * NORM[s.shape](u);
+        if (s.shape === "suppressed") y = from - from * 0.5 * Math.exp(-(((u - 0.3) / 0.32) ** 2));
+        pts.push([u * tEnd, Math.max(0, y)]);
+      }
+      if (s.afterStop === "collapse") pts.push([Math.min(1, tEnd + 0.03), LEVELS.floor], [1, LEVELS.floor]);
+      if (s.afterStop === "reset") pts.push([Math.min(1, tEnd + 0.17), from]);
+      if (s.afterStop === "rebound") pts.push([Math.min(1, tEnd + 0.2), LEVELS.high + 4]);
+      return { s, pts, stopIdx: s.afterStop ? 56 : null };
+    });
+    // Endniveau-Spreizung: enden zwei Serien gleich hoch, endet die steilere höher.
+    if (samples.length === 2) {
+      const ends = samples.map((sm) => sm.pts[sm.pts.length - 1][1]);
+      if (Math.abs(ends[0] - ends[1]) < 6) {
+        const slope = samples.map((sm) => {
+          const [ta, ya] = sm.pts[sm.pts.length - 2], [tb, yb] = sm.pts[sm.pts.length - 1];
+          return tb > ta ? (yb - ya) / (tb - ta) : 0;
+        });
+        const hi = slope[0] >= slope[1] ? 0 : 1;
+        samples[hi].pts[samples[hi].pts.length - 1][1] += 3.5;
+        samples[1 - hi].pts[samples[1 - hi].pts.length - 1][1] -= 3.5;
+      }
+    }
+
+    // 2) Label-Solver: Kandidaten testen, erster kollisionsfreier gewinnt.
+    const measure = (txt, size) => {
+      MEASURE_CTX.font = `700 ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      return MEASURE_CTX.measureText(txt).width + txt.length * size * 0.08;
+    };
+    const placed = [];   // {x,y,w,h} — Mittelpunkt-Boxen
+    const box = (cx, cy, w, h) => ({ x: cx - w / 2, y: cy - h / 2, w, h });
+    const inView = (b) => b.x >= 4 && b.x + b.w <= 396 && b.y >= 12 && b.y + b.h <= 252;
+    const hitBox = (a, b) => !(a.x + a.w < b.x || b.x + b.w < a.x || a.y + a.h < b.y || b.y + b.h < a.y);
+    const pad = (b, p) => ({ x: b.x - p, y: b.y - p, w: b.w + 2 * p, h: b.h + 2 * p });
+    // Pfade pixeldicht abtasten — auch lange Einzelsegmente (Collapse-Schwanz) werden Hindernis.
+    const allPix = samples.flatMap((sm) => {
+      const out = [];
+      for (let i = 1; i < sm.pts.length; i++) {
+        const [ta, va] = sm.pts[i - 1], [tb, vb] = sm.pts[i];
+        const ax = sx(ta), ay = sy(va), bx = sx(tb), by = sy(vb);
+        const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 4));
+        for (let k = 0; k <= n; k++) out.push([ax + (bx - ax) * (k / n), ay + (by - ay) * (k / n)]);
+      }
+      return out;
+    });
+    const hitPath = (b) => { const q = pad(b, 3); return allPix.some(([px, py]) => px >= q.x && px <= q.x + q.w && py >= q.y && py <= q.y + q.h); };
+    const free = (b) => inView(b) && !hitPath(b) && !placed.some((o) => hitBox(pad(b, 4), o));
+    const put = (b) => { placed.push(b); return b; };
+
+    // Reservierungen: Achsen-Beschriftungen.
+    put(box(PLOT.x0 + measure(card.ylabel, 11) / 2, 20, measure(card.ylabel, 11), 14));
+    put(box(PLOT.x1 - measure(card.xlabel, 11) / 2, 262, measure(card.xlabel, 11), 14));
+
+    // Stop-Label: oben an der Grenz-Vertikalen, horizontal in die viewBox geklemmt.
+    // Die Vertikale selbst ist Hindernis — kein Label darf sie schneiden.
+    let stopSvg = "";
+    if (card.stop) {
+      for (let y = PLOT.y1; y <= PLOT.y0; y += 4) allPix.push([sx(tStop), y]);
+      const w = measure(card.stop.label, 10.5);
+      const lx = sx(tStop);
+      // Kandidaten: zentriert über der Linie, rechts daneben, links daneben — je 2 Höhen.
+      let best = null;
+      outer: for (const cy of [24, 40]) {
+        for (const cx of [lx, lx + 8 + w / 2, lx - 8 - w / 2]) {
+          const cc = Math.min(396 - w / 2, Math.max(4 + w / 2, cx));
+          const b = box(cc, cy, w, 13);
+          if (inView(b) && !placed.some((o) => hitBox(pad(b, 3), o))) { best = b; break outer; }
+        }
+      }
+      best = best || box(Math.min(396 - w / 2, Math.max(4 + w / 2, lx)), 24, w, 13);
+      put(best);
+      stopSvg = `<line x1="${lx}" y1="34" x2="${lx}" y2="244"
+          stroke="${C("ink")}" stroke-width="1.5" stroke-dasharray="5 5"/>
+        <text x="${best.x + best.w / 2}" y="${best.y + 10}" font-size="10.5" font-weight="700" letter-spacing="0.08em"
+          fill="${C("ink")}" text-anchor="middle">${card.stop.label}</text>`;
+    }
+    // Endpunkt-Dots reservieren.
+    samples.forEach((sm) => { const [t, v] = sm.pts[sm.pts.length - 1]; put(box(sx(t), sy(v), 12, 12)); });
+
+    const yOnCurve = (sm, t) => {
+      const pts = sm.pts;
+      for (let i = 1; i < pts.length; i++) if (pts[i][0] >= t) {
+        const [ta, ya] = pts[i - 1], [tb, yb] = pts[i];
+        return tb > ta ? ya + (yb - ya) * ((t - ta) / (tb - ta)) : ya;
+      }
+      return pts[pts.length - 1][1];
+    };
+    window.__curveDebug = { samples, yOnCurve };   // Mess-Hook: notecheck.mjs misst am Renderer-Original, keine Zweit-Geometrie
+
+    // Platziert ein Label nahe seines Ankers; Rückgabe {x,y,box,leader}.
+    // Leader-Linien dürfen keine Kurve schneiden (Anker-Nähe ausgenommen — dort endet sie).
+    const leaderFree = (from, to) => {
+      const n = Math.max(1, Math.ceil(Math.hypot(to[0] - from[0], to[1] - from[1]) / 4));
+      for (let k = 0; k <= n; k++) {
+        const x = from[0] + (to[0] - from[0]) * (k / n), y = from[1] + (to[1] - from[1]) * (k / n);
+        if (Math.hypot(x - to[0], y - to[1]) < 9) continue;
+        if (allPix.some(([px, py]) => Math.hypot(px - x, py - y) < 3)) return false;
+      }
+      return true;
+    };
+    const solve = (anchor, txt, size, sideWish) => {
+      const wishSign = sideWish === "below" ? 1 : -1;
+      for (const sz of size > 9 ? [size, Math.max(8.5, size - 1.5)] : [size]) {
+        const w = measure(txt, sz), h = sz + 3;
+        const cands = [];
+        for (const side of [-1, 1]) for (const dist of [16, 26, 38, 52, 66]) {
+          for (const dx of [0, -24, 24, -48, 48, -76, 76, -104, 104]) {
+            cands.push({
+              b: box(anchor[0] + dx, anchor[1] + side * dist, w, h),
+              score: Math.hypot(dx, dist) + (sideWish && side !== wishSign ? 34 : 0),
+              far: Math.hypot(dx, dist) > 58
+            });
+          }
+        }
+        cands.sort((a, b) => a.score - b.score);
+        for (const c of cands) {
+          if (!free(c.b)) continue;
+          const center = [c.b.x + c.b.w / 2, c.b.y + c.b.h / 2];
+          if (c.far && !leaderFree(center, anchor)) continue;
+          return { box: put(c.b), size: sz, leader: c.far ? anchor : null };
+        }
+      }
+      // Notnagel 1: Rastersuche im Plot — nächstgelegene freie Zelle mit freiem Leader-Weg.
+      const sz = Math.max(8.5, size - 1.5), w = measure(txt, sz), h = sz + 3;
+      const cells = [];
+      for (let gy = 24; gy <= 240; gy += 16) for (let gx = PLOT.x0 + w / 2 + 4; gx <= PLOT.x1 - w / 2; gx += 20)
+        cells.push([gx, gy, Math.hypot(gx - anchor[0], gy - anchor[1])]);
+      cells.sort((a, b) => a[2] - b[2]);
+      for (const pass of [true, false]) {
+        for (const [gx, gy] of cells) {
+          const b = box(gx, gy, w, h);
+          if (free(b) && (!pass || leaderFree([gx, gy], anchor))) return { box: put(b), size: sz, leader: anchor };
+        }
+      }
+      // Notnagel 2: nirgends frei — Position mit geringstem Schaden (Pfad-Treffer, Overlaps).
+      let leastBad = null;
+      for (const [gx, gy, d] of cells) {
+        const b = box(gx, gy, w, h), q = pad(b, 3);
+        const hits = allPix.reduce((n, [px, py]) => n + (px >= q.x && px <= q.x + q.w && py >= q.y && py <= q.y + q.h ? 1 : 0), 0);
+        const overlaps = placed.reduce((n, o) => n + (hitBox(pad(b, 4), o) ? 1 : 0), 0);
+        const bad = hits + 40 * overlaps + d * 0.05;
+        if (!leastBad || bad < leastBad.bad) leastBad = { b, bad };
+      }
+      return { box: put(leastBad.b), size: sz, leader: anchor };
+    };
+    const labelSvg = (r, txt, fill) => {
+      const size = r.size;
+      const cx = r.box.x + r.box.w / 2, cy = r.box.y + r.box.h / 2;
+      const lead = r.leader ? (() => {
+        const ex = cx + Math.sign(r.leader[0] - cx) * Math.min(r.box.w / 2, Math.abs(r.leader[0] - cx));
+        const ey = cy + Math.sign(r.leader[1] - cy) * (r.box.h / 2 + 1);
+        return `<line class="leader" x1="${ex}" y1="${ey}" x2="${r.leader[0]}" y2="${r.leader[1]}" stroke="${C("muted")}" stroke-width="1.2"/>`;
+      })() : "";
+      return `${lead}<text class="svglabel" x="${cx}" y="${cy + size * 0.36}" font-size="${size}"
+        fill="${fill}" text-anchor="middle" letter-spacing="0.08em">${txt}</text>`;
+    };
+
+    // 3) Zeichnen: Pfade (Stop-Folge-Segment gestrichelt bei collapse), dann Labels.
+    const series = samples.map((sm) => {
+      const { s, pts } = sm;
+      const px = (arr) => arr.map(([t, v]) => `${sx(t).toFixed(1)},${sy(v).toFixed(1)}`).join(" ");
+      const main = sm.stopIdx != null ? pts.slice(0, sm.stopIdx + 1) : pts;
+      const tail = sm.stopIdx != null ? pts.slice(sm.stopIdx) : [];
+      const [et, ev] = pts[pts.length - 1];
+      const areaPts = s.afterStop === "collapse" ? main : pts;
+      return `${s.area ? `<polygon points="${sx(areaPts[0][0])},244 ${px(areaPts)} ${sx(areaPts[areaPts.length - 1][0])},244" fill="${C(s.color)}" opacity="0.1"/>` : ""}
+        <polyline points="${px(main)}" fill="none" stroke="${C(s.color)}" stroke-width="3"
+              stroke-linejoin="round" stroke-linecap="round"
+              ${s.dash ? 'stroke-dasharray="6 6"' : ""} ${s.faded ? 'opacity="0.4"' : ""}/>
+        ${tail.length ? `<polyline points="${px(tail)}" fill="none" stroke="${C(s.color)}" stroke-width="3"
+              stroke-linejoin="round" stroke-linecap="round"
+              ${s.afterStop === "collapse" ? 'stroke-dasharray="6 6"' : (s.dash ? 'stroke-dasharray="6 6"' : "")}
+              ${s.faded ? 'opacity="0.4"' : ""}/>` : ""}
+        <circle cx="${sx(et)}" cy="${sy(ev)}" r="4.5" fill="${C(s.color)}" ${s.faded ? 'opacity="0.4"' : ""}/>`;
+    }).join("");
+    const seriesLabels = samples.map((sm) => {
+      if (!sm.s.label) return "";
+      let best = null;
+      for (const t of [0.72, 0.55, 0.86, 0.4, 0.28]) {
+        const a = [sx(t), sy(yOnCurve(sm, t))];
+        const r = solve(a, sm.s.label, 13);
+        if (!r.leader) { best = r; break; }
+        if (!best) best = r;
+        placed.pop();   // Kandidat mit Leader wieder freigeben, nächsten Anker testen
+      }
+      if (placed[placed.length - 1] !== best.box) placed.push(best.box);
+      return labelSvg(best, sm.s.label, C("ink"));
+    }).join("");
+    const notes = (card.notes || []).map((n) => {
+      const sm = samples[typeof n.series === "number" ? n.series
+        : Math.max(0, card.series.findIndex((s) => s.label === n.series))];
+      const a = [sx(n.t), sy(yOnCurve(sm, n.t))];
+      return labelSvg(solve(a, n.label, 10, n.side), n.label, C("muted"));
+    }).join("");
+
+    return `<div class="card">
+      <p class="lehrsatz">${card.text}</p>
+      <div class="diagram"><svg viewBox="0 0 400 278" role="img" aria-label="Kurvendiagramm: ${card.ylabel} über ${card.xlabel}">
+        <path d="M52,34 L52,244 L382,244" fill="none" stroke="${C("muted")}" stroke-width="1.5"/>
+        <text x="52" y="22" font-size="11" font-weight="700" letter-spacing="0.1em" fill="${C("muted")}">${card.ylabel}</text>
+        <text x="382" y="266" font-size="11" font-weight="700" letter-spacing="0.1em" fill="${C("muted")}" text-anchor="end">${card.xlabel}</text>
+        ${stopSvg}
+        ${series}
+        ${seriesLabels}
+        ${notes}
+      </svg></div>
+      ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
+    </div>`;
+  },
+
+  fanout(card) {
+    const cys = Array.from({ length: card.count }, (_, i) => 52 + i * (204 / (card.count - 1)));
+    // Adaptive Label-Größe wie in den Waage-Schalen: ein 12-Zeichen-Label füllt die
+    // Box sonst randvoll; Strahlen starten mit Luft zur Box, nie an ihrer Kante.
+    const fs = card.source.label.length > 9 ? 12.5 : 15;
+    return `<div class="card">
+      <p class="lehrsatz">${card.text}</p>
+      <div class="diagram"><svg viewBox="0 0 400 300" role="img" aria-label="Hebel-Diagramm: eine Handlung wirkt vielfach">
+        ${cys.map((cy) => `<line x1="166" y1="154" x2="${316 - 15}" y2="${cy}" stroke="${C("ink")}" stroke-width="1.5"/>`).join("")}
+        <rect x="24" y="122" width="136" height="64" rx="16" fill="${SOFT(card.source.color)}" stroke="${C(card.source.color)}" stroke-width="2.5"/>
+        <text class="svglabel" x="92" y="150" font-size="${fs}" fill="${C("ink")}" text-anchor="middle">${card.source.label}</text>
+        <text x="92" y="168" font-size="10.5" fill="${C("muted")}" text-anchor="middle" font-weight="600">${card.source.sub}</text>
+        ${cys.map((cy) => `<g>
+          <circle cx="316" cy="${cy}" r="15" fill="${SOFT("ich")}" stroke="${C("ich")}" stroke-width="2"/>
+          <circle cx="316" cy="${cy - 3.5}" r="4.2" fill="${C("ich")}"/>
+          <path d="M308,${cy + 9.5} a8,6 0 0 1 16,0 Z" fill="${C("ich")}"/>
+        </g>`).join("")}
+        <text class="svglabel" x="316" y="28" font-size="14" fill="${C("ink")}" text-anchor="middle">${card.result.label}</text>
+      </svg></div>
+      ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
+    </div>`;
+  },
+
+  cycle(card) {
+    // Kreislauf: 4 Stationen, Pfeile im Uhrzeigersinn — der Loop ist die Aussage.
+    const pos = [[200, 60], [322, 170], [200, 280], [78, 170]];
+    const arrows = [
+      "M278,74 Q330,100 326,136", "M312,206 Q330,252 274,270",
+      "M126,288 Q70,260 74,204", "M88,134 Q70,88 124,72"
+    ];
+    return `<div class="card">
+      <p class="lehrsatz">${card.text}</p>
+      <div class="diagram"><svg viewBox="0 0 400 340" role="img" aria-label="Kreislauf: ${card.steps.map((s) => s.label).join(", ")}">
+        <defs><marker id="cyarrow" markerWidth="9" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="${C("ink")}"/>
+        </marker></defs>
+        ${arrows.map((d) => `<path d="${d}" fill="none" stroke="${C("ink")}" stroke-width="1.8" marker-end="url(#cyarrow)"/>`).join("")}
+        ${card.steps.map((s, i) => {
+          const [cx, cy] = pos[i];
+          return `<rect x="${cx - 66}" y="${cy - 26}" width="132" height="52" rx="14"
+              fill="${SOFT(s.color)}" stroke="${C(s.color)}" stroke-width="2.5"/>
+            <text class="svglabel" x="${cx}" y="${cy - 2}" font-size="14.5" fill="${C("ink")}" text-anchor="middle">${s.label}</text>
+            <text x="${cx}" y="${cy + 15}" font-size="10.5" fill="${C("muted")}" text-anchor="middle" font-weight="600">${s.sub}</text>`;
+        }).join("")}
+      </svg></div>
+      ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
+    </div>`;
+  },
+
+  compare(card) {
+    const panel = (p) => `<div class="cpanel" style="border-color:${C(p.color)};background:${SOFT(p.color)}">
+      <h3>${p.title}</h3>
+      ${p.items.map((it) => `<div class="citem"><b>${it.label}</b><span>${it.sub}</span></div>`).join("")}
+    </div>`;
+    return `<div class="card">
+      <p class="lehrsatz">${card.text}</p>
+      <div class="diagram"><div class="compare">${panel(card.left)}${panel(card.right)}</div></div>
+      ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
+    </div>`;
+  },
+
+  venn(card) {
+    // Schnittfläche als eigenes, konturiertes Objekt — die Grenze ist die Aussage.
+    return `<div class="card">
+      <p class="lehrsatz">${card.text}</p>
+      <div class="diagram"><svg viewBox="0 0 400 280" role="img" aria-label="Venn-Diagramm: ${card.a.label} und ${card.b.label} überschneiden sich">
+        <circle cx="150" cy="155" r="95" fill="${SOFT(card.a.color)}" stroke="${C(card.a.color)}" stroke-width="2.5"/>
+        <circle cx="250" cy="155" r="95" fill="${SOFT(card.b.color)}" stroke="${C(card.b.color)}" stroke-width="2.5"/>
+        <path d="M200,74 A95,95 0 0 1 200,236 A95,95 0 0 1 200,74 Z"
+              fill="${SOFT(card.overlap.color)}" stroke="${C("ink")}" stroke-width="2"/>
+        <text class="svglabel" x="118" y="38" font-size="12.5" fill="${C("ink")}" text-anchor="middle">${card.a.label}</text>
+        <text class="svglabel" x="285" y="38" font-size="12.5" fill="${C("ink")}" text-anchor="middle">${card.b.label}</text>
+        ${card.overlap.label.map((l, i) => `<text class="svglabel" x="200" y="${146 + i * 18}" font-size="12" fill="${C("ink")}" text-anchor="middle">${l}</text>`).join("")}
+      </svg></div>
+      ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
+    </div>`;
+  },
+
+  quiz(card) {
+    const opts = card.options.map((o, i) =>
+      `<button class="qopt" data-i="${i}" data-c="${o.correct ? 1 : 0}">${o.label}</button>`).join("");
+    return `<div class="card">
+      <p class="lehrsatz" style="font-size:23px">${card.question}</p>
+      <div class="quizopts">${opts}</div>
+      <button class="qcheck" disabled>Prüfen</button>
+      <p class="qfeedback" aria-live="polite"></p>
+    </div>`;
+  },
+
+  insight(card) {
+    return `<div class="card card--insight">
+      <div class="insight-rule"></div>
+      <blockquote>„${card.quote}“</blockquote>
+      <cite>— ${card.cite}</cite>
+      <p class="expl">${card.explain}</p>
+      <button class="savebtn" aria-label="Karte speichern">♥</button>
+      <div class="savehint">Karte speichern</div>
+    </div>`;
+  }
+};
+
+// ————— App-Shell —————
+const LESSONS = [LESSON_FREUD, LESSON_NAVAL, LESSON_HABITS, LESSON_KAHNEMAN, LESSON_SLEEP, LESSON_GLM, LESSON_GLM_V2];
+const area = document.getElementById("cardarea");
+const progress = document.getElementById("progress");
+const cardindex = document.getElementById("cardindex");
+const overlay = document.getElementById("jsonoverlay");
+const jsoncode = document.getElementById("jsoncode");
+const params = new URLSearchParams(location.search);
+let lessonIdx = Math.min(LESSONS.length - 1, Math.max(0, (parseInt(params.get("lesson"), 10) || 1) - 1));
+let LESSON = LESSONS[lessonIdx];
+let N = LESSON.cards.length;
+let idx = Math.min(N - 1, Math.max(0, (parseInt(params.get("card"), 10) || 1) - 1));
+
+function buildProgress() {
+  progress.innerHTML = LESSON.cards.map(() => "<span></span>").join("");
+}
+buildProgress();
+
+function switchLesson(i) {
+  lessonIdx = i;
+  LESSON = LESSONS[i];
+  N = LESSON.cards.length;
+  idx = 0;
+  buildProgress();
+  document.querySelectorAll(".lessonbtn").forEach((b, bi) => b.classList.toggle("active", bi === i));
+  render();
+}
+document.querySelectorAll(".lessonbtn").forEach((b, bi) => {
+  b.classList.toggle("active", bi === lessonIdx);
+  b.addEventListener("click", () => switchLesson(bi));
+});
+
+function render() {
+  const card = LESSON.cards[idx];
+  area.innerHTML = RENDERERS[card.type](card);
+  [...progress.children].forEach((s, i) => s.classList.toggle("done", i <= idx));
+  cardindex.textContent = `${idx + 1} / ${N}`;
+  overlay.classList.remove("open");
+  if (card.type === "quiz") wireQuiz(card);
+  const save = area.querySelector(".savebtn");
+  if (save) save.addEventListener("click", (e) => {
+    e.stopPropagation();
+    save.classList.toggle("saved");
+  });
+}
+
+function go(d) {
+  idx = Math.min(N - 1, Math.max(0, idx + d));
+  render();
+}
+
+area.addEventListener("click", (e) => {
+  if (e.target.closest("button")) return;
+  const r = area.getBoundingClientRect();
+  go((e.clientX - r.left) / r.width < 0.35 ? -1 : 1);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight") go(1);
+  if (e.key === "ArrowLeft") go(-1);
+});
+
+function wireQuiz(card) {
+  const opts = [...area.querySelectorAll(".qopt")];
+  const check = area.querySelector(".qcheck");
+  const fb = area.querySelector(".qfeedback");
+  let sel = null, done = false;
+  opts.forEach((o) => o.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (done) return;
+    sel = o;
+    opts.forEach((x) => x.classList.toggle("sel", x === o));
+    check.disabled = false;
+    check.classList.add("ready");
+  }));
+  check.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!sel || done) return;
+    done = true;
+    const correct = sel.dataset.c === "1";
+    sel.classList.remove("sel");
+    sel.classList.add(correct ? "right" : "wrong");
+    if (!correct) opts.find((x) => x.dataset.c === "1").classList.add("right");
+    fb.innerHTML = correct ? card.explain : card.wrong;
+    check.textContent = "Weiter";
+    check.addEventListener("click", () => go(1), { once: true });
+  });
+}
+
+document.getElementById("jsonbtn").addEventListener("click", () => {
+  jsoncode.textContent = JSON.stringify(LESSON.cards[idx], null, 2);
+  overlay.classList.add("open");
+});
+document.getElementById("jsonclose").addEventListener("click", () => overlay.classList.remove("open"));
+document.querySelector(".xbtn").addEventListener("click", () => { idx = 0; render(); });
+
+render();
+</script>

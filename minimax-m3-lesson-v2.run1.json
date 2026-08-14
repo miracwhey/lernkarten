@@ -1,0 +1,158 @@
+{
+  "id": "warum-wir-schlafen",
+  "title": "Warum wir schlafen",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Schlaf · Walker, 2017",
+      "title": "Warum wir schlafen",
+      "sub": "Schlafdruck, Koffein und der Preis zu kurzer Nächte.",
+      "stats": "7 Karten · 4 Minuten"
+    },
+    {
+      "relation": "trend",
+      "text": "Solange du wach bist, <b>sammelt sich Adenosin</b> im Gehirn — und mit ihm der Druck, schlafen zu müssen.",
+      "xlabel": "WACH-STUNDEN",
+      "ylabel": "SCHLAFDRUCK",
+      "series": [
+        {
+          "label": "Adenosin",
+          "color": "es",
+          "shape": "compound-rise",
+          "from": "low",
+          "to": "high"
+        }
+      ],
+      "notes": [
+        {
+          "label": "steigt weiter",
+          "series": 0,
+          "t": 0.7,
+          "side": "above"
+        }
+      ],
+      "caption": "Nach dem Mittagessen wirst du müde — das ist Adenosin, nicht das Essen.",
+      "type": "curve"
+    },
+    {
+      "relation": "weighing",
+      "text": "Zwei Kräfte bestimmen deine Müdigkeit: <span class=\"w-es\">Schlafdruck</span> und <span class=\"w-ue\">Tagesrhythmus</span>. Beide ziehen am selben Pendel.",
+      "left": {
+        "label": "DRUCK",
+        "sub": "Adenosin steigt",
+        "color": "es"
+      },
+      "right": {
+        "label": "RHYTHMUS",
+        "sub": "Innere Uhr",
+        "color": "ueberich"
+      },
+      "pivot": {
+        "label": "MÜDIGKEIT",
+        "sub": "beide zusammen",
+        "color": "ich"
+      },
+      "type": "balance"
+    },
+    {
+      "relation": "loop",
+      "text": "Koffein <b>blockiert</b> die Andockstellen für Adenosin — es entfernt die Müdigkeit nicht, es <b>maskiert</b> sie nur.",
+      "steps": [
+        {
+          "label": "KOFFEIN",
+          "sub": "besetzt Rezeptor",
+          "color": "ich"
+        },
+        {
+          "label": "DRUCK STEIGT",
+          "sub": "Adenosin wartet",
+          "color": "es"
+        },
+        {
+          "label": "WIRKUNG END.",
+          "sub": "nach Stunden",
+          "color": "ueberich"
+        },
+        {
+          "label": "CRASH",
+          "sub": "Druck trifft voll",
+          "color": "es"
+        }
+      ],
+      "caption": "Kaffee um 16 Uhr — der Crash kommt um Mitternacht, nicht um 18 Uhr.",
+      "type": "cycle"
+    },
+    {
+      "relation": "trend",
+      "text": "Koffein hat eine <b>Halbwertszeit von 5–7 Stunden</b>. Was um 16 Uhr wirkt, ist um 21 Uhr noch zur Hälfte da.",
+      "xlabel": "STUNDEN",
+      "ylabel": "KOFFEIN",
+      "series": [
+        {
+          "label": "Koffein",
+          "color": "ich",
+          "shape": "decay-halflife",
+          "from": "mid",
+          "to": "floor"
+        }
+      ],
+      "notes": [
+        {
+          "label": "50 % WIRKSAM",
+          "series": 0,
+          "t": 0.25,
+          "side": "above"
+        }
+      ],
+      "caption": "Kaffee um 16 Uhr, Bett um 23 Uhr — die Hälfte des Koffeins wartet noch auf dich.",
+      "type": "curve"
+    },
+    {
+      "relation": "weighing",
+      "text": "Eine Nacht mit nur <span class=\"w-es\">4 Stunden</span> Schlaf drückt die Aktivität der natürlichen Killerzellen um <b>70 %</b>.",
+      "left": {
+        "label": "4 H",
+        "sub": "NK-Zellen –70 %",
+        "color": "es"
+      },
+      "right": {
+        "label": "7–8 H",
+        "sub": "volle Abwehr",
+        "color": "ich"
+      },
+      "pivot": {
+        "label": "ABWEHR",
+        "sub": "über Nacht",
+        "color": "ueberich"
+      },
+      "type": "balance"
+    },
+    {
+      "type": "quiz",
+      "question": "Du bist 19 Stunden ununterbrochen wach. Wie schätzt du deine Reaktionsfähigkeit ein?",
+      "options": [
+        {
+          "label": "Etwas müde, aber noch klar.",
+          "correct": false
+        },
+        {
+          "label": "Wie mit 0,8 Promille — fahruntüchtig.",
+          "correct": true
+        },
+        {
+          "label": "Wie nach einem doppelten Espresso.",
+          "correct": false
+        }
+      ],
+      "explain": "Nach 19 Stunden Wachsein entspricht die kognitive Leistung <strong>0,8 Promille</strong> — das ist die Grenze zur Fahruntüchtigkeit.",
+      "wrong": "Die eigene Wahrnehmung eicht sich nach oben: Du fühlst dich wach, bist es aber nicht."
+    },
+    {
+      "type": "insight",
+      "quote": "Je kürzer dein Schlaf, desto kürzer dein Leben.",
+      "cite": "Matthew Walker, 2017",
+      "explain": "Schlaf ist <b>kein Luxus</b>, sondern die wirksamste tägliche Reset-Taste für Gehirn und Körper."
+    }
+  ]
+}

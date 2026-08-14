@@ -1,0 +1,154 @@
+{
+  "id": "why-we-sleep-walker",
+  "title": "Warum wir schlafen",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Psychologie · Walker (2017)",
+      "title": "Warum wir schlafen",
+      "sub": "Schlafdruck, Koffein und die Folgen von Schlafmangel",
+      "stats": "8 Karten · 4 Minuten"
+    },
+    {
+      "relation": "trend",
+      "text": "Je länger du wach bist, desto mehr <b>Adenosin</b> sammelt sich im Gehirn an und erhöht deinen Schlafdruck.",
+      "xlabel": "Wachzeit",
+      "ylabel": "Adenosin",
+      "series": [
+        {
+          "label": "Adenosin",
+          "color": "ich",
+          "shape": "linear-rise",
+          "from": "low",
+          "to": "high"
+        }
+      ],
+      "caption": "Nach einem langen Arbeitstag fühlst du dich müde, weil Adenosin sich angesammelt hat.",
+      "type": "curve"
+    },
+    {
+      "relation": "contrast",
+      "text": "Während <b>Schlaf</b> dein Gehirn aufräumt, führt <span class=\"w-es\">Schlafmangel</span> zu Vergesslichkeit und Reizbarkeit.",
+      "left": {
+        "title": "SCHLAF",
+        "color": "ich",
+        "items": [
+          {
+            "label": "Gedächtnis",
+            "sub": "überträgt Wissen ins Langzeit"
+          },
+          {
+            "label": "Immunsystem stärkt",
+            "sub": "erhöht Killerzellen-Aktivität"
+          }
+        ]
+      },
+      "right": {
+        "title": "SCHLAFMANGEL",
+        "color": "es",
+        "items": [
+          {
+            "label": "Vergesslichkeit",
+            "sub": "frisches Wissen geht verloren"
+          },
+          {
+            "label": "Krankheitsrisiko",
+            "sub": "Zellenaktivität sinkt stark"
+          }
+        ]
+      },
+      "caption": "Nach wenig Schlaf fühlst du dich vergesslicher und anfälliger für Erkältungen.",
+      "type": "compare"
+    },
+    {
+      "relation": "multiplication",
+      "text": "<span class=\"w-es\">Eine Nacht Schlafmangel</span> wirkt sich auf viele Körperssysteme aus: Gedächtnis, Immunsystem, Stoffwechsel, Herz‑Kreislauf und Stimmung.",
+      "source": {
+        "label": "Schlafmangel",
+        "sub": "verringert Schlafzeit",
+        "color": "es"
+      },
+      "count": 5,
+      "result": {
+        "label": "Effekt"
+      },
+      "caption": "Eine kurze Nacht schwächt dein Gedächtnis, Immunsystem und Stimmung.",
+      "type": "fanout"
+    },
+    {
+      "relation": "weighing",
+      "text": "Der <span class=\\\"w-es\\\">Schlafdruck</span> wiegt schwerer als der kurze <b>Koffein-Schub</b>, sodass du trotz Kaffee müde bleibst.",
+      "left": {
+        "label": "Schlaf",
+        "sub": "wachsender Druck",
+        "color": "es"
+      },
+      "right": {
+        "label": "Koffein",
+        "sub": "hemmt Adenosin",
+        "color": "ich"
+      },
+      "pivot": {
+        "label": "Wachheit",
+        "sub": "Kräfteausgleich",
+        "color": "ueberich"
+      },
+      "caption": "Nach einem Kaffee am Morgen fühlst du dich kurz wach, aber der Schlafdruck hält dich müde.",
+      "type": "balance"
+    },
+    {
+      "relation": "descent",
+      "text": "Bei chronischem Schlafmangel schreitest du von leichter Müdigkeit über gefährlichen Mikroschlaf bis zu einem Punkt, an dem dein <span class=\\\"w-es\\\">Leistung unter 0,8 Promille fällt</span>.",
+      "steps": [
+        {
+          "label": "Müdigkeit",
+          "sub": "Gähnen, Konzentration",
+          "color": "es"
+        },
+        {
+          "label": "Microschlaf",
+          "sub": "kurze Schlafepisoden",
+          "color": "es"
+        },
+        {
+          "label": "Leistung <0,8",
+          "sub": "wie bei Alkohol",
+          "color": "es",
+          "submerged": true
+        }
+      ],
+      "sink": {
+        "label": "Kontrollverlust"
+      },
+      "caption": "Nach 19 Stunden wach bist du so leistungsbehindert wie mit 0,8 Promille Blutalkohol.",
+      "type": "flow"
+    },
+    {
+      "type": "quiz",
+      "question": "Du trinkst um 16:00 Uhr Kaffee und erwartest, dass du um 21:00 Uhr müde wirst. Was passiert mit deinem Schlafdruck?",
+      "options": [
+        {
+          "label": "Du bist um 21:00 Uhr weniger müde.",
+          "correct": false
+        },
+        {
+          "label": "Du bist um 21:00 Uhr gleich müde.",
+          "correct": false
+        },
+        {
+          "label": "Du bist um 21:00 Uhr stärker müde.",
+          "correct": true
+        }
+      ],
+      "explain": "Koffein blockiert Adenosin-Rezeptoren, baut kein Adenosin ab; danach trifft der aufgestaute Schlafdruck zu – du fühlst dich stärker müde.",
+      "wrong": "Viele glauben, dass nachlassende Koffein-Wirkung automatisch müde macht, übersehen dabei jedoch den weiter ansteigenden Adenosin-Spiegel."
+    },
+    {
+      "type": "insight",
+      "quote": "Je kürzer dein Schlaf, desto kürzer dein Leben",
+      "cite": "Matthew Walker, 2017",
+      "explain": "<b>Schlafdauer</b> ist stark mit Lebenserwartung korreliert – jede Stunde weniger Schlaf erhöht das Sterberisiko signifikant."
+    }
+  ]
+}

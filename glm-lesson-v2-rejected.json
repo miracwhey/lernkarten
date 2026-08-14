@@ -1,0 +1,178 @@
+{
+  "id": "why-we-sleep",
+  "title": "Warum wir schlafen",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Schlaf · Matthew Walker",
+      "title": "Die Nacht ist deine Werkstatt",
+      "sub": "Schlaf ist kein Luxus, sondern das Fundament von Gesundheit.",
+      "stats": "7 Karten · 4 Minuten"
+    },
+    {
+      "relation": "trend",
+      "text": "Je länger du wach bist, sammelt sich <span class=\"w-es\">Adenosin</span> im Kopf und erzeugt den Druck, die Augen zu schließen.",
+      "xlabel": "WACHZEIT",
+      "ylabel": "SCHLAFDRUCK",
+      "series": [
+        {
+          "label": "Adenosin",
+          "color": "es",
+          "shape": "linear-rise",
+          "from": "floor",
+          "to": "high",
+          "area": true
+        }
+      ],
+      "stop": {
+        "label": "KOFFEIN",
+        "t": 0.5
+      },
+      "notes": [
+        {
+          "label": "KOFFEIN BLOCKIERT",
+          "series": 0,
+          "t": 0.5,
+          "side": "above"
+        }
+      ],
+      "caption": "Büro-Kaffee um 15 Uhr leugnet den Druck — er löscht ihn nicht, er versteckt ihn.",
+      "type": "curve"
+    },
+    {
+      "relation": "contrast",
+      "text": "Koffein überlistet den Schlafdruck, indem es die <span class=\"w-es\">Adenosin-Rezeptoren</span> blockiert. Der <b>Platzhalter</b> hält dich wach.",
+      "left": {
+        "title": "OHNE KOFFEIN",
+        "color": "ich",
+        "items": [
+          {
+            "label": "Adenosin bindet",
+            "sub": "Rezeptoren melden Erschöpfung"
+          },
+          {
+            "label": "Schlafdruck steigt",
+            "sub": "Du gehst ins Bett"
+          }
+        ]
+      },
+      "right": {
+        "title": "MIT KOFFEIN",
+        "color": "es",
+        "items": [
+          {
+            "label": "Rezeptoren blockiert",
+            "sub": "Adenosin findet keinen Platz"
+          },
+          {
+            "label": "Falsche Wachheit",
+            "sub": "Druck staut sich dahinter auf"
+          }
+        ]
+      },
+      "caption": "Wie ein Zettel vor der Türklinge: Der Bote klingelt nicht, steht aber weiter vor der Tür.",
+      "type": "compare"
+    },
+    {
+      "relation": "trend",
+      "text": "Koffein hat eine Halbwertszeit von 5 Stunden. Ein Kaffee um 16 Uhr hält um 21 Uhr noch <span class=\"w-es\">die Hälfte</span> deiner Dosis im Blut.",
+      "xlabel": "STUNDEN",
+      "ylabel": "KOFFEIN",
+      "series": [
+        {
+          "label": "Koffein im Blut",
+          "color": "es",
+          "shape": "decay-halflife",
+          "from": "high",
+          "to": "floor",
+          "area": true
+        }
+      ],
+      "notes": [
+        {
+          "label": "NOCH 25% AKTIV",
+          "series": 0,
+          "t": 0.5,
+          "side": "above"
+        }
+      ],
+      "caption": "Der Espresso zum Dessert sabotiert die Tiefschlafphase, die drei Stunden später beginnt.",
+      "type": "curve"
+    },
+    {
+      "relation": "weighing",
+      "text": "Eine Nacht mit nur 4 Stunden reduziert deine <b>Killerzellen</b> um etwa 70%. Schlafmangel schaltet die <span class=\"w-es\">Immunabwehr</span> fast ab.",
+      "left": {
+        "label": "4 STD",
+        "sub": "30% Aktivität",
+        "color": "es"
+      },
+      "right": {
+        "label": "4 STD",
+        "sub": "70% Reduktion",
+        "color": "ich"
+      },
+      "pivot": {
+        "label": "Abwehrzellen",
+        "sub": "Viren-Abwehr",
+        "color": "ueberich"
+      },
+      "type": "balance"
+    },
+    {
+      "relation": "loop",
+      "text": "Schlafmangel treibt den <span class=\"w-es\">Cortisolspiegel</span> hoch, was dich am Abend wach hält — ein Teufelskreis aus Erschöpfung und Schlaflosigkeit.",
+      "steps": [
+        {
+          "label": "Schlafmangel",
+          "sub": "Zu wenig Tiefschlaf",
+          "color": "es"
+        },
+        {
+          "label": "Stress",
+          "sub": "Cortisol steigt an",
+          "color": "ueberich"
+        },
+        {
+          "label": "Wachliegen",
+          "sub": "Körper in Alarm",
+          "color": "es"
+        },
+        {
+          "label": "Erschöpfung",
+          "sub": "Nächste Nacht futsch",
+          "color": "ich"
+        }
+      ],
+      "caption": "Der Manager liegt wach, weil der Stress von heute der Kaffee von morgen ist.",
+      "type": "cycle"
+    },
+    {
+      "type": "quiz",
+      "question": "Du trinkst um 16 Uhr einen Kaffee und liegst um 23 Uhr stundenlang wach. Warum?",
+      "options": [
+        {
+          "label": "Um 23 Uhr sind noch 25% des Koffeins aktiv",
+          "correct": true
+        },
+        {
+          "label": "Dein Adenosin war längst abgebaut",
+          "correct": false
+        },
+        {
+          "label": "Koffein baut sich in 2 Stunden restlos ab",
+          "correct": false
+        }
+      ],
+      "explain": "Koffein hat eine Halbwertszeit von 5 Stunden. Um 23 Uhr ist noch etwa 38% aktiv und blockiert deine <strong>Adenosin-Rezeptoren</strong>.",
+      "wrong": "Du fühlst dich vielleicht nicht mehr wach — aber das Koffein blockiert noch immer den Müdigkeits-Rezeptor."
+    },
+    {
+      "type": "insight",
+      "quote": "Je kürzer dein Schlaf, desto kürzer dein Leben.",
+      "cite": "Matthew Walker, 2017",
+      "explain": "Schlaf ist der wichtigste <b>Reset</b> für Körper und Geist — er ist nicht verhandelbar."
+    }
+  ]
+}

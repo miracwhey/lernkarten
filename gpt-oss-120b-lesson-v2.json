@@ -1,0 +1,178 @@
+{
+  "id": "why-we-sleep",
+  "title": "Warum Schlaf unverzichtbar ist",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Schlaf · Matthew Walker",
+      "title": "Warum Schlaf unverzichtbar ist",
+      "sub": "Wie Druck, Rhythmus und Koffein unser Leben steuern",
+      "stats": "8 Karten · 5 Minuten"
+    },
+    {
+      "relation": "trend",
+      "text": "<span class=\"w-es\">Schlafdruck</span> steigt, je länger du wach bist.",
+      "xlabel": "WACHSTUNDEN",
+      "ylabel": "DRUCK",
+      "series": [
+        {
+          "label": "Druck",
+          "color": "es",
+          "shape": "linear-rise"
+        }
+      ],
+      "caption": "Nach 8 Stunden Arbeit willst du dich hinlegen.",
+      "type": "curve"
+    },
+    {
+      "relation": "trend",
+      "text": "Der Neurotransmitter <b>Adenosin</b> ist der chemische Träger des <span class=\"w-es\">Schlafdrucks</span>.",
+      "xlabel": "STUNDEN",
+      "ylabel": "ADENOSIN",
+      "series": [
+        {
+          "label": "Adenosin",
+          "color": "ich",
+          "shape": "linear-rise"
+        }
+      ],
+      "caption": "Dein Gehirn sammelt Adenosin, während du denkst.",
+      "type": "curve"
+    },
+    {
+      "relation": "loop",
+      "text": "Schlaf entsteht, wenn <span class=\"w-es\">Schlafdruck</span> und <span class=\"w-ue\">zirkadianer Rhythmus</span> zusammenstoßen.",
+      "steps": [
+        {
+          "label": "Druck",
+          "sub": "Adenosin steigt",
+          "color": "es"
+        },
+        {
+          "label": "Zirkadian",
+          "sub": "Signal für Nacht",
+          "color": "ueberich"
+        },
+        {
+          "label": "Schlaf",
+          "sub": "Einschlafen",
+          "color": "ich"
+        },
+        {
+          "label": "Erholung",
+          "sub": "Körper regeneriert",
+          "color": "ich"
+        }
+      ],
+      "caption": "Du bist müde, weil dein innerer Wecker nachts tickt.",
+      "type": "cycle"
+    },
+    {
+      "relation": "contrast",
+      "text": "Koffein <span class=\"w-es\">maskiert</span> den <span class=\"w-es\">Schlafdruck</span>, sodass du dich wacher fühlst.",
+      "left": {
+        "title": "KAFFEIN",
+        "color": "es",
+        "items": [
+          {
+            "label": "Blockiert Adenosin",
+            "sub": "Rezeptoren"
+          },
+          {
+            "label": "Halbwertszeit 5‑7h",
+            "sub": "Lang anhaltend"
+          }
+        ]
+      },
+      "right": {
+        "title": "SCHLAFDRUCK",
+        "color": "es",
+        "items": [
+          {
+            "label": "Adenosin steigt",
+            "sub": "Wachzeit"
+          },
+          {
+            "label": "Erfordert Schlaf",
+            "sub": "Abbau"
+          }
+        ]
+      },
+      "pivot": {
+        "label": "BLOCKADE",
+        "sub": "Rezeptor‑Bindung",
+        "color": "ue"
+      },
+      "caption": "Ein Espresso um 15 Uhr hält dich bis 20 Uhr wach.",
+      "type": "compare"
+    },
+    {
+      "relation": "depth-layers",
+      "text": "Im Schlaf wandert Wissen vom <b>Hippocampus</b> ins <b>Kortex</b> und wird langfristig gespeichert.",
+      "zones": [
+        {
+          "id": "z1",
+          "label": "OBEN"
+        },
+        {
+          "id": "z2",
+          "label": "MITTE"
+        },
+        {
+          "id": "z3",
+          "label": "UNTEN"
+        }
+      ],
+      "body": {
+        "shape": "iceberg",
+        "regions": [
+          {
+            "id": "r1",
+            "label": "HIPPO",
+            "color": "es",
+            "at": "peak"
+          },
+          {
+            "id": "r2",
+            "label": "KORTEX",
+            "color": "ich"
+          },
+          {
+            "id": "r3",
+            "label": "LANGZEIT",
+            "color": "ueberich"
+          }
+        ]
+      },
+      "caption": "Nach dem Lernkurs ordnet dein Gehirn das Gelernte über Nacht.",
+      "type": "layers"
+    },
+    {
+      "type": "quiz",
+      "question": "Du trinkst um 15 Uhr einen doppelten Espresso. Wann ist die wahrscheinlichste Zeit für den typischen Koffein‑Crash?",
+      "options": [
+        {
+          "label": "20 Uhr",
+          "correct": true
+        },
+        {
+          "label": "22 Uhr",
+          "correct": false
+        },
+        {
+          "label": "02 Uhr",
+          "correct": false
+        }
+      ],
+      "explain": "Nach 5–7 Stunden ist die Koffein‑Konzentration um die Hälfte gesunken, der aufgestaute <span class=\"w-es\">Schlafdruck</span> wirkt wieder stark.",
+      "wrong": "Der Crash tritt erst nach mehreren Halbwertszeiten ein."
+    },
+    {
+      "type": "insight",
+      "quote": "Schlaf ist das wirksamste Einzelmittel, um Gehirn und Körper jeden Tag neu aufzustellen.",
+      "cite": "Matthew Walker, 2017",
+      "explain": "Regelmäßiger Tiefschlaf <b>setzt zurück</b> Hormone, Immunzellen und Gedächtnis."
+    }
+  ]
+}

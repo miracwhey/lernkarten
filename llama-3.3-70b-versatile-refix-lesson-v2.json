@@ -1,0 +1,128 @@
+{
+  "id": "schlaf-und-schlafdruck",
+  "title": "Warum wir schlafen",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Gesundheit · Matthew Walker",
+      "title": "Schlaf",
+      "sub": "Warum wir ihn brauchen",
+      "stats": "7 Karten · 10 Minuten"
+    },
+    {
+      "relation": "trend",
+      "text": "Adenosin sammelt sich im Gehirn an, solange du wach bist",
+      "xlabel": "ZEIT",
+      "ylabel": "ADENOSIN",
+      "series": [
+        {
+          "label": "Adenosin",
+          "color": "es",
+          "shape": "linear-rise",
+          "from": "low",
+          "to": "high"
+        }
+      ],
+      "caption": "Der Zahnarzt wird müde — aber nur, wenn er nicht schläft",
+      "type": "curve"
+    },
+    {
+      "relation": "trend",
+      "text": "Koffein blockiert Adenosin-Rezeptoren, aber der Druck steigt weiter",
+      "xlabel": "ZEIT",
+      "ylabel": "ADENOSIN",
+      "series": [
+        {
+          "label": "Adenosin",
+          "color": "es",
+          "shape": "linear-rise",
+          "from": "low",
+          "to": "high"
+        },
+        {
+          "label": "Koffein",
+          "color": "ueberich",
+          "shape": "flat",
+          "from": "mid",
+          "to": "mid",
+          "area": true
+        }
+      ],
+      "stop": {
+        "label": "KOFFEIN-CRASH",
+        "t": 0.7
+      },
+      "caption": "Koffein hält den Schlafdruck nicht auf, sondern verdeckt ihn",
+      "type": "curve"
+    },
+    {
+      "relation": "multiplication",
+      "text": "Schlafmangel wirkt sich auf die kognitive Leistung aus",
+      "source": {
+        "label": "SCHLAFMANGEL",
+        "sub": "19h wach = 0,8 Pr.",
+        "color": "es"
+      },
+      "count": 5,
+      "result": {
+        "label": "Betrunken"
+      },
+      "caption": "Schlafmangel ist gefährlich — auch am Steuer",
+      "type": "fanout"
+    },
+    {
+      "relation": "descent",
+      "text": "Schlafmangel schadet der Gesundheit",
+      "steps": [
+        {
+          "label": "SCHLAFMANTEL",
+          "sub": "10 Nächte à 6h Schlaf",
+          "color": "es"
+        },
+        {
+          "label": "LEISTUNGSVERLUST",
+          "sub": "40% weniger Lernstoff",
+          "color": "es"
+        },
+        {
+          "label": "GESUNDHEIT",
+          "sub": "70% weniger Killerzellen",
+          "color": "es",
+          "submerged": true
+        }
+      ],
+      "sink": {
+        "label": "GESUNDHEITSSCHÄDEN"
+      },
+      "caption": "Schlafmangel ist gefährlich — für die Gesundheit",
+      "type": "flow"
+    },
+    {
+      "type": "quiz",
+      "question": "Was passiert, wenn du 19 Stunden ununterbrochen wach bist?",
+      "options": [
+        {
+          "label": "Du bist fit und munter",
+          "correct": false
+        },
+        {
+          "label": "Du bist fahruntüchtig",
+          "correct": true
+        },
+        {
+          "label": "Du bist immun gegen Schlafmangel",
+          "correct": false
+        }
+      ],
+      "explain": "Schlafmangel wirkt sich auf die kognitive Leistung aus — auch am Steuer",
+      "wrong": "Schlafmangel ist harmlos"
+    },
+    {
+      "type": "insight",
+      "quote": "Je kürzer dein Schlaf, desto kürzer dein Leben",
+      "cite": "Matthew Walker, 2017",
+      "explain": "Schlaf ist <b>wichtig</b> für die Gesundheit — jeden Tag"
+    }
+  ]
+}

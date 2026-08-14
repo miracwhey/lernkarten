@@ -1,0 +1,687 @@
+<meta charset="utf-8">
+<title>Lernkarten – App-Shell-Mockup R1</title>
+<style>
+  :root {
+    --paper: #F2F1EC;
+    --card: #FBFAF7;
+    --ink: #1E2230;
+    --muted: #6B6F7E;
+    --line: #DCDAD1;
+    --chrome: #E7E5DD;
+    --es: #D4553E;
+    --ich: #4759C7;
+    --ueberich: #A87A25;
+    --es-soft: #F3D9D2;
+    --ich-soft: #DDE1F6;
+    --ueberich-soft: #EDE2C8;
+    --ok: #2E7D4F;
+    --bad: #B3402E;
+    --shadow: 0 24px 60px rgba(30, 34, 48, 0.18);
+  }
+  /* Bewusst light-only — gleiche Lernwelt wie karten-grammatik.html. */
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 36px 28px 70px;
+  }
+  .pagehead { max-width: 1320px; margin: 0 auto 30px; }
+  .pagehead .eyebrow { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .pagehead h1 {
+    font-family: "Iowan Old Style", "Palatino Nova", Palatino, Georgia, serif;
+    font-size: 30px; font-weight: 600; margin: 6px 0 8px;
+  }
+  .pagehead p { font-size: 13.5px; color: var(--muted); line-height: 1.55; max-width: 72ch; margin: 0; }
+
+  .layers { max-width: 1320px; margin: 0 auto 34px; }
+  .layers .micro { display: block; margin-bottom: 10px; }
+  .layers-row { display: flex; gap: 14px; align-items: stretch; }
+  .layer {
+    flex: 1; border: 1px solid var(--line); border-radius: 14px;
+    background: var(--card); padding: 14px 16px;
+  }
+  .layer .lnum { font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .layer b { display: block; font-size: 14px; margin: 3px 0 5px; }
+  .layer p { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0; }
+  .layer .screens { font-size: 10.5px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-top: 8px; }
+  .layers-rules { font-size: 12px; color: var(--muted); line-height: 1.6; margin-top: 12px; }
+  .layers-rules b { color: var(--ink); }
+
+  .grid {
+    max-width: 1320px; margin: 0 auto;
+    display: flex; flex-wrap: wrap; gap: 34px;
+    align-items: flex-start;
+  }
+  .slot { width: 390px; }
+  .slot-note { margin: 0 4px 12px; }
+  .slot-note h2 { font-size: 13px; margin: 0 0 3px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .slot-note h2 span { color: var(--muted); font-weight: 600; margin-right: 8px; font-variant-numeric: tabular-nums; }
+  .slot-note p { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0; }
+
+  .phone {
+    width: 390px; min-height: 844px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 34px;
+    box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
+    overflow: hidden; position: relative;
+  }
+  .statusbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 26px 6px;
+    font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+  .statusbar .sbicons { display: flex; align-items: center; }
+  .statusbar .sbicons svg { display: block; }
+
+  /* ——— gemeinsame Bausteine ——— */
+  .screenhead { padding: 18px 22px 4px; }
+  .screenhead .eyebrow { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .screenhead h1 {
+    font-family: "Iowan Old Style", "Palatino Nova", Palatino, Georgia, serif;
+    font-size: 32px; font-weight: 600; margin: 4px 0 0;
+  }
+  .inkbtn {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    padding: 15px;
+    border-radius: 14px; border: none;
+    background: var(--ink); color: var(--card);
+    font-size: 15px; font-weight: 700; letter-spacing: 0.04em;
+    cursor: pointer; width: 100%;
+  }
+  .ghostbtn {
+    display: block; text-align: center; padding: 12px;
+    background: none; border: none; width: 100%;
+    color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .hr { height: 1px; background: var(--line); margin: 0 22px; }
+  .micro { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .realshot { width: 100%; display: block; }
+  .phone:has(> .realshot) { min-height: 0; }
+
+  /* Venn-Motiv einer Lektion (Instanzfarben = einziges Ornament) */
+  .motif { flex-shrink: 0; }
+  .motif circle { mix-blend-mode: multiply; }
+
+  /* ——— S1 Bibliothek ——— */
+  .duecard {
+    margin: 18px 22px 6px;
+    border: 1px solid var(--line); border-radius: 18px;
+    background: var(--card);
+    padding: 18px 18px 16px;
+  }
+  .duecard .duenum {
+    font-family: "Iowan Old Style", "Palatino Nova", Palatino, Georgia, serif;
+    font-size: 44px; font-weight: 600; line-height: 1;
+  }
+  .duecard .duenum small {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px; font-weight: 600; color: var(--muted); margin-left: 8px; letter-spacing: 0.02em;
+  }
+  .duecard .duemeta { font-size: 12.5px; color: var(--muted); margin: 6px 0 14px; }
+  .lessonlist { padding: 8px 22px 0; display: flex; flex-direction: column; }
+  .lesson {
+    display: flex; align-items: center; gap: 14px;
+    padding: 15px 2px;
+    border-bottom: 1px solid var(--line);
+  }
+  .lesson:last-child { border-bottom: none; }
+  .lesson .ltxt { flex: 1; min-width: 0; }
+  .lesson .ltitle {
+    font-family: "Iowan Old Style", "Palatino Nova", Palatino, Georgia, serif;
+    font-size: 17.5px; font-weight: 600; line-height: 1.25;
+  }
+  .lesson .lmeta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .lesson .ldue { text-align: right; flex-shrink: 0; }
+  .lesson .ldue b { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .lesson .ldue span { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .lesson.building .ltitle { color: var(--muted); }
+  .buildstate { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--ich); margin-top: 3px; font-weight: 600; }
+  .buildstate .dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--ich);
+  }
+  .capturebar { padding: 14px 22px 26px; margin-top: auto; }
+  .capturebar .inkbtn svg { flex-shrink: 0; }
+  .capturebar .hint { text-align: center; font-size: 11.5px; color: var(--muted); margin-top: 9px; }
+
+  /* ——— S2 Erfassen ——— */
+  .viewfinder {
+    flex: 1; margin: 16px 22px 0;
+    background: var(--ink);
+    border-radius: 22px;
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 430px;
+  }
+  .vf-page {
+    width: 240px; height: 330px;
+    background: #EFEDE6;
+    border-radius: 3px;
+    transform: rotate(-2.5deg);
+    padding: 26px 22px;
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .vf-page i { display: block; height: 5px; border-radius: 2px; background: #C9C6BB; flex-shrink: 0; }
+  .vf-page i.h { height: 9px; width: 62%; background: #A9A69A; margin-bottom: 6px; }
+  .vf-page i.gap { background: none; height: 4px; }
+  .vf-page i.s1 { width: 96%; } .vf-page i.s2 { width: 89%; } .vf-page i.s3 { width: 93%; }
+  .vf-page i.s4 { width: 71%; } .vf-page i.s5 { width: 94%; }
+  .vf-page i.s6 { width: 88%; } .vf-page i.s7 { width: 91%; } .vf-page i.s8 { width: 55%; }
+  .bracket { position: absolute; width: 30px; height: 30px; border: 2.5px solid rgba(251,250,247,0.95); }
+  .bracket.tl { top: 18px; left: 18px; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
+  .bracket.tr { top: 18px; right: 18px; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
+  .bracket.bl { bottom: 18px; left: 18px; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
+  .bracket.br { bottom: 18px; right: 18px; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
+  .vf-hint {
+    position: absolute; bottom: 26px; left: 60px; right: 60px;
+    text-align: center; color: rgba(251,250,247,0.85);
+    font-size: 11.5px; letter-spacing: 0.06em; line-height: 1.5;
+  }
+  .modeseg {
+    display: flex; gap: 6px; margin: 16px 22px 0;
+    background: var(--chrome); border-radius: 999px; padding: 4px;
+  }
+  .modeseg button {
+    flex: 1; padding: 9px 0; border: none; border-radius: 999px;
+    background: none; color: var(--muted);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .modeseg button.active { background: var(--card); color: var(--ink); box-shadow: 0 1px 4px rgba(30,34,48,0.10); }
+  .shutterrow { display: flex; align-items: center; justify-content: center; padding: 22px 0 26px; }
+  .shutter {
+    width: 74px; height: 74px; border-radius: 50%;
+    border: 4px solid var(--ink);
+    background: var(--card);
+    padding: 4px; cursor: pointer;
+  }
+  .shutter i { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--ink); }
+
+  /* ——— S3 Bestätigen ——— */
+  .recogcard { margin: 20px 22px 0; text-align: center; }
+  .recogcard .eyebrow { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .recogcard h2 {
+    font-family: "Iowan Old Style", "Palatino Nova", Palatino, Georgia, serif;
+    font-size: 30px; font-weight: 600; margin: 8px 0 4px; line-height: 1.15;
+    text-wrap: balance;
+  }
+  .recogcard .sub { font-size: 14.5px; color: var(--muted); }
+  .ocrquote {
+    margin: 18px 22px 0;
+    border-left: 2px solid var(--line);
+    padding: 4px 0 4px 14px;
+    font-size: 12.5px; color: var(--muted); line-height: 1.55;
+    text-align: left; font-style: italic;
+  }
+  .fixlink { margin: 12px 0 4px; }
+  .depth { padding: 20px 22px 0; margin-top: auto; }
+  .depth .micro { display: block; margin-bottom: 10px; }
+  .depthopt {
+    display: flex; align-items: baseline; justify-content: space-between;
+    width: 100%;
+    padding: 15px 18px; margin-bottom: 10px;
+    border-radius: 14px; border: 1.5px solid var(--line);
+    background: var(--card); color: var(--ink);
+    font-size: 16px; font-weight: 600; cursor: pointer; text-align: left;
+  }
+  .depthopt span { font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .depthopt.sel { border-color: var(--ich); background: var(--ich-soft); }
+  .confirmbar { padding: 10px 22px 26px; margin-top: auto; }
+
+  /* ——— S4 Bauen ——— */
+  .buildhero { text-align: center; padding: 46px 30px 8px; }
+  .buildhero h2 {
+    font-family: "Iowan Old Style", "Palatino Nova", Palatino, Georgia, serif;
+    font-size: 27px; font-weight: 600; margin: 0 0 6px; line-height: 1.2; text-wrap: balance;
+  }
+  .buildhero p { font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.5; }
+  .steps { padding: 26px 40px 0; display: flex; flex-direction: column; margin-top: auto; }
+  .step { display: flex; gap: 16px; }
+  .step .rail { display: flex; flex-direction: column; align-items: center; width: 26px; flex-shrink: 0; }
+  .step .knob {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid var(--line); background: var(--card);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: var(--card);
+  }
+  .step.done .knob { background: var(--ink); border-color: var(--ink); }
+  .step.active .knob { border-color: var(--ich); }
+  .step.active .knob i { display: block; width: 10px; height: 10px; border-radius: 50%; background: var(--ich); }
+  .step .rail .tail { width: 2px; flex: 1; background: var(--line); min-height: 26px; }
+  .step.done .rail .tail { background: var(--ink); }
+  .step:last-child .rail .tail { display: none; }
+  .step .stxt { padding-bottom: 24px; }
+  .step .stitle { font-size: 15.5px; font-weight: 700; }
+  .step.pending .stitle { color: var(--muted); font-weight: 600; }
+  .step .sdesc { font-size: 12.5px; color: var(--muted); line-height: 1.45; margin-top: 2px; }
+  .buildbar { padding: 10px 22px 26px; margin-top: auto; }
+
+  /* ——— S5 Lernen (bestehender Renderer im Shell-Rahmen) ——— */
+  .topbar { display: flex; align-items: center; gap: 14px; padding: 14px 18px 10px; }
+  .xbtn {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--card);
+    color: var(--ink); font-size: 16px; line-height: 1; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .progress { display: flex; gap: 5px; flex: 1; }
+  .progress span { height: 4px; flex: 1; border-radius: 2px; background: var(--chrome); }
+  .progress span.done { background: var(--ich); }
+  .cardarea { flex: 1; display: flex; flex-direction: column; padding: 10px 26px 18px; }
+  .lehrsatz {
+    font-family: "Iowan Old Style", "Palatino Nova", Palatino, Georgia, serif;
+    font-size: 21px; line-height: 1.42; text-wrap: balance; margin: 8px 0 4px;
+  }
+  .lehrsatz b { color: var(--ich); font-weight: 600; }
+  .diagram { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+  .diagram svg { width: 100%; display: block; }
+  .svglabel { font-weight: 700; letter-spacing: 0.08em; }
+  .caption { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.45; margin: 2px 0 6px; }
+  .cardfooter {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px 20px; font-size: 12px; color: var(--muted);
+  }
+  .canvasnote {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: 64px;
+    background: var(--ink); color: var(--card);
+    font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 5px 12px; border-radius: 999px; opacity: 0.85;
+  }
+
+  /* ——— S6 Üben ——— */
+  .reviewmeta { display: flex; gap: 26px; padding: 14px 22px 2px; }
+  .reviewmeta div b {
+    display: block;
+    font-family: "Iowan Old Style", "Palatino Nova", Palatino, Georgia, serif;
+    font-size: 30px; font-weight: 600; line-height: 1.05;
+  }
+  .reviewmeta div span { font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .reviewcard {
+    margin: 16px 22px 0; flex: 1;
+    border: 1px solid var(--line); border-radius: 22px;
+    background: var(--card);
+    display: flex; flex-direction: column;
+    padding: 20px 22px 14px;
+    min-height: 0;
+  }
+  .reviewcard .rsource { font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .ratingrow { display: flex; gap: 8px; padding: 16px 22px 26px; }
+  .ratebtn {
+    flex: 1; padding: 11px 4px 9px;
+    border-radius: 14px; border: 1.5px solid var(--line);
+    background: var(--card); cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .ratebtn b { font-size: 13.5px; font-weight: 700; }
+  .ratebtn span { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ratebtn.r1 b { color: var(--bad); }
+  .ratebtn.r2 b { color: var(--ueberich); }
+  .ratebtn.r3 b { color: var(--ich); }
+  .ratebtn.r4 b { color: var(--ok); }
+</style>
+
+<header class="pagehead">
+  <div class="eyebrow">Lernkarten · App-Shell · Mockup R1 · 14.08.2026</div>
+  <h1>Sechs Screens, eine Bildsprache</h1>
+  <p>Arbeitsrichtung (nicht Beton): SwiftUI-Shell, Karten-Fläche = bestehender Renderer im WKWebView.
+     Bildsprache 1:1 aus karten-grammatik.html – Papier-Töne, Serif-Lehrsätze, Instanzfarben als einziges Ornament.
+     Screens zeigen den Foto-Trichter: Erfassen → Bestätigen → asynchron bauen → lernen → üben.</p>
+</header>
+
+<section class="layers">
+  <span class="micro">Ebenen — ein Zuhause, zwei Ausflüge</span>
+  <div class="layers-row">
+    <div class="layer">
+      <span class="lnum">Ebene 1 · Wurzel</span>
+      <b>Bibliothek</b>
+      <p>Der einzige dauerhafte Ort. Alles beginnt und endet hier: Fällig-Block, Lektionen, „Neues lernen". Auch der Bau-Status wohnt hier als Zeile — nirgendwo sonst.</p>
+      <div class="screens">S1</div>
+    </div>
+    <div class="layer">
+      <span class="lnum">Ebene 2 · Sheet, kurzlebig</span>
+      <b>Erstellen</b>
+      <p>Erfassen → Bestätigen → Sheet schließt. Jederzeit abbrechbar, hinterlässt keine halben Zustände; nach „Lektion bauen" übernimmt die Bibliothekszeile, Push holt zurück.</p>
+      <div class="screens">S2 → S3 → (S4)</div>
+    </div>
+    <div class="layer">
+      <span class="lnum">Ebene 3 · Vollbild, fokussiert</span>
+      <b>Session</b>
+      <p>Lernen oder Üben — ein Tunnel: rein, durch, X raus. Keine Navigation innerhalb. Gleiche Karten-Anatomie in beiden, Üben trägt zusätzlich die vier Stufen.</p>
+      <div class="screens">S5 · S6</div>
+    </div>
+  </div>
+  <div class="layers-rules"><b>Regeln gegen Vermischung:</b> Jede Funktion hat genau einen Ort · sichtbarer Zustand lebt nur in der Bibliothek · maximale Tiefe 2 (Wurzel + ein Ausflug) · Karten-Fläche ist überall derselbe Renderer · Lektion antippen = direkt ihre Lern-Session (kein Zwischen-Screen im MVP).</div>
+</section>
+
+<div class="grid">
+
+<!-- ══════════ S1 BIBLIOTHEK ══════════ -->
+<section class="slot">
+  <div class="slot-note">
+    <h2><span>S1</span>Bibliothek (Home)</h2>
+    <p>Einstieg. Oben die eine Frage „was jetzt tun“ – fällige Karten mit direktem Üben-Button. Darunter Lektionen mit eigenem Farb-Motiv; laufende Generierung erscheint als normale Zeile mit Status. Unten der ständige Weg zu neuem Stoff.</p>
+  </div>
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span class="sbicons"><svg width="54" height="12" viewBox="0 0 54 12" fill="none">
+      <rect x="0" y="7" width="2.6" height="4" rx="0.8" fill="#1E2230"/>
+      <rect x="4.1" y="5" width="2.6" height="6" rx="0.8" fill="#1E2230"/>
+      <rect x="8.2" y="3" width="2.6" height="8" rx="0.8" fill="#1E2230"/>
+      <rect x="12.3" y="1" width="2.6" height="10" rx="0.8" fill="#1E2230"/>
+      <circle cx="26.2" cy="9.6" r="1.4" fill="#1E2230"/>
+      <path d="M23.4 7.2 a4.1 4.1 0 0 1 5.6 0" stroke="#1E2230" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M21.3 4.8 a7.2 7.2 0 0 1 9.8 0" stroke="#1E2230" stroke-width="1.5" stroke-linecap="round"/>
+      <rect x="37.5" y="1.5" width="13.5" height="9" rx="2.8" stroke="#1E2230" stroke-width="1.1" opacity="0.5"/>
+      <rect x="39.2" y="3.2" width="8.2" height="5.6" rx="1.5" fill="#1E2230"/>
+      <rect x="52.3" y="4.4" width="1.7" height="3.2" rx="0.85" fill="#1E2230" opacity="0.5"/>
+    </svg></span></div>
+    <div class="screenhead">
+      <div class="eyebrow">Donnerstag, 14. August</div>
+      <h1>Bibliothek</h1>
+    </div>
+
+    <div class="duecard">
+      <div class="duenum tnum">14<small>Karten fällig</small></div>
+      <div class="duemeta">6 aus Schlaf · 5 aus Kahneman · 3 aus Atomic Habits</div>
+      <button class="inkbtn">Jetzt üben</button>
+    </div>
+
+    <div class="lessonlist">
+      <div class="lesson building">
+        <svg class="motif" width="34" height="26" viewBox="0 0 34 26">
+          <circle cx="11" cy="13" r="9" fill="#C9C6BB" opacity="0.55"/>
+          <circle cx="21" cy="13" r="9" fill="#A9A69A" opacity="0.45"/>
+        </svg>
+        <div class="ltxt">
+          <div class="ltitle">Thinking in Systems</div>
+          <div class="buildstate"><span class="dot"></span>Wird gebaut – Fakten &amp; Bilder prüfen</div>
+        </div>
+      </div>
+      <div class="lesson">
+        <svg class="motif" width="38" height="26" viewBox="0 0 38 26">
+          <circle cx="9" cy="13" r="8.5" fill="#D4553E" opacity="0.92"/>
+          <circle cx="19" cy="13" r="8.5" fill="#4759C7" opacity="0.92"/>
+          <circle cx="29" cy="13" r="8.5" fill="#A87A25" opacity="0.92"/>
+        </svg>
+        <div class="ltxt">
+          <div class="ltitle">Warum wir schlafen</div>
+          <div class="lmeta">Walker · 7 Karten · zuletzt gestern</div>
+        </div>
+        <div class="ldue"><b class="tnum">6</b><span>fällig</span></div>
+      </div>
+      <div class="lesson">
+        <svg class="motif" width="34" height="26" viewBox="0 0 34 26">
+          <circle cx="10" cy="13" r="9" fill="#4759C7" opacity="0.92"/>
+          <circle cx="19" cy="13" r="9" fill="#D4553E" opacity="0.92"/>
+        </svg>
+        <div class="ltxt">
+          <div class="ltitle">Schnelles Denken, langsames Denken</div>
+          <div class="lmeta">Kahneman · 7 Karten · zuletzt vor 3 Tagen</div>
+        </div>
+        <div class="ldue"><b class="tnum">5</b><span>fällig</span></div>
+      </div>
+      <div class="lesson">
+        <svg class="motif" width="34" height="26" viewBox="0 0 34 26">
+          <circle cx="10" cy="13" r="9" fill="#A87A25" opacity="0.92"/>
+          <circle cx="19" cy="13" r="9" fill="#4759C7" opacity="0.92"/>
+        </svg>
+        <div class="ltxt">
+          <div class="ltitle">Atomic Habits</div>
+          <div class="lmeta">Clear · 7 Karten · zuletzt vor 5 Tagen</div>
+        </div>
+        <div class="ldue"><b class="tnum">3</b><span>fällig</span></div>
+      </div>
+      <div class="lesson">
+        <svg class="motif" width="34" height="26" viewBox="0 0 34 26">
+          <circle cx="10" cy="13" r="9" fill="#D4553E" opacity="0.6"/>
+          <circle cx="21" cy="13" r="9" fill="#A87A25" opacity="0.92"/>
+        </svg>
+        <div class="ltxt">
+          <div class="ltitle">Der Almanack von Naval Ravikant</div>
+          <div class="lmeta">Naval · 8 Karten · alle gemeistert</div>
+        </div>
+        <div class="ldue"><b class="tnum">0</b><span>fällig</span></div>
+      </div>
+    </div>
+
+    <div class="capturebar">
+      <button class="inkbtn">
+        <svg width="17" height="15" viewBox="0 0 17 15" fill="none">
+          <rect x="0.75" y="3" width="15.5" height="11.25" rx="2.5" stroke="#FBFAF7" stroke-width="1.5"/>
+          <path d="M5 3 L6.4 0.75 H10.6 L12 3" stroke="#FBFAF7" stroke-width="1.5" fill="none"/>
+          <circle cx="8.5" cy="8.5" r="3" stroke="#FBFAF7" stroke-width="1.5"/>
+        </svg>
+        Neues lernen
+      </button>
+      <div class="hint">Buchseite fotografieren oder Thema eingeben</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ S2 ERFASSEN ══════════ -->
+<section class="slot">
+  <div class="slot-note">
+    <h2><span>S2</span>Erfassen</h2>
+    <p>Kamera zuerst – Buchseite, Folie oder Objekt. Texterkennung läuft auf dem Gerät (VisionKit). Segment wechselt zur Thema-Eingabe für alles ohne Foto. Auslöser → S3.</p>
+  </div>
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span class="sbicons"><svg width="54" height="12" viewBox="0 0 54 12" fill="none">
+      <rect x="0" y="7" width="2.6" height="4" rx="0.8" fill="#1E2230"/>
+      <rect x="4.1" y="5" width="2.6" height="6" rx="0.8" fill="#1E2230"/>
+      <rect x="8.2" y="3" width="2.6" height="8" rx="0.8" fill="#1E2230"/>
+      <rect x="12.3" y="1" width="2.6" height="10" rx="0.8" fill="#1E2230"/>
+      <circle cx="26.2" cy="9.6" r="1.4" fill="#1E2230"/>
+      <path d="M23.4 7.2 a4.1 4.1 0 0 1 5.6 0" stroke="#1E2230" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M21.3 4.8 a7.2 7.2 0 0 1 9.8 0" stroke="#1E2230" stroke-width="1.5" stroke-linecap="round"/>
+      <rect x="37.5" y="1.5" width="13.5" height="9" rx="2.8" stroke="#1E2230" stroke-width="1.1" opacity="0.5"/>
+      <rect x="39.2" y="3.2" width="8.2" height="5.6" rx="1.5" fill="#1E2230"/>
+      <rect x="52.3" y="4.4" width="1.7" height="3.2" rx="0.85" fill="#1E2230" opacity="0.5"/>
+    </svg></span></div>
+    <div class="screenhead">
+      <div class="eyebrow">Neues lernen</div>
+      <h1>Erfassen</h1>
+    </div>
+
+    <div class="viewfinder">
+      <div class="vf-page">
+        <i class="h"></i>
+        <i class="s1"></i><i class="s2"></i><i class="s3"></i><i class="s4"></i>
+        <i class="gap"></i>
+        <i class="s5"></i><i class="s6"></i><i class="s7"></i><i class="s2"></i><i class="s8"></i>
+        <i class="gap"></i>
+        <i class="s3"></i><i class="s1"></i><i class="s6"></i><i class="s2"></i><i class="s4"></i>
+      </div>
+      <div class="bracket tl"></div><div class="bracket tr"></div>
+      <div class="bracket bl"></div><div class="bracket br"></div>
+      <div class="vf-hint">Seite ins Bild – Text wird auf dem Gerät gelesen</div>
+    </div>
+
+    <div class="modeseg">
+      <button class="active">Foto</button>
+      <button>Thema</button>
+      <button>Eigener Text</button>
+    </div>
+
+    <div class="shutterrow">
+      <button class="shutter" aria-label="Auslösen"><i></i></button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ S3 BESTÄTIGEN ══════════ -->
+<section class="slot">
+  <div class="slot-note">
+    <h2><span>S3</span>Bestätigen</h2>
+    <p>Der eine Tap, der Qualität sichert: erkannte Quelle + Auszug prüfen, Tiefe wählen, dann erst Minuten Generierung. Fehlerkennung hat hier ihren Ausgang („Ändern“), nicht nach dem Bau.</p>
+  </div>
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span class="sbicons"><svg width="54" height="12" viewBox="0 0 54 12" fill="none">
+      <rect x="0" y="7" width="2.6" height="4" rx="0.8" fill="#1E2230"/>
+      <rect x="4.1" y="5" width="2.6" height="6" rx="0.8" fill="#1E2230"/>
+      <rect x="8.2" y="3" width="2.6" height="8" rx="0.8" fill="#1E2230"/>
+      <rect x="12.3" y="1" width="2.6" height="10" rx="0.8" fill="#1E2230"/>
+      <circle cx="26.2" cy="9.6" r="1.4" fill="#1E2230"/>
+      <path d="M23.4 7.2 a4.1 4.1 0 0 1 5.6 0" stroke="#1E2230" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M21.3 4.8 a7.2 7.2 0 0 1 9.8 0" stroke="#1E2230" stroke-width="1.5" stroke-linecap="round"/>
+      <rect x="37.5" y="1.5" width="13.5" height="9" rx="2.8" stroke="#1E2230" stroke-width="1.1" opacity="0.5"/>
+      <rect x="39.2" y="3.2" width="8.2" height="5.6" rx="1.5" fill="#1E2230"/>
+      <rect x="52.3" y="4.4" width="1.7" height="3.2" rx="0.85" fill="#1E2230" opacity="0.5"/>
+    </svg></span></div>
+
+    <div class="recogcard">
+      <div class="eyebrow">Erkannt</div>
+      <h2>Why We Sleep</h2>
+      <div class="sub">Matthew Walker · Kapitel 3 – Schlafdruck &amp; Koffein</div>
+    </div>
+
+    <div class="ocrquote">„…the longer we are awake, the more adenosine accumulates. Think of adenosine as a chemical barometer that continuously registers the amount of elapsed time…“</div>
+
+    <button class="ghostbtn fixlink">Stimmt nicht? Quelle ändern</button>
+    <div class="hr"></div>
+
+    <div class="depth">
+      <span class="micro">Tiefe</span>
+      <button class="depthopt">Kompakt <span>ca. 7 Karten · 4 Min</span></button>
+      <button class="depthopt sel">Standard <span>ca. 12 Karten · 7 Min</span></button>
+      <button class="depthopt">Tief <span>ca. 20 Karten · 12 Min</span></button>
+    </div>
+
+    <div class="confirmbar">
+      <button class="inkbtn">Lektion bauen</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ S4 BAUEN ══════════ -->
+<section class="slot">
+  <div class="slot-note">
+    <h2><span>S4</span>Bauen (asynchron)</h2>
+    <p>Ehrlicher Status der echten Pipeline-Stufen. Kein Warten-Zwang: „Zur Bibliothek“ lässt die App weiterbenutzen, Mitteilung kommt bei Fertigstellung. Wording = Funktions-Logik, kein Marketing.</p>
+  </div>
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span class="sbicons"><svg width="54" height="12" viewBox="0 0 54 12" fill="none">
+      <rect x="0" y="7" width="2.6" height="4" rx="0.8" fill="#1E2230"/>
+      <rect x="4.1" y="5" width="2.6" height="6" rx="0.8" fill="#1E2230"/>
+      <rect x="8.2" y="3" width="2.6" height="8" rx="0.8" fill="#1E2230"/>
+      <rect x="12.3" y="1" width="2.6" height="10" rx="0.8" fill="#1E2230"/>
+      <circle cx="26.2" cy="9.6" r="1.4" fill="#1E2230"/>
+      <path d="M23.4 7.2 a4.1 4.1 0 0 1 5.6 0" stroke="#1E2230" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M21.3 4.8 a7.2 7.2 0 0 1 9.8 0" stroke="#1E2230" stroke-width="1.5" stroke-linecap="round"/>
+      <rect x="37.5" y="1.5" width="13.5" height="9" rx="2.8" stroke="#1E2230" stroke-width="1.1" opacity="0.5"/>
+      <rect x="39.2" y="3.2" width="8.2" height="5.6" rx="1.5" fill="#1E2230"/>
+      <rect x="52.3" y="4.4" width="1.7" height="3.2" rx="0.85" fill="#1E2230" opacity="0.5"/>
+    </svg></span></div>
+
+    <div class="buildhero">
+      <div class="eyebrow micro" style="margin-bottom:10px;">Thinking in Systems</div>
+      <h2>Deine Lektion wird gebaut</h2>
+      <p>Dauert ein paar Minuten. Du bekommst eine Mitteilung, sobald sie fertig ist.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step done">
+        <div class="rail"><div class="knob">✓</div><div class="tail"></div></div>
+        <div class="stxt">
+          <div class="stitle">Quellen sammeln</div>
+          <div class="sdesc">Belegte Fakten, Zahlen und Zitate zum Kapitel zusammentragen.</div>
+        </div>
+      </div>
+      <div class="step done">
+        <div class="rail"><div class="knob">✓</div><div class="tail"></div></div>
+        <div class="stxt">
+          <div class="stitle">Karten schreiben</div>
+          <div class="sdesc">Lehrsätze, Diagramme und Quiz aus den Quellen formen.</div>
+        </div>
+      </div>
+      <div class="step active">
+        <div class="rail"><div class="knob"><i></i></div><div class="tail"></div></div>
+        <div class="stxt">
+          <div class="stitle">Fakten &amp; Bilder prüfen</div>
+          <div class="sdesc">Jede Zahl gegen die Quellen, jedes Diagramm gegen seine Aussage.</div>
+        </div>
+      </div>
+      <div class="step pending">
+        <div class="rail"><div class="knob"></div><div class="tail"></div></div>
+        <div class="stxt">
+          <div class="stitle">Fertig</div>
+          <div class="sdesc">Lektion erscheint in der Bibliothek.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="buildbar">
+      <button class="ghostbtn">Zur Bibliothek</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ S5 LERNEN ══════════ -->
+<section class="slot">
+  <div class="slot-note">
+    <h2><span>S5</span>Lernen</h2>
+    <p>Ab hier kein Nachbau: Der Screen unter der Statusbar ist ein unretuschierter Shot des ECHTEN Renderers (karten-grammatik.html, Lektion Schlaf, Karte 2) — exakt das, was der WKWebView in der App zeigt. Eine Geometrie-Quelle für App und Audits.</p>
+  </div>
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span class="sbicons"><svg width="54" height="12" viewBox="0 0 54 12" fill="none">
+      <rect x="0" y="7" width="2.6" height="4" rx="0.8" fill="#1E2230"/>
+      <rect x="4.1" y="5" width="2.6" height="6" rx="0.8" fill="#1E2230"/>
+      <rect x="8.2" y="3" width="2.6" height="8" rx="0.8" fill="#1E2230"/>
+      <rect x="12.3" y="1" width="2.6" height="10" rx="0.8" fill="#1E2230"/>
+      <circle cx="26.2" cy="9.6" r="1.4" fill="#1E2230"/>
+      <path d="M23.4 7.2 a4.1 4.1 0 0 1 5.6 0" stroke="#1E2230" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M21.3 4.8 a7.2 7.2 0 0 1 9.8 0" stroke="#1E2230" stroke-width="1.5" stroke-linecap="round"/>
+      <rect x="37.5" y="1.5" width="13.5" height="9" rx="2.8" stroke="#1E2230" stroke-width="1.1" opacity="0.5"/>
+      <rect x="39.2" y="3.2" width="8.2" height="5.6" rx="1.5" fill="#1E2230"/>
+      <rect x="52.3" y="4.4" width="1.7" height="3.2" rx="0.85" fill="#1E2230" opacity="0.5"/>
+    </svg></span></div>
+    <img class="realshot" src="app-mockup-assets/s5-lernen.png" alt="Echte Renderer-Karte: Adenosin-Kurve mit Schlaf-Kollaps">
+  </div>
+</section>
+
+<!-- ══════════ S6 ÜBEN ══════════ -->
+<section class="slot">
+  <div class="slot-note">
+    <h2><span>S6</span>Üben (Wiederholung)</h2>
+    <p>Fällige Karten quer über alle Lektionen — die Karte selbst ist echter Renderer-Output, nur kleiner gerahmt. Selbst einschätzen: vier Stufen mit ehrlichem nächsten Abstand (SM-2). Jede Antwort wird als Ereignis gespeichert, der Lernstand daraus berechnet.</p>
+  </div>
+  <div class="phone">
+    <div class="statusbar"><span>9:41</span><span class="sbicons"><svg width="54" height="12" viewBox="0 0 54 12" fill="none">
+      <rect x="0" y="7" width="2.6" height="4" rx="0.8" fill="#1E2230"/>
+      <rect x="4.1" y="5" width="2.6" height="6" rx="0.8" fill="#1E2230"/>
+      <rect x="8.2" y="3" width="2.6" height="8" rx="0.8" fill="#1E2230"/>
+      <rect x="12.3" y="1" width="2.6" height="10" rx="0.8" fill="#1E2230"/>
+      <circle cx="26.2" cy="9.6" r="1.4" fill="#1E2230"/>
+      <path d="M23.4 7.2 a4.1 4.1 0 0 1 5.6 0" stroke="#1E2230" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M21.3 4.8 a7.2 7.2 0 0 1 9.8 0" stroke="#1E2230" stroke-width="1.5" stroke-linecap="round"/>
+      <rect x="37.5" y="1.5" width="13.5" height="9" rx="2.8" stroke="#1E2230" stroke-width="1.1" opacity="0.5"/>
+      <rect x="39.2" y="3.2" width="8.2" height="5.6" rx="1.5" fill="#1E2230"/>
+      <rect x="52.3" y="4.4" width="1.7" height="3.2" rx="0.85" fill="#1E2230" opacity="0.5"/>
+    </svg></span></div>
+    <div class="screenhead">
+      <h1>Üben</h1>
+    </div>
+    <div class="reviewmeta">
+      <div><b class="tnum">14</b><span>fällig</span></div>
+      <div><b class="tnum">3</b><span>neu</span></div>
+      <div><b class="tnum">9</b><span>heute geschafft</span></div>
+    </div>
+
+    <div class="reviewcard">
+      <div class="rsource">Warum wir schlafen · Karte 2</div>
+      <img class="realshot" src="app-mockup-assets/s6-card.png" alt="Echte Renderer-Karte in der Review-Ansicht">
+    </div>
+
+    <div class="ratingrow">
+      <button class="ratebtn r1"><b>Nochmal</b><span>10 Min</span></button>
+      <button class="ratebtn r2"><b>Schwer</b><span>2 Tage</span></button>
+      <button class="ratebtn r3"><b>Gut</b><span>4 Tage</span></button>
+      <button class="ratebtn r4"><b>Leicht</b><span>8 Tage</span></button>
+    </div>
+  </div>
+</section>
+
+</div>

@@ -1,0 +1,134 @@
+{
+  "id": "warum-wir-schlafen",
+  "title": "Warum wir Schlafen",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Gesundheit · Matthew Walker",
+      "title": "Schlaf",
+      "sub": "Warum wir ihn brauchen",
+      "stats": "7 Karten · 10 Minuten"
+    },
+    {
+      "relation": "trend",
+      "text": "Dein <span class=\"w-es\">Schlafdruck</span> steigt mit jeder wachen Stunde",
+      "xlabel": "WAChSTUNDEN",
+      "ylabel": "SCHLAFDRUCK",
+      "series": [
+        {
+          "label": "Adenosin",
+          "color": "es",
+          "shape": "saturating-rise",
+          "from": "low",
+          "to": "high"
+        }
+      ],
+      "caption": "Je länger du wach bist, desto müder wirst du",
+      "type": "curve"
+    },
+    {
+      "relation": "multiplication",
+      "text": "Ein <span class=\"w-ue\">Koffein</span> kann den Schlafdruck <span class=\"w-es\">maskieren</span>",
+      "source": {
+        "label": "Koffein",
+        "sub": "Ein Antagonist",
+        "color": "ueberich"
+      },
+      "count": 5,
+      "result": {
+        "label": "Schlafdruck"
+      },
+      "caption": "Koffein macht nicht wach, es verdeckt nur den Schlafdruck",
+      "type": "fanout"
+    },
+    {
+      "relation": "contrast",
+      "text": "Schlaf ist nicht nur <span class=\"w-es\">Erholung</span>, sondern auch <span class=\"w-ue\">Gesundheit</span>",
+      "left": {
+        "title": "SCHLAFMANGEL",
+        "color": "es",
+        "items": [
+          {
+            "label": "Kognitive Leistung",
+            "sub": "Gedächtnisleistung sinkt um 40%"
+          },
+          {
+            "label": "Gesundheit",
+            "sub": "Killerzellen sinken um 70%"
+          }
+        ]
+      },
+      "right": {
+        "title": "SCHLAF",
+        "color": "ueberich",
+        "items": [
+          {
+            "label": "Kognitive Leistung",
+            "sub": "steigt durch Erholung"
+          },
+          {
+            "label": "Gesundheit",
+            "sub": "steigt durch Erholung"
+          }
+        ]
+      },
+      "caption": "Schlaf ist wichtig für unsere Gesundheit",
+      "type": "compare"
+    },
+    {
+      "relation": "loop",
+      "text": "Der <span class=\"w-es\">Schlafdruck</span> steigt, wenn du wach bist",
+      "steps": [
+        {
+          "label": "Wachsein",
+          "sub": "Schlafdruck steigt",
+          "color": "es"
+        },
+        {
+          "label": "Schlaf",
+          "sub": "Schlafdruck sinkt",
+          "color": "ueberich"
+        },
+        {
+          "label": "Wachsein",
+          "sub": "Schlafdruck steigt",
+          "color": "es"
+        },
+        {
+          "label": "Schlaf",
+          "sub": "Schlafdruck sinkt",
+          "color": "ueberich"
+        }
+      ],
+      "caption": "Der Schlafdruck steigt und sinkt im Laufe des Tages",
+      "type": "cycle"
+    },
+    {
+      "type": "quiz",
+      "question": "Was passiert, wenn du 19 Stunden ununterbrochen wach bist?",
+      "options": [
+        {
+          "label": "Du bist fit und munter",
+          "correct": false
+        },
+        {
+          "label": "Du bist sehr müde",
+          "correct": true
+        },
+        {
+          "label": "Koffein hilft nicht",
+          "correct": false
+        }
+      ],
+      "explain": "Nach 19 Stunden ununterbrochenem Wachsein ist die kognitive Leistung wie bei 0,8 Promille",
+      "wrong": "Koffein kann den Schlafdruck nur maskieren, nicht beseitigen"
+    },
+    {
+      "type": "insight",
+      "quote": "Je kürzer dein Schlaf, desto kürzer dein Leben",
+      "cite": "Matthew Walker, 2017",
+      "explain": "Schlaf ist wichtig für unsere <b>Gesundheit</b> und unser <b>Wohlbefinden</b>"
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "id": "why-we-sleep",
+  "title": "Warum wir schlafen",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Why We Sleep · Matthew Walker",
+      "title": "Warum wir schlafen",
+      "sub": "Wie Schlafdruck, Rhythmus und Koffein unser Leben steuern",
+      "stats": "7 Karten · 5 Minuten"
+    },
+    {
+      "relation": "trend",
+      "text": "Adenosin steigt, wenn du wach bleibst – der Schlafdruck wächst linear.",
+      "xlabel": "Wachzeit (h)",
+      "ylabel": "Adenosin",
+      "series": [
+        {
+          "label": "Schlafdruck",
+          "color": "es",
+          "shape": "linear-rise",
+          "from": "low",
+          "to": "high"
+        }
+      ],
+      "caption": "Du bleibst bei 8 Uhr morgens wach und spürst später den Druck.",
+      "type": "curve"
+    },
+    {
+      "relation": "contrast",
+      "text": "Zirkadianer Rhythmus vs. Schlafdruck – zwei Kräfte, die deine Müdigkeit bestimmen.",
+      "left": {
+        "title": "RHYTHMUS",
+        "color": "es",
+        "items": [
+          {
+            "label": "24‑h‑Uhr",
+            "sub": "unabhängig vom Schlafdruck"
+          },
+          {
+            "label": "Melatonin‑Spitze",
+            "sub": "Abends"
+          }
+        ]
+      },
+      "right": {
+        "title": "DRUCK",
+        "color": "es",
+        "items": [
+          {
+            "label": "Anreicherung",
+            "sub": "während des Wachseins"
+          },
+          {
+            "label": "Länger wach",
+            "sub": "höherer Druck"
+          }
+        ]
+      },
+      "caption": "Wenn der Rhythmus spät schläft, aber der Druck hoch ist, bist du noch müde.",
+      "type": "compare"
+    },
+    {
+      "relation": "multiplication",
+      "text": "Ein Koffein‑Shot kann den Schlafdruck um 5 % maskieren, aber nicht abbauen.",
+      "source": {
+        "label": "Koffein",
+        "sub": "1 tasse Kaffee",
+        "color": "es"
+      },
+      "count": 5,
+      "result": {
+        "label": "Schlafdruck"
+      },
+      "caption": "Ein Kaffee um 9 Uhr lässt dich bis 14 Uhr noch wach wirken.",
+      "type": "fanout"
+    },
+    {
+      "relation": "weighing",
+      "text": "Schlafmangel wiegt schwerer als ein kurzer Stress‑Schub.",
+      "left": {
+        "label": "Stress",
+        "sub": "30 min",
+        "color": "es"
+      },
+      "right": {
+        "label": "Schlaf",
+        "sub": "24 h ohne Schlaf",
+        "color": "es"
+      },
+      "pivot": {
+        "label": "Leistung",
+        "sub": "20 % weniger",
+        "color": "es"
+      },
+      "type": "balance"
+    },
+    {
+      "type": "quiz",
+      "question": "Du bist 19 Stunden wach und hast 0,8 Promille. Was passiert, wenn du jetzt noch 5 Stunden Kaffee trinkst?",
+      "options": [
+        {
+          "label": "Du bleibst wach und fühlst dich besser",
+          "correct": false
+        },
+        {
+          "label": "Du fühlst dich wach, Crash kommt später",
+          "correct": true
+        },
+        {
+          "label": "Du schläfst sofort ein",
+          "correct": false
+        }
+      ],
+      "explain": "Koffein maskiert den Schlafdruck, aber der Druck steigt weiter, sodass ein Crash folgt.",
+      "wrong": "Koffein löscht die Müdigkeit – das ist falsch."
+    },
+    {
+      "type": "insight",
+      "quote": "Schlaf ist das wirksamste Einzelmittel, um Gehirn und Körper jeden Tag neu aufzustellen.",
+      "cite": "Walker, 2017",
+      "explain": "<b>Schlaf</b> resetet dein Gehirn, wie eine tägliche Software‑Update."
+    }
+  ]
+}

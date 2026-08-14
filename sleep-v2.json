@@ -1,0 +1,197 @@
+{
+  "id": "warum-wir-schlafen",
+  "title": "Warum wir schlafen",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Gesundheit · Matthew Walker",
+      "title": "Warum wir schlafen",
+      "sub": "Schlafdruck, Koffein und der wahre Preis der kurzen Nacht",
+      "stats": "8 Karten · 4 Minuten"
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "Je länger du wach bist, desto müder wirst du. Kein Zufall: Ein Stoff sammelt sich stündlich im Gehirn und erzeugt <span class=\"w-es\">Schlafdruck</span> — er heißt Adenosin, und nur Schlaf baut ihn ab.",
+      "xlabel": "TAGESZEIT",
+      "ylabel": "SCHLAFDRUCK",
+      "series": [
+        {
+          "label": "ADENOSIN",
+          "color": "es",
+          "shape": "saturating-rise",
+          "from": "low",
+          "to": "high",
+          "afterStop": "reset",
+          "area": true
+        }
+      ],
+      "stop": {
+        "t": 0.8,
+        "label": "DU SCHLÄFST"
+      },
+      "notes": [
+        {
+          "label": "SCHLAF RÄUMT AUF",
+          "series": 0,
+          "t": 0.92,
+          "side": "above"
+        }
+      ],
+      "caption": "Nach dem langen Tag fallen dir um 23 Uhr die Augen zu — der Tank ist voll."
+    },
+    {
+      "type": "curve",
+      "relation": "trend",
+      "text": "<span class=\"w-ue\">Koffein</span> weckt dich nicht — es blockiert nur die Andockstellen von <span class=\"w-es\">Adenosin</span>. Der Druck wächst verdeckt weiter; fällt die Blockade, trifft er dich gesammelt.",
+      "xlabel": "UHRZEIT",
+      "ylabel": "MÜDIGKEIT",
+      "series": [
+        {
+          "label": "ADENOSIN",
+          "color": "es",
+          "shape": "linear-rise",
+          "from": "low",
+          "to": "high",
+          "dash": true
+        },
+        {
+          "label": "MIT KOFFEIN",
+          "color": "ueberich",
+          "shape": "suppressed",
+          "from": "low",
+          "afterStop": "rebound"
+        }
+      ],
+      "stop": {
+        "t": 0.75,
+        "label": "WIRKUNG ENDET"
+      },
+      "notes": [
+        {
+          "label": "DER CRASH",
+          "series": 1,
+          "t": 0.9,
+          "side": "above"
+        }
+      ],
+      "caption": "Espresso um 16 Uhr, Absturz um 22 Uhr: Die Müdigkeit war nie weg, nur verdeckt."
+    },
+    {
+      "type": "compare",
+      "relation": "contrast",
+      "text": "Warum du überhaupt schläfst? Unter anderem fürs Gedächtnis: Im <b>Schlaf</b> verschiebt dein Gehirn frisch Gelerntes vom flüchtigen Zwischenspeicher in den Langzeitspeicher. Wer wach bleibt, verliert.",
+      "left": {
+        "title": "MIT SCHLAF",
+        "color": "ich",
+        "items": [
+          {
+            "label": "Gespeichert",
+            "sub": "vom Hippocampus in den Kortex"
+          },
+          {
+            "label": "Platz für Neues",
+            "sub": "Zwischenspeicher geleert"
+          }
+        ]
+      },
+      "right": {
+        "title": "NACHT DURCHGEMACHT",
+        "color": "es",
+        "items": [
+          {
+            "label": "40 % geht verloren",
+            "sub": "Gelerntes verblasst"
+          },
+          {
+            "label": "Speicher bleibt voll",
+            "sub": "Neues prallt ab"
+          }
+        ]
+      },
+      "caption": "Durchmachen vor der Prüfung: 40 Prozent weniger bleibt hängen als ausgeschlafen."
+    },
+    {
+      "type": "flow",
+      "relation": "descent",
+      "text": "Die Tücke des Schlafmangels: Dein Maßstab wandert mit. Nach Wochen kurzer Nächte fühlst du dich <span class=\"w-ue\">normal</span> — obwohl deine <span class=\"w-es\">Leistung</span> messbar auf Betrunkenen-Niveau liegt.",
+      "steps": [
+        {
+          "label": "Kurze Nächte",
+          "sub": "Woche für Woche",
+          "color": "es"
+        },
+        {
+          "label": "Leistung sinkt",
+          "sub": "messbar, stetig",
+          "color": "es"
+        },
+        {
+          "label": "Gefühl: normal",
+          "sub": "Maßstab verschoben",
+          "color": "ueberich",
+          "submerged": true
+        }
+      ],
+      "sink": {
+        "label": "UNTER DEINEM RADAR"
+      },
+      "caption": "Zehn Tage à sechs Stunden schlafen — du leistest wie nach einer durchwachten Nacht."
+    },
+    {
+      "type": "cycle",
+      "relation": "loop",
+      "text": "So füttert sich Schlafmangel selbst: Die <span class=\"w-es\">kurze Nacht</span> macht das Tief, das Tief ruft nach <span class=\"w-ue\">Kaffee</span> — und der späte Kaffee macht den nächsten Schlaf flach.",
+      "steps": [
+        {
+          "label": "Kurze Nacht",
+          "sub": "Wecker um 6",
+          "color": "es"
+        },
+        {
+          "label": "Müdes Tief",
+          "sub": "Adenosin-Rest",
+          "color": "es"
+        },
+        {
+          "label": "Kaffee um 16",
+          "sub": "blockt Adenosin",
+          "color": "ueberich"
+        },
+        {
+          "label": "Leichtschlaf",
+          "sub": "Tiefschlaf fehlt",
+          "color": "es"
+        }
+      ],
+      "caption": "Der 16-Uhr-Kaffee wirkt um Mitternacht noch halb — dein Tiefschlaf zahlt die Rechnung."
+    },
+    {
+      "type": "quiz",
+      "question": "23 Uhr, du bist seit 19 Stunden wach und fühlst dich klar. Kannst du noch bedenkenlos Auto fahren?",
+      "options": [
+        {
+          "label": "Ja — du fühlst dich doch hellwach",
+          "correct": false
+        },
+        {
+          "label": "Nein — du fährst wie mit 0,8 Promille",
+          "correct": true
+        },
+        {
+          "label": "Fast — die Reaktion leidet nur minimal",
+          "correct": false
+        }
+      ],
+      "explain": "Nach 19 Stunden wach reagierst du wie mit <strong>0,8 Promille</strong> — nur merkt dein geeichter Maßstab davon nichts.",
+      "wrong": "Genau das ist die Falle: Dein Wach-Gefühl ist der schlechteste Zeuge — der Maßstab ist längst mitgewandert."
+    },
+    {
+      "type": "insight",
+      "quote": "Je kürzer dein Schlaf, desto kürzer dein Leben.",
+      "cite": "Matthew Walker, 2017",
+      "explain": "Schlaf ist kein Luxus, sondern <b>Grundpflege</b>: das wirksamste Reset für Gehirn und Körper — jede Nacht neu."
+    }
+  ]
+}

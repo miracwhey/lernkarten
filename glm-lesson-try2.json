@@ -1,0 +1,208 @@
+{
+  "id": "why-we-sleep",
+  "title": "Warum wir schlafen",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "Schlaf · Matthew Walker",
+      "title": "Die Nacht-Reset",
+      "sub": "Was im Verborgenen passiert, entscheidet über deinen Tag",
+      "stats": "7 Karten · 4 Minuten"
+    },
+    {
+      "type": "balance",
+      "text": "Zwei Kräfte steuern, wann du müde wirst: der <b>Rhythmus</b> der Uhr und der <span class=\"w-es\">Druck</span> im Gehirn.",
+      "left": {
+        "label": "DRUCK",
+        "sub": "Wächst stetig",
+        "color": "es"
+      },
+      "right": {
+        "label": "RYTHMUS",
+        "sub": "Pendelt 24 Std.",
+        "color": "ueberich"
+      },
+      "pivot": {
+        "label": "SCHLAF",
+        "sub": "Schnittmenge",
+        "color": "ich"
+      }
+    },
+    {
+      "type": "curve",
+      "text": "Wachsein lässt ein Müdigkeits-Molekül ansteigen. <span class=\"w-es\">Adenosin</span> stapelt sich — bis der <b>Schlaf</b> es abbaut.",
+      "xlabel": "STUNDEN WACH",
+      "ylabel": "SCHLAFDRUCK",
+      "series": [
+        {
+          "label": "Adenosin",
+          "color": "es",
+          "points": [
+            [
+              0,
+              5
+            ],
+            [
+              40,
+              60
+            ],
+            [
+              80,
+              95
+            ]
+          ],
+          "area": true
+        },
+        {
+          "label": "Nach Schlaf",
+          "color": "ich",
+          "points": [
+            [
+              0,
+              5
+            ],
+            [
+              40,
+              10
+            ],
+            [
+              80,
+              15
+            ]
+          ],
+          "dash": true
+        }
+      ],
+      "stop": {
+        "x": 85,
+        "label": "DU SCHLÄFST"
+      },
+      "caption": "Wie ein volles Glas — stündlich tropft es voller."
+    },
+    {
+      "type": "compare",
+      "text": "Kaffee blockiert nicht die Müdigkeit, sondern tarnt sie. <span class=\"w-ue\">Koffein</span> verdrängt das <span class=\"w-es\">Adenosin</span>.",
+      "left": {
+        "title": "OHNE KAFFEE",
+        "color": "es",
+        "items": [
+          {
+            "label": "Adenosin dockt an",
+            "sub": "Müdigkeit wird gemeldet"
+          },
+          {
+            "label": "Gehirn weiß Bescheid",
+            "sub": "Du gehst schlafen"
+          }
+        ]
+      },
+      "right": {
+        "title": "MIT KAFFEE",
+        "color": "ueberich",
+        "items": [
+          {
+            "label": "Koffein blockt",
+            "sub": "Adenosin bleibt draußen"
+          },
+          {
+            "label": "Falsche Wachheit",
+            "sub": "Druck staut sich weiter auf"
+          }
+        ]
+      },
+      "caption": "Du spürst den vollen Eimer nicht — bis er überläuft."
+    },
+    {
+      "type": "curve",
+      "text": "Koffein hat lange Finger: Halbwertszeit 5 Std. Eine Dose um 15 Uhr lähmt um Mitternacht noch dein <b>Schlafhormon</b>.",
+      "xlabel": "ZEIT",
+      "ylabel": "WIRKSAMKEIT",
+      "series": [
+        {
+          "label": "Koffein im Blut",
+          "color": "ueberich",
+          "points": [
+            [
+              0,
+              100
+            ],
+            [
+              25,
+              50
+            ],
+            [
+              50,
+              25
+            ],
+            [
+              75,
+              12
+            ]
+          ],
+          "area": true
+        }
+      ],
+      "notes": [
+        {
+          "x": 25,
+          "y": 50,
+          "label": "NOCH 50% AKTIV"
+        }
+      ],
+      "caption": "Ein Espresso um 16 Uhr — um 21 Uhr ist noch die Hälfte aktiv."
+    },
+    {
+      "type": "flow",
+      "text": "Wer zu wenig schläft, verliert seinen <b>Rhythmus</b>. Die Kontrolle sinkt unter die Oberfläche — und bleibt dort.",
+      "steps": [
+        {
+          "label": "Zu wenig Schlaf",
+          "sub": "Adenosin bleibt hoch",
+          "color": "es"
+        },
+        {
+          "label": "Körper im Stress",
+          "sub": "Hormonsystem leidet",
+          "color": "ich"
+        },
+        {
+          "label": "Erschöpfung",
+          "sub": "Konzentration bricht ein",
+          "color": "es",
+          "submerged": true
+        }
+      ],
+      "sink": {
+        "label": "VERBORGENE FOLGEN"
+      },
+      "caption": "Du fühlst dich wach — bis du am Steuer für Sekunden ausknickst."
+    },
+    {
+      "type": "quiz",
+      "question": "Du trinkst um 16 Uhr einen Kaffee und liegst um 23 Uhr wach im Bett. Warum?",
+      "options": [
+        {
+          "label": "Koffein blockiert noch Adenosin-Rezeptoren",
+          "correct": true
+        },
+        {
+          "label": "Dein Schlafdruck ist um 23 Uhr zu gering",
+          "correct": false
+        },
+        {
+          "label": "Kaffee fügt neues Adenosin hinzu",
+          "correct": false
+        }
+      ],
+      "explain": "Mit einer Halbwertszeit von 5 Std. sind um 23 Uhr noch 25% des Koffeins aktiv. Es tarnt den vollen Schlafdruck.",
+      "wrong": "Du spürst den Schlafdruck — aber das Koffein blockt das Signal ab."
+    },
+    {
+      "type": "insight",
+      "quote": "Je kürzer dein Schlaf, desto kürzer dein Leben.",
+      "cite": "Matthew Walker, 2017",
+      "explain": "Schlaf ist kein Luxus, sondern die <b>wichtigste Wartung</b> für Körper und Geist."
+    }
+  ]
+}
