@@ -151,7 +151,12 @@ export async function makeDossier({ kind, input, depth, model, log = console.log
     messages.push({ role: "assistant", content: md });
     messages.push({ role: "user", content: `Das Dossier verletzt das Format. Fehlerliste:\n${errs.map((e) => "- " + e).join("\n")}\n\nSende das VOLLSTÄNDIGE korrigierte Dossier erneut — nur das Markdown, nichts sonst.` });
   }
-  throw new Error(`Dossier nach 2 Runden nicht brauchbar: ${errs.join(" | ")}`);
+  // Inhaltliches Scheitern (Gate nach 2 Runden) als solches markieren — API-/
+  // Netz-Fehler tragen die Markierung nicht und dürfen dem Nutzer nie als
+  // „keine Quellen" etikettiert werden.
+  const err = new Error(`Dossier nach 2 Runden nicht brauchbar: ${errs.join(" | ")}`);
+  err.inhaltlich = true;
+  throw err;
 }
 
 const stripFences = (s) => s.replace(/^\s*```(?:markdown|md)?\s*\n/, "").replace(/\n```\s*$/, "").trim();

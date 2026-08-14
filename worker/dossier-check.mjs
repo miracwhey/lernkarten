@@ -7,9 +7,9 @@
 // ist eine Behauptung) → was hart bleibt, fliegt als Zeile raus.
 // Nutzung: node worker/dossier-check.mjs <dossier.md> [--patch <out.md>]
 import { readFileSync, writeFileSync } from "fs";
-import { chat } from "./models.mjs";
+import { chat, NIM_BASE } from "./models.mjs";
 import { JUDGE } from "./models.mjs";
-import { chatJson, loadKey, nimChat } from "../nim.mjs";
+import { chatJson } from "../nim.mjs";
 
 // Was KEINE Sachzahl ist und darum keinen Prüfauftrag erzeugt (sonst ertrinkt die
 // Prüfliste in Quellen- und Namensbestandteilen):
@@ -65,8 +65,11 @@ const prueflisteText = (claims) => claims
 /// Ein Judge-Durchgang über eine Claim-Liste. Vollständigkeits-Gate wie in
 /// judge.mjs: fehlen Prüfzeilen, gibt es genau EINEN Nachschlag.
 async function judgeZahlen(md, claims, opts) {
-  const key = loadKey(opts.judge.keyName);
-  const chatFn = (msgs) => nimChat(key, opts.judge.id, msgs, { temperature: 0.1, paceMs: opts.paceMs ?? 5000, signal: opts.signal });
+  // Über den Chat-Chokepoint aus models.mjs — der ist base-aware. Ein hartes
+  // nimChat schickte den Judge-Key an die NIM-API, sobald der Judge auf einem
+  // anderen Endpunkt liegt (OpenRouter → 401).
+  const judge = { body: {}, ...opts.judge, base: opts.judge.base ?? NIM_BASE };
+  const chatFn = (msgs) => chat(judge, msgs, { temperature: 0.1, paceMs: opts.paceMs ?? 5000, signal: opts.signal });
   const messages = [
     { role: "system", content: SYSTEM },
     { role: "user", content: `## Dossier\n\n${md}\n\n## Prüfliste (${claims.length} Zahlen-Behauptungen)\n\n${prueflisteText(claims)}` },

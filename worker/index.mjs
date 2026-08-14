@@ -41,6 +41,7 @@ const db = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_R
 // ── Fehlertexte, die der Nutzer in der Bibliothekszeile liest ────────────────
 const USER_ERROR = {
   dossier: "Zu diesem Thema ließen sich keine belastbaren Quellen zusammentragen. Formuliere es enger.",
+  technik: "Technischer Fehler bei der Generierung. Versuch es gleich noch einmal.",
   quota: "Alle Modelle sind gerade am Kontingent-Limit. Versuch es später noch einmal.",
   reject: "Die Karten haben die Faktenprüfung nicht bestanden. Versuch es mit einem engeren Thema.",
   render: "Interner Fehler beim Zeichnen der Diagramme.",
@@ -148,7 +149,7 @@ async function runJob(job) {
 
   // 1 — Quellen sammeln. Kette auch hier: das Dossier ist der teuerste Einzel-Call.
   const dossierPath = `${dir}/dossier.md`;
-  let dossierModel = null;
+  let dossierModel = null, dossierInhaltlich = false;
   for (const model of CHAIN) {
     try {
       log(`Dossier mit ${model.id}…`);
@@ -160,9 +161,12 @@ async function runJob(job) {
       break;
     } catch (e) {
       log(`Dossier mit ${model.id} fehlgeschlagen: ${e.message}`);
+      if (e.inhaltlich) dossierInhaltlich = true;
     }
   }
-  if (!dossierModel) return failJob(job.id, USER_ERROR.dossier);
+  // „Keine Quellen" nur, wenn wirklich der Inhalt scheiterte — ein API-/Netz-
+  // Fehler ist ein Technik-Fehler und darf das Thema nicht beschuldigen.
+  if (!dossierModel) return failJob(job.id, dossierInhaltlich ? USER_ERROR.dossier : USER_ERROR.technik);
 
   // 2 — Karten schreiben + prüfen. Pipeline unverändert, nur andere Eingaben.
   await setStage(job.id, "karten");
