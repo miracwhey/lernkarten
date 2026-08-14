@@ -1,0 +1,29 @@
+name: Lernkarten
+options:
+  bundleIdPrefix: de.leonvalentin
+  deploymentTarget:
+    iOS: "18.0"
+targets:
+  Lernkarten:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      # Karten-Fläche: EINE Quelle mit Mockup und Audit-Kette — direkt aus dem Repo-Root gebündelt.
+      - path: ../card-canvas.html
+        buildPhase: resources
+      - path: ../renderer.css
+        buildPhase: resources
+      - path: ../renderer.js
+        buildPhase: resources
+      - path: ../sleep-v2.json
+        buildPhase: resources
+    settings:
+      base:
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_UIUserInterfaceStyle: Light
+        GENERATE_INFOPLIST_FILE: true
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1"
