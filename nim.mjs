@@ -82,7 +82,7 @@ export async function nimChat(key, model, messages, opts = {}) {
   for (let i = 0; i < (opts.retries ?? 8); i++) {
     throwIfAborted(opts.signal);
     lastCall = Date.now();
-    let res;
+    let res, data, errBody;
     try {
       res = await fetch(`${base}/chat/completions`, {
         method: "POST",
@@ -90,6 +90,10 @@ export async function nimChat(key, model, messages, opts = {}) {
         body: JSON.stringify({ model, messages, temperature: opts.temperature ?? 0.2, max_tokens: opts.maxTokens ?? 8000 }),
         signal: attemptSignal(opts.signal, opts.timeoutMs ?? REQ_TIMEOUT_MS),
       });
+      // Body-Read unter demselben Abbruch-Signal wie der fetch: Header kommen früh,
+      // der Body erst nach der Generierung — ein Timeout hier ist genauso transient.
+      if (res.ok) data = await res.json();
+      else errBody = (await res.text()).slice(0, 300);
     } catch (e) {
       throwIfAborted(opts.signal);                       // Job-Deadline: nicht weiterprobieren
       // Netz kurz weg oder Request-Timeout (fetch wirft ohne HTTP-Status) — transient.
@@ -100,12 +104,10 @@ export async function nimChat(key, model, messages, opts = {}) {
     }
     // content kann null sein, wenn das Denken das Output-Budget gefressen hat.
     if (res.ok) {
-      const data = await res.json();
       warnAbgeschnitten(data, model);
       collectUsage(opts.usage, data);
       return stripThink(data.choices?.[0]?.message?.content);
     }
-    const body = (await res.text()).slice(0, 300);
     if (res.status === 429 || res.status >= 500) {
       const wait = 30000 * (i + 1);
       console.log(`API ${res.status} (${model}) — warte ${wait / 1000}s…`);
@@ -114,7 +116,7 @@ export async function nimChat(key, model, messages, opts = {}) {
     }
     // Infrastruktur-Ursache am Fehler mitführen: der Aufrufer soll leeres Konto und
     // falschen Key nicht als inhaltliches Scheitern des Modells verbuchen.
-    const err = new Error(`API ${res.status}: ${body}`);
+    const err = new Error(`API ${res.status}: ${errBody}`);
     err.infra = infraFault(res.status);
     throw err;
   }

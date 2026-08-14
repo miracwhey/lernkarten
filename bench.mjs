@@ -29,16 +29,18 @@ const MAX_TOKENS = 16000;
 // Laut OpenRouter-supported_parameters kennt die GPT-5.6-Reihe kein temperature —
 // explizites null LÖSCHT das Feld im Request (glm-generate.mjs, requestBody).
 const OHNE_TEMP = { max_tokens: MAX_TOKENS, temperature: null };
+// Reihenfolge = Kostenrampe (billigster Lauf zuerst, geschätzt aus dem Trockenlauf):
+// Systemfehler sollen an den billigen Modellen auffliegen, bevor die teuren laufen.
 const MODELS = [
-  { id: "moonshotai/kimi-k3", body: { max_tokens: MAX_TOKENS } },
-  { id: "qwen/qwen3.8-max", body: { max_tokens: MAX_TOKENS } },
-  { id: "openai/gpt-5.6-terra-pro", body: OHNE_TEMP },
-  { id: "x-ai/grok-4.20", body: { max_tokens: MAX_TOKENS } },
-  { id: "z-ai/glm-5.2", body: { max_tokens: MAX_TOKENS } },
-  { id: "deepseek/deepseek-v4-pro-0813", body: { max_tokens: MAX_TOKENS } },
   { id: "openai/gpt-5.6-luna-pro", body: OHNE_TEMP },
   { id: "deepseek/deepseek-v4-flash-0731", body: { max_tokens: MAX_TOKENS } },
   { id: "minimax/minimax-m3", body: { max_tokens: MAX_TOKENS } },
+  { id: "deepseek/deepseek-v4-pro-0813", body: { max_tokens: MAX_TOKENS } },
+  { id: "x-ai/grok-4.20", body: { max_tokens: MAX_TOKENS } },
+  { id: "z-ai/glm-5.2", body: { max_tokens: MAX_TOKENS } },
+  { id: "openai/gpt-5.6-terra-pro", body: OHNE_TEMP },
+  { id: "qwen/qwen3.8-max", body: { max_tokens: MAX_TOKENS } },
+  { id: "moonshotai/kimi-k3", body: { max_tokens: MAX_TOKENS } },
 ];
 // Schätzgrößen NUR für den Trockenlauf (Erfahrungswert eines Laufs inkl. Reparatur-
 // Runden). Die Abrechnung im Report rechnet mit echten Token-Zahlen aus stats.json.

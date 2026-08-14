@@ -179,13 +179,16 @@ async function anthropicChat(messages) {
   const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
   const rest = messages.filter((m) => m.role !== "system");
   for (let i = 0; i < 5; i++) {
-    let res;
+    let res, data;
     try {
       res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
         body: JSON.stringify({ model, max_tokens: 8000, temperature: 0.6, system, messages: rest }),
       });
+      // Body-Read unter dasselbe Fehler-Netz wie der fetch: ein Netzriss mitten im
+      // Read würde sonst ungefangen den Prozess töten.
+      if (res.status !== 429 && res.status < 500) data = await res.json();
     } catch (e) {
       const wait = 5000 * (i + 1);
       console.log(`NETZ-FEHLER (Anthropic): ${e.message} — warte ${wait / 1000}s…`);
@@ -198,7 +201,6 @@ async function anthropicChat(messages) {
       await new Promise((ok) => setTimeout(ok, wait));
       continue;
     }
-    const data = await res.json();
     if (!res.ok) throw new Error(`Anthropic ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
     spend.in += data.usage.input_tokens; spend.out += data.usage.output_tokens; spend.calls++;
     stats.usage.gen.in += data.usage.input_tokens;
@@ -224,6 +226,12 @@ function requestBody(messages) {
   return body;
 }
 
+// Request-Timeout des Generator-Calls: Denk-Modelle brauchen für eine volle Lektion
+// legitim >10 min (Header kommen sofort, der Body erst nach der Generierung) — ein
+// zu knapper Timeout wirft eine fertig generierte und BEZAHLTE Antwort weg. Die
+// harte Grenze bleibt beim Aufrufer (bench.mjs: 25-min-Lauf-Deckel, Worker: Job-Deadline).
+const GEN_TIMEOUT_MS = 20 * 60 * 1000;
+
 let firstCall = true;
 async function llm(messages) {
   if (isAnthropic) return anthropicChat(messages);   // kein Free-Tier-Pacing nötig
@@ -232,15 +240,20 @@ async function llm(messages) {
   if (!firstCall) await new Promise((ok) => setTimeout(ok, defaultPace(BASE)));
   firstCall = false;
   for (let i = 0; i < 8; i++) {
-    let res;
+    let res, data, errBody;
     try {
       res = await fetch(`${BASE}/chat/completions`, {
         method: "POST", headers: HEADERS,
         body: JSON.stringify(requestBody(messages)),
         // Echter Abbruch statt hängender Socket: ohne Signal läuft ein toter Request
         // weiter und frisst die Job-Deadline des Workers.
-        signal: attemptSignal(null),
+        signal: attemptSignal(null, GEN_TIMEOUT_MS),
       });
+      // Der Body-Read steht unter demselben Abbruch-Signal wie der fetch — ein
+      // Timeout hier ist genauso transient und darf den Prozess nicht ungefangen
+      // töten (hat beide Kimi-K3-Bench-Läufe bei exakt 600 s gekostet).
+      if (res.ok) data = await res.json();
+      else errBody = (await res.text()).slice(0, 300);
     } catch (e) {
       // Netz kurz weg oder Request-Timeout — transient, wie 5xx behandeln.
       const wait = 15000 * (i + 1);
@@ -253,7 +266,6 @@ async function llm(messages) {
     // und der Denk-Ballast bläht die Folge-Requests auf. content kann null sein,
     // wenn das Denken das komplette Output-Budget gefressen hat (z. B. gpt-oss).
     if (res.ok) {
-      const data = await res.json();
       // Leere oder abgeschnittene Antwort benennen: sonst erscheint sie weiter
       // unten nur als „kein JSON-Objekt" und die nächste Runde rät.
       warnAbgeschnitten(data, model);
@@ -264,7 +276,6 @@ async function llm(messages) {
         + ` — ${data.usage?.completion_tokens ?? "?"} Ausgabe-Tokens`);
       return text;
     }
-    const body = (await res.text()).slice(0, 300);
     if (res.status === 429 || res.status >= 500) {
       const wait = 30000 * (i + 1);
       console.log(`API ${res.status} — warte ${wait / 1000}s…`);
@@ -272,7 +283,7 @@ async function llm(messages) {
       continue;
     }
     // Ursache am Fehler mitführen (leeres Konto/falscher Key ≠ schlechtes Modell).
-    const err = new Error(`API ${res.status}: ${body}`);
+    const err = new Error(`API ${res.status}: ${errBody}`);
     err.infra = infraFault(res.status);
     throw err;
   }

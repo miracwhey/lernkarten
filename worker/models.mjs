@@ -32,7 +32,7 @@ export async function chat(model, messages, opts = {}) {
 async function openaiChat(key, model, messages, opts) {
   for (let i = 0; i < (opts.retries ?? 5); i++) {
     throwIfAborted(opts.signal);
-    let res;
+    let res, data, errBody;
     try {
       res = await fetch(`${model.base}/chat/completions`, {
         method: "POST",
@@ -45,6 +45,10 @@ async function openaiChat(key, model, messages, opts) {
         }),
         signal: attemptSignal(opts.signal, opts.timeoutMs ?? REQ_TIMEOUT_MS),
       });
+      // Body-Read unter demselben Abbruch-Signal wie der fetch: Header kommen früh,
+      // der Body erst nach der Generierung — ein Timeout hier ist genauso transient.
+      if (res.ok) data = await res.json();
+      else errBody = (await res.text()).slice(0, 300);
     } catch (e) {
       throwIfAborted(opts.signal);                     // Job-Deadline: nicht weiterprobieren
       const wait = 10000 * (i + 1);
@@ -53,18 +57,16 @@ async function openaiChat(key, model, messages, opts) {
       continue;
     }
     if (res.ok) {
-      const data = await res.json();
       warnAbgeschnitten(data, model.id);
       return data.choices?.[0]?.message?.content;
     }
-    const body = (await res.text()).slice(0, 300);
     if (res.status === 429 || res.status >= 500) {
       const wait = 20000 * (i + 1);
       console.log(`API ${res.status} (${model.id}) — warte ${wait / 1000}s…`);
       await sleep(wait, opts.signal);
       continue;
     }
-    throw new Error(`API ${res.status}: ${body}`);
+    throw new Error(`API ${res.status}: ${errBody}`);
   }
   throw new Error(`${model.id}: Rate-Limit hält an.`);
 }
