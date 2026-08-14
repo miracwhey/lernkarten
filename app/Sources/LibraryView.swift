@@ -3,16 +3,17 @@ import SwiftUI
 /// Ebene 1 — Bibliothek. Der einzige dauerhafte Ort: Fällig-Block, Lektionen, „Neues lernen".
 struct LibraryView: View {
     let lessons: [Lesson]
+    let srs: [CardKey: CardSRS]
     var onLearn: (Lesson) -> Void
     var onPractice: () -> Void
     var onCreate: () -> Void
 
-    private var dueTotal: Int { lessons.reduce(0) { $0 + $1.practiceIndices.count } }
+    private var dueTotal: Int { lessons.reduce(0) { $0 + $1.dueIndices(srs).count } }
 
     private var dueBreakdown: String {
-        lessons.filter { !$0.practiceIndices.isEmpty }
+        lessons.filter { !$0.dueIndices(srs).isEmpty }
             .prefix(3)
-            .map { "\($0.practiceIndices.count) aus \(shortName($0))" }
+            .map { "\($0.dueIndices(srs).count) aus \(shortName($0))" }
             .joined(separator: " · ")
     }
 
@@ -33,7 +34,9 @@ struct LibraryView: View {
 
                 VStack(spacing: 0) {
                     ForEach(lessons) { lesson in
-                        Button { onLearn(lesson) } label: { LessonRow(lesson: lesson) }
+                        Button { onLearn(lesson) } label: {
+                            LessonRow(lesson: lesson, dueCount: lesson.dueIndices(srs).count)
+                        }
                             .buttonStyle(.plain)
                         if lesson.id != lessons.last?.id {
                             Divider().overlay(Theme.line.opacity(0.6))
@@ -115,6 +118,7 @@ struct LibraryView: View {
 /// Lektionszeile: Farb-Motiv, Titel (Serif), Autor · Kartenzahl, rechts Fällig-Count.
 struct LessonRow: View {
     let lesson: Lesson
+    let dueCount: Int
 
     private static let palette = [Theme.es, Theme.ich, Theme.ueberich]
 
@@ -132,7 +136,7 @@ struct LessonRow: View {
             }
             Spacer(minLength: 8)
             VStack(spacing: 1) {
-                Text("\(lesson.practiceIndices.count)")
+                Text("\(dueCount)")
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(Theme.ink)
                 Text("fällig")

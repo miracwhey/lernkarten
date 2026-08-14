@@ -7,6 +7,7 @@ final class ShellUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
+        app.launchArguments = ["-srs-local-only"]   // kein Netz, keine Events in der echten DB
         app.launch()
         XCTAssert(app.staticTexts["Bibliothek"].waitForExistence(timeout: 5))
     }

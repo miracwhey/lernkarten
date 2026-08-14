@@ -3,6 +3,10 @@ options:
   bundleIdPrefix: de.leonvalentin
   deploymentTarget:
     iOS: "18.0"
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: "2.5.0"
 targets:
   Lernkarten:
     type: application
@@ -18,6 +22,9 @@ targets:
         buildPhase: resources
       - path: ../lessons
         buildPhase: resources
+    dependencies:
+      - package: Supabase
+        product: Supabase
     settings:
       base:
         INFOPLIST_KEY_UILaunchScreen_Generation: true
@@ -27,6 +34,16 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1"
+  LernkartenTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: true
+    dependencies:
+      - target: Lernkarten
   LernkartenUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -38,14 +55,17 @@ targets:
     dependencies:
       - target: Lernkarten
 schemes:
+schemes:
   Lernkarten:
     build:
       targets:
         Lernkarten: all
+        LernkartenTests: [test]
         LernkartenUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
+        - LernkartenTests
         - LernkartenUITests

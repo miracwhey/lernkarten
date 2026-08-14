@@ -12,14 +12,14 @@ struct PracticeItem: Identifiable {
 /// dazu die vier Stufen (SM-2-Abstände). Events-Persistenz folgt mit Schritt 4.
 struct PracticeSessionView: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject var store: ReviewStore
     @State private var queue: [PracticeItem]
-    @State private var doneCount = 0
-    @State private var seenIDs = Set<UUID>()
 
-    init(lessons: [Lesson]) {
-        // Round-robin quer über die Lektionen — nie eine Lektion am Stück.
+    init(lessons: [Lesson], store: ReviewStore) {
+        self.store = store
+        // Round-robin quer über die Lektionen — nur fällige Karten, nie eine Lektion am Stück.
         var items: [PracticeItem] = []
-        let perLesson = lessons.map { l in l.practiceIndices.map { PracticeItem(lesson: l, cardIndex: $0) } }
+        let perLesson = lessons.map { l in l.dueIndices(store.srs).map { PracticeItem(lesson: l, cardIndex: $0) } }
         let maxLen = perLesson.map(\.count).max() ?? 0
         for i in 0..<maxLen {
             for cards in perLesson where i < cards.count {
@@ -29,7 +29,13 @@ struct PracticeSessionView: View {
         _queue = State(initialValue: items)
     }
 
-    private var newCount: Int { queue.filter { !seenIDs.contains($0.id) }.count }
+    private var newCount: Int {
+        queue.filter { store.srs[CardKey(slug: $0.lesson.id, index: $0.cardIndex)] == nil }.count
+    }
+
+    private func srsState(_ item: PracticeItem) -> CardSRS? {
+        store.srs[CardKey(slug: item.lesson.id, index: item.cardIndex)]
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,7 +59,7 @@ struct PracticeSessionView: View {
             HStack(spacing: 18) {
                 counter(queue.count, "fällig")
                 counter(newCount, "neu")
-                counter(doneCount, "heute geschafft")
+                counter(store.doneToday, "heute geschafft")
                 Spacer()
             }
             .padding(.horizontal, 20)
@@ -73,10 +79,10 @@ struct PracticeSessionView: View {
                 .padding(.horizontal, 16)
 
                 HStack(spacing: 8) {
-                    grade("Nochmal", "10 Min", Theme.bad) { requeue(item) }
-                    grade("Schwer", "2 Tage", Theme.ink) { complete(item) }
-                    grade("Gut", "4 Tage", Theme.ok) { complete(item) }
-                    grade("Leicht", "8 Tage", Theme.ich) { complete(item) }
+                    grade("Nochmal", interval(item, .again), Theme.bad) { answer(item, .again) }
+                    grade("Schwer", interval(item, .hard), Theme.ink) { answer(item, .hard) }
+                    grade("Gut", interval(item, .good), Theme.ok) { answer(item, .good) }
+                    grade("Leicht", interval(item, .easy), Theme.ich) { answer(item, .easy) }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
@@ -117,17 +123,19 @@ struct PracticeSessionView: View {
         .accessibilityIdentifier("grade-\(title)")
     }
 
-    private func requeue(_ item: PracticeItem) {
-        seenIDs.insert(item.id)
-        guard !queue.isEmpty else { return }
-        queue.append(queue.removeFirst())
+    /// Ehrlicher nächster Abstand laut SRS für die Stufen-Beschriftung.
+    private func interval(_ item: PracticeItem, _ g: Grade) -> String {
+        SRSEngine.format(SRSEngine.nextInterval(srsState(item), grade: g))
     }
 
-    private func complete(_ item: PracticeItem) {
-        seenIDs.insert(item.id)
+    private func answer(_ item: PracticeItem, _ g: Grade) {
+        store.record(item.lesson.id, item.cardIndex, g)
         guard !queue.isEmpty else { return }
-        queue.removeFirst()
-        doneCount += 1
-        if queue.isEmpty { dismiss() }   // durch — zurück nach Hause
+        if g == .again {
+            queue.append(queue.removeFirst())   // nochmal in dieser Session
+        } else {
+            queue.removeFirst()
+            if queue.isEmpty { dismiss() }      // durch — zurück nach Hause
+        }
     }
 }

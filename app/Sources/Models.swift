@@ -21,6 +21,11 @@ struct Lesson: Identifiable {
         cardTypes.indices.filter { cardTypes[$0] != "title" }
     }
 
+    /// Fällige Karten laut SRS-Zustand (nie geübt = fällig).
+    func dueIndices(_ srs: [CardKey: CardSRS], now: Date = .now) -> [Int] {
+        practiceIndices.filter { (srs[CardKey(slug: id, index: $0)]?.due ?? .distantPast) <= now }
+    }
+
     /// Stabiler Farbdreh fürs Bibliotheks-Motiv (hashValue ist pro Launch zufällig gesalzen).
     var motifSeed: Int {
         id.unicodeScalars.reduce(0) { $0 + Int($1.value) }

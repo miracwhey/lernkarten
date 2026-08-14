@@ -29,6 +29,20 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "1EA06C58E3E107052CCDD926"
+               BuildableName = "LernkartenTests.xctest"
+               BlueprintName = "LernkartenTests"
+               ReferencedContainer = "container:Lernkarten.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "4844C97A0ABB40368FA53D8E"
                BuildableName = "LernkartenUITests.xctest"
                BlueprintName = "LernkartenUITests"
@@ -53,6 +67,17 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "1EA06C58E3E107052CCDD926"
+               BuildableName = "LernkartenTests.xctest"
+               BlueprintName = "LernkartenTests"
+               ReferencedContainer = "container:Lernkarten.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
          <TestableReference
             skipped = "NO"
             parallelizable = "NO">
