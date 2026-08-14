@@ -101,7 +101,11 @@ export function validateLesson(lesson, opts = {}) {
         }
         if (s.afterStop !== undefined) {
           if (!AFTER_STOP.includes(s.afterStop)) err(sp + ".afterStop", `ungültig "${s.afterStop}" (erlaubt: ${AFTER_STOP.join(", ")})`);
-          if (!c.stop) err(sp + ".afterStop", "braucht ein stop-Ereignis auf der Karte");
+          // Gekoppelte Felder: die Meldung nennt BEIDE konsistenten Ziel-Kombinationen
+          // mit vollen Pfaden — ein Feld-Patch, der nur das gemeldete Feld ändert,
+          // lief sonst über Runden im Kreis (Queue-Lauf „Impfungen", 14.08.).
+          if (!c.stop) err(sp + ".afterStop", `braucht ein stop-Ereignis auf der Karte — patche eine konsistente Kombination: `
+            + `setze ${p}.stop = {"t": <0.15–0.9>, "label": "<max 20 Zeichen>"} ODER setze ${sp}.afterStop = null (null löscht das Feld)`);
         }
         // reboundTo beschreibt die Apex-Höhe des Nach-Stop-Asts. Ohne rebound gibt es
         // keinen Apex — die Angabe wäre nicht bloß überflüssig, sondern bezöge sich
@@ -139,7 +143,10 @@ export function validateLesson(lesson, opts = {}) {
               const s = (c.series || [])[si];
               if (s && s.afterStop === undefined)
                 err(np + ".at", `at:"apex" ankert am Ende des Nach-Stop-Asts, die Serie hat aber kein afterStop — `
-                  + `gib der Serie afterStop (${AFTER_STOP.join("/")}) oder verankere die Note mit t`);
+                  + `wähle EINE Lösung und patche ALLE zugehörigen Pfade ZUSAMMEN: `
+                  + `(A) Ereignis behalten: setze ${p}.series[${si}].afterStop auf "${AFTER_STOP.join('"/"')}"`
+                  + `${c.stop ? "" : ` UND ${p}.stop = {"t": <0.15–0.9>, "label": "<max 20 Zeichen>"}`} `
+                  + `ODER (B) frei ankern: setze ${np}.at = null (null löscht das Feld) UND ${np}.t = <0–1>`);
               if (si >= 0) apexJeSerie.set(si, (apexJeSerie.get(si) || 0) + 1);
             }
           }

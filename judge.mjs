@@ -35,6 +35,10 @@ Regeln für fix: kompletter Ersatz-Text des Felds unter path (nicht nur das korr
 const chatOpts = (opts) => ({
   temperature: 0.1, signal: opts.signal, base: opts.base, usage: opts.usage,
   paceMs: opts.paceMs ?? (opts.base ? undefined : 5000),
+  // 12k statt 8k Default: gpt-oss denkt inline (Lauf „Impfungen" 14.08.: 5841 von
+  // 8000 Tokens waren Denk-Tokens — die Antwort riss und nur der Korrektur-Retry
+  // rettete den Lauf). Budget statt Drossel, das Denken gehört zur Judge-Qualität.
+  maxTokens: 12000,
 });
 
 export async function judgeLesson(lesson, dossier, opts = {}) {

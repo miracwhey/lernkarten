@@ -315,7 +315,13 @@ const setPath = (obj, path, value) => {
   const toks = path.match(/[^.\[\]]+/g);
   let cur = obj;
   for (let i = 0; i < toks.length - 1; i++) cur = cur[/^\d+$/.test(toks[i]) ? Number(toks[i]) : toks[i]];
-  cur[/^\d+$/.test(toks.at(-1)) ? Number(toks.at(-1)) : toks.at(-1)] = value;
+  const last = /^\d+$/.test(toks.at(-1)) ? Number(toks.at(-1)) : toks.at(-1);
+  // null LÖSCHT ein Feld (Projekt-Konvention wie im Request-Body): Patch-Runden
+  // können damit Felder entfernen — ohne das blieb `"at": null` als ungültiger
+  // Wert stehen und die Kopplungs-Sackgasse (at/afterStop/stop) schloss sich nie.
+  // Array-Elemente löschen wäre ein Struktur-Eingriff — bewusst nicht per Patch.
+  if (value === null && typeof last === "string") delete cur[last];
+  else cur[last] = value;
 };
 
 // Fehlende Karten sind ein ADDITIVER Struktur-Fehler: sie heilen durch Anhängen,
@@ -393,7 +399,7 @@ full: for (let i = 1; fromFile ? false : i <= MAX_FULL; i++) {
       console.log(`→ Patch-Runde ${pr} (nur fehlerhafte Felder)…`);
       stats.runden.patchRunden++;
       messages.push({ role: "assistant", content: raw });
-      messages.push({ role: "user", content: `Korrigiere NUR die fehlerhaften Felder. Fehlerliste:\n${r.errors.map((e) => "- " + e).join("\n")}\n\nAntworte mit einem flachen JSON-Objekt { "<pfad>": <neuer Wert>, … } — Pfade exakt wie in der Fehlerliste (z. B. "cards[4].left.sub"). Nur das JSON, nichts sonst.` });
+      messages.push({ role: "user", content: `Korrigiere NUR die fehlerhaften Felder. Fehlerliste:\n${r.errors.map((e) => "- " + e).join("\n")}\n\nAntworte mit einem flachen JSON-Objekt { "<pfad>": <neuer Wert>, … } — Pfade exakt wie in der Fehlerliste (z. B. "cards[4].left.sub"); nennt eine Fehlermeldung MEHRERE zusammengehörige Pfade, patche sie alle zusammen. Ein Wert von null löscht das jeweilige Feld. Nur das JSON, nichts sonst.` });
       let patch;
       try { const g = await chatJson(llm, messages); patch = g.value; raw = g.raw; }
       catch (e) { console.log("Patch nicht parsebar:", e.message); continue; }
@@ -424,7 +430,7 @@ lesson = r?.lesson ?? lesson;
 async function generatorPatchRound(errorList) {
   stats.runden.generatorPatches++;
   messages.push({ role: "assistant", content: JSON.stringify(lesson) });
-  messages.push({ role: "user", content: `Korrigiere NUR die fehlerhaften Felder. Fehlerliste:\n${errorList.map((e) => "- " + e).join("\n")}\n\nAntworte mit einem flachen JSON-Objekt { "<pfad>": <neuer Wert>, … } — Pfade exakt wie in der Fehlerliste. Nur das JSON, nichts sonst.` });
+  messages.push({ role: "user", content: `Korrigiere NUR die fehlerhaften Felder. Fehlerliste:\n${errorList.map((e) => "- " + e).join("\n")}\n\nAntworte mit einem flachen JSON-Objekt { "<pfad>": <neuer Wert>, … } — Pfade exakt wie in der Fehlerliste; nennt eine Fehlermeldung MEHRERE zusammengehörige Pfade, patche sie alle zusammen. Ein Wert von null löscht das jeweilige Feld. Nur das JSON, nichts sonst.` });
   let patch;
   try { patch = (await chatJson(llm, messages)).value; }
   catch (e) { console.log("Patch nicht parsebar:", e.message); return contract(lesson); }
@@ -472,20 +478,24 @@ if (wf.suspicious.length && fromFile && !fromModel) {
 // herleitbare Wörter wie „Schlafmantel") + unabhängiger Judge; Fixes deterministisch
 // gepatcht. Danach läuft der Detektor ERNEUT — ein Judge-Fix ist Behauptung, kein Beweis.
 async function applyJudgeFindings(findings) {
-  if (!findings.length) return;
+  if (!findings.length) return [];
   const getPath = (obj, path) => path.match(/[^.\[\]]+/g).reduce((c, t) => c?.[/^\d+$/.test(t) ? Number(t) : t], obj);
   const tagCount = (s) => (String(s).match(/<(b|strong|span)[\s>]/g) || []).length;
+  // Harte Befunde (wrong/unsupported), die keinen anwendbaren fix tragen, gehen
+  // zurück an den Aufrufer — sie dürfen nicht lautlos durchrutschen (Queue-Lauf
+  // „Himmel" 14.08.: afterStop-Widerspruch überlebte den eigenen Befund als done).
+  const hart = (f) => f.verdict === "wrong" || f.verdict === "unsupported";
   let applied = 0;
-  const lostMarkup = [];
+  const lostMarkup = [], unfixed = [];
   for (const f of findings) {
     console.log(`  [${f.verdict}] ${f.path}: ${f.problem}`);
-    if (!f.fix || !f.path) continue;
+    if (!f.fix || !f.path) { if (hart(f)) unfixed.push(f); continue; }
     try {
       const original = getPath(lesson, f.path);
       setPath(lesson, f.path, f.fix); applied++;
       if (typeof original === "string" && tagCount(original) > tagCount(f.fix))
         lostMarkup.push({ path: f.path, original, value: f.fix });
-    } catch { console.log(`  Fix-Pfad ungültig: ${f.path}`); }
+    } catch { console.log(`  Fix-Pfad ungültig: ${f.path}`); if (hart(f)) unfixed.push(f); }
   }
   console.log(`  → ${applied}/${findings.length} Fixes gepatcht`);
   // Fixes dürfen die Farb-Auszeichnung nicht still verlieren — gezielt restaurieren.
@@ -501,6 +511,7 @@ async function applyJudgeFindings(findings) {
       }
     } catch (e) { console.log("  Markup-Restaurierung nicht möglich (API):", e.message); }
   }
+  return unfixed;
 }
 
 const judgeFlags = [
@@ -521,7 +532,27 @@ const { findings, checks, model: judgeModel } = await judgeLesson(lesson, dossie
 stats.judgeModel = judgeModel;
 judgeRunde(checks, findings);
 console.log(`Judge (${judgeModel}): ${checks.length} Checks, ${findings.length} Fakten-Befund(e)`);
-await applyJudgeFindings(findings);
+const unfixed = await applyJudgeFindings(findings);
+
+// Harte Befunde ohne anwendbaren Judge-Fix: der Generator korrigiert sie selbst
+// (Patch-Runde), eine Judge-Nachprüfung verifiziert — der Fix ist eine Behauptung.
+// Bleibt der Befund hart und unfixbar, wird abgelehnt statt still durchgereicht.
+if (unfixed.length) {
+  console.log(`${unfixed.length} harte(r) Befund(e) ohne anwendbaren Fix → Generator-Patch-Runde…`);
+  const errs = await generatorPatchRound(unfixed.map((f) => `${f.path}: ${f.problem}${f.rechnung ? ` (${f.rechnung})` : ""}`));
+  if (errs.length) console.log(`Contract nach Befund-Patch (${errs.length}) — heilt die reguläre Schlussprüfung.`);
+  const r2 = await judgeLesson(lesson, dossier, { ...judgeOpts, flags: unfixed.map((f) => ({
+    kind: "nachpruefung", path: f.path,
+    detail: `${f.problem} — der Generator hat nachgebessert: ist der Befund jetzt beseitigt?` })) });
+  judgeRunde(r2.checks, r2.findings);
+  const still = await applyJudgeFindings(r2.findings);
+  if (still.length) {
+    console.log("Pipeline lehnt ab — harter Befund überlebt Generator-Patch + Nachprüfung: " + still.map((f) => f.path).join(", "));
+    writeFileSync(`${OUT}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
+    reject("fakten", "harter Befund ohne wirksamen Fix: " + still.map((f) => f.path).join(", "));
+    process.exit(1);
+  }
+}
 
 // Detektor-Re-Run: steht auf einem gefixten Pfad weiter eine unbelegte Zahl, hat der
 // Fix den Befund nicht beseitigt → zweite Judge-Runde mit verschärftem Auftrag; bleibt

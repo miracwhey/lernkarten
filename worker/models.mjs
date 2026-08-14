@@ -15,7 +15,10 @@ export const OR_BASE = "https://openrouter.ai/api/v1";
 // das Feld vor dem Request (openaiChat unten, wie glm-generate.requestBody).
 export const CHAIN = [
   { id: "openai/gpt-5.6-luna-pro", keyName: "OPENROUTER_API_KEY", base: OR_BASE, body: { max_tokens: 16000, temperature: null } },
-  { id: "deepseek/deepseek-v4-pro-0813", keyName: "OPENROUTER_API_KEY", base: OR_BASE, body: { max_tokens: 16000 } },
+  // 24k statt 16k: DS-Pro ist ein Denker — Lauf „Impfungen" 14.08. verbrannte
+  // 16001/16001 Tokens als reine Denk-Tokens (leere Antwort). Budget statt Drossel:
+  // die Bench-Bilanz gilt nur mit Default-Denken.
+  { id: "deepseek/deepseek-v4-pro-0813", keyName: "OPENROUTER_API_KEY", base: OR_BASE, body: { max_tokens: 24000 } },
 ];
 
 // Judge fix und nie Mitglied der Generator-Kette (Bench-Setup unverändert).
