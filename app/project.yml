@@ -34,6 +34,9 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.9"
         TARGETED_DEVICE_FAMILY: "1"
+        # Gerät-Build: Automatic Signing mit Leons Team (ID aus den Schwester-Projekten).
+        DEVELOPMENT_TEAM: KXJRXU59ZB
+        CODE_SIGN_STYLE: Automatic
   LernkartenTests:
     type: bundle.unit-test
     platform: iOS
@@ -54,7 +57,6 @@ targets:
         GENERATE_INFOPLIST_FILE: true
     dependencies:
       - target: Lernkarten
-schemes:
 schemes:
   Lernkarten:
     build:
