@@ -1,0 +1,187 @@
+{
+  "id": "koffein-crash-apex-probe",
+  "title": "Warum wir schlafen (Apex-Probe)",
+  "source": "Nach: Matthew Walker, Why We Sleep (2017)",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "GESUNDHEIT · MATTHEW WALKER",
+      "title": "Warum wir schlafen",
+      "sub": "Schlafdruck, der Koffein-Trick und warum 6 Stunden nicht reichen.",
+      "stats": "8 Karten · 5 Minuten"
+    },
+    {
+      "relation": "trend",
+      "text": "Solange du wach bist, sammelt sich <span class=\"w-es\">Adenosin</span> in deinem Gehirn an — und mit ihm wächst der Schlafdruck. Nur <b>Schlaf</b> baut Adenosin wieder ab.",
+      "xlabel": "WACHZEIT",
+      "ylabel": "SCHLAFDRUCK",
+      "series": [
+        {
+          "color": "es",
+          "shape": "saturating-rise",
+          "from": "low",
+          "to": "high",
+          "afterStop": "reset"
+        }
+      ],
+      "stop": {
+        "label": "SCHLAF",
+        "t": 0.75
+      },
+      "notes": [
+        {
+          "label": "DRUCK STEIGT",
+          "series": 0,
+          "t": 0.4
+        }
+      ],
+      "caption": "Um 23 Uhr endlich müde? Das ist der Adenosin-Stau von 19 Stunden Wachsein.",
+      "type": "curve"
+    },
+    {
+      "relation": "trend",
+      "text": "Koffein blockiert deine Adenosin-Rezeptoren: Es verdeckt die Müdigkeit nur, während der <span class=\"w-es\">Adenosin-Stau</span> weiter wächst. Lässt die Wirkung nach, trifft dich der Stau auf einmal — der Koffein-Crash.",
+      "xlabel": "ZEIT",
+      "ylabel": "MÜDIGKEIT",
+      "series": [
+        {
+          "label": "Echte Müdigkeit",
+          "color": "es",
+          "shape": "saturating-rise",
+          "from": "mid",
+          "to": "high"
+        },
+        {
+          "label": "Was du spürst",
+          "color": "ueberich",
+          "shape": "suppressed",
+          "from": "mid",
+          "to": "low",
+          "afterStop": "rebound",
+          "reboundTo": "high"
+        }
+      ],
+      "stop": {
+        "label": "KOFFEIN LÄSST NACH",
+        "t": 0.65
+      },
+      "notes": [
+        {
+          "label": "KOFFEIN-CRASH",
+          "series": 1,
+          "at": "apex"
+        }
+      ],
+      "caption": "Der Espresso um 15 Uhr gibt keine Energie — er versteckt nur die Müdigkeit.",
+      "type": "curve"
+    },
+    {
+      "relation": "trend",
+      "text": "<span class=\"w-es\">Koffein</span> hat eine Halbwertszeit von 5 bis 7 Stunden — nach 5 Stunden ist noch die Hälfte in dir aktiv. Dein Nachmittagskaffee begleitet dich also bis tief in die Nacht.",
+      "xlabel": "UHRZEIT",
+      "ylabel": "KOFFEIN",
+      "series": [
+        {
+          "label": "Koffein im Blut",
+          "color": "es",
+          "shape": "decay-halflife"
+        }
+      ],
+      "notes": [
+        {
+          "label": "21 UHR: NOCH 50 %",
+          "series": 0,
+          "t": 0.25
+        },
+        {
+          "label": "2 UHR: NOCH 25 %",
+          "series": 0,
+          "t": 0.48
+        }
+      ],
+      "caption": "Kaffee um 16 Uhr: Um 21 Uhr wirkt die Hälfte noch, um 2 Uhr ein Viertel.",
+      "type": "curve"
+    },
+    {
+      "relation": "weighing",
+      "text": "Im Schlaf verlagert dein Gehirn frisch Gelerntes vom Zwischenspeicher in den Langzeitspeicher und macht Platz für Neues. Nach einer durchwachten Nacht bleiben etwa <span class=\"w-es\">40 %</span> weniger hängen.",
+      "left": {
+        "label": "SCHLAF",
+        "sub": "WISSEN BLEIBT",
+        "color": "ich"
+      },
+      "right": {
+        "label": "WACH",
+        "sub": "−40 %",
+        "color": "es"
+      },
+      "pivot": {
+        "label": "GEDÄCHTNIS",
+        "sub": "Transfer nachts",
+        "color": "ueberich"
+      },
+      "caption": "Nacht durchlernen statt schlafen: 40 % des Stoffs sind weg.",
+      "type": "balance"
+    },
+    {
+      "relation": "contrast",
+      "text": "Zehn Nächte à 6 Stunden: Deine Leistung sinkt auf das Niveau einer durchwachten Nacht — doch dein <span class=\"w-es\">Gefühl</span> gewöhnt sich daran und meldet: alles normal.",
+      "left": {
+        "title": "10 NÄCHTE À 6 H",
+        "color": "es",
+        "items": [
+          {
+            "label": "LEISTUNG",
+            "sub": "wie nach 24 h wach"
+          },
+          {
+            "label": "GEFÜHL",
+            "sub": "meldet: alles normal"
+          }
+        ]
+      },
+      "right": {
+        "title": "24 H WACH",
+        "color": "ueberich",
+        "items": [
+          {
+            "label": "LEISTUNG",
+            "sub": "im Keller"
+          },
+          {
+            "label": "GEFÜHL",
+            "sub": "ehrlich: total fertig"
+          }
+        ]
+      },
+      "caption": "Zwei Wochen mit 6 h: Du hältst dich für fit — deine Werte nicht.",
+      "type": "compare"
+    },
+    {
+      "type": "quiz",
+      "question": "Du bist seit 19 Stunden durchgehend wach — früh aufgestanden, langer Tag. Du fühlst dich okay. Ins Auto steigen und heimfahren?",
+      "options": [
+        {
+          "label": "Nein — du fährst wie mit 0,8 Promille",
+          "correct": true
+        },
+        {
+          "label": "Ja, wenn du dich noch wach fühlst",
+          "correct": false
+        },
+        {
+          "label": "Ja, ein Kaffee macht dich fahrtauglich",
+          "correct": false
+        }
+      ],
+      "explain": "Nach 19 Stunden Wachsein reagierst du wie mit <strong>0,8 Promille</strong> — rechtlich fahruntüchtig. Dein Gefühl ist kein Kompass, es eicht sich mit.",
+      "wrong": "Falsch eingeschätzt: 19 Stunden wach entsprechen 0,8 Promille — und dein Gefühl merkt davon nichts mehr."
+    },
+    {
+      "type": "insight",
+      "quote": "Je kürzer dein Schlaf, desto kürzer dein Leben.",
+      "cite": "Matthew Walker, 2017",
+      "explain": "Eine Nacht mit 4 Stunden: Die Aktivität deiner Killerzellen sinkt um 70 % — <b>Schlaf ist kein Luxus</b>."
+    }
+  ]
+}

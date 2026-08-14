@@ -137,6 +137,21 @@
     font-weight: 700;
     letter-spacing: 0.08em;
   }
+  /* ——— Kurven-Hierarchie: Serie (fett, groß) > Ereignis > Note (klein) ———
+     Getrennt werden die Ebenen über Größe und Gewicht; die FARBE trägt seit der
+     Label-Bindung die Zugehörigkeit (Serienfarbe) und wird deshalb inline gesetzt.
+     Die Regeln hier sind der Grundton, falls kein Objekt zugeordnet ist. */
+  .c-series { fill: var(--ink); font-weight: 700; }
+  .c-stop   { fill: var(--ink); font-weight: 700; }
+  .c-note   { fill: var(--muted); font-weight: 600; }
+  /* Papier-Halo: Text bleibt lesbar, wo er nah an Geometrie steht — ohne Kasten-Chrome.
+     paint-order legt die Kontur HINTER die Füllung, sonst fräse sie den Text aus. */
+  .halo { paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; }
+  .c-stopline { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 5; }
+  .c-notedot { opacity: 0.9; }
+  /* Leader nur als letztes Mittel: gepunktet und dünn, damit er nie wie eine
+     Ereignis-Linie oder ein Achsen-Strich gelesen wird. */
+  .leader { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 2.5; opacity: 0.75; }
   .caption {
     font-size: 13px; color: var(--muted); text-align: center;
     line-height: 1.45; margin: 2px 0 6px;

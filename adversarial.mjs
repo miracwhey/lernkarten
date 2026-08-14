@@ -1,9 +1,17 @@
 // Adversarial-Fälle gegen den Label-Solver: Maximal-Längen, Randlagen, Deckungsgleichheit.
-// Rendert Testkarten direkt über RENDERERS.curve, misst Überlappungen im DOM, screenshottet.
+// Dazu die EREIGNIS-MATRIX: die Nach-Stop-Geometrie über verschiedene Startniveaus,
+// Stop-Zeitpunkte und Apex-Höhen — damit kein Einzelfall-Fix als Lösung durchgeht.
+// Rendert Testkarten direkt über RENDERERS.curve, misst im DOM, screenshottet.
+// Gemessen wird je Fall: Clipping (Text UND Geometrie), Text-Kollisionen,
+// Text×Kurve, sowie die ZUORDENBARKEIT (liegt ein Label näher an einer fremden
+// Serie als an der eigenen?). Zusätzlich protokolliert die Matrix Apex-Höhe und
+// steilsten Winkel des Asts — enge Kombinationen dürfen die FORM degradieren
+// (steiler), nie die deklarierte Höhe.
 // Nutzung: node adversarial.mjs [outdir=adv]
 import { chromium } from "playwright";
 import { mkdirSync } from "fs";
 import { resolve } from "path";
+import { auditCurveCard } from "./label-audit.mjs";
 
 const outdir = process.argv[2] || "adv";
 mkdirSync(outdir, { recursive: true });
@@ -68,51 +76,102 @@ const CASES = [
   }]
 ];
 
+// ————— Ereignis-Matrix: Startniveau × Stop-Zeitpunkt × Apex-Höhe —————
+// Jede Kombination trägt eine Referenzserie (damit Zuordenbarkeit messbar ist), ein
+// Stop-Ereignis und eine apex-verankerte Note (der Solver muss das Apex-Label auch
+// in der Ecke unterbringen).
+const EVENT_BASES = [
+  ["flat-low", { shape: "flat", from: "low" }],
+  ["flat-mid", { shape: "flat", from: "mid" }],
+  ["flat-high", { shape: "flat", from: "high" }],
+  ["supp-mid-low", { shape: "suppressed", from: "mid", to: "low" }],
+  ["supp-high-floor", { shape: "suppressed", from: "high", to: "floor" }],
+  ["supp-low", { shape: "suppressed", from: "low" }],
+  ["rise-low-mid", { shape: "saturating-rise", from: "low", to: "mid" }]
+];
+const STOPS = [0.2, 0.5, 0.9];
+const REBOUND_TO = ["low", "mid", "high"];
+// Basen, die auch collapse/reset durchlaufen — die beiden Formen sind unverändert,
+// müssen aber über dieselben Startniveaus/Zeitpunkte sauber bleiben.
+const PLAIN_BASES = ["flat-low", "supp-mid-low", "rise-low-mid"];
+// Extremkombinationen, von denen zusätzlich ein Bild abgelegt wird.
+const SHOT = new Set([
+  "reb-flat-low-t0.9-high",      // engste Breite, größte Höhe → steilster Ast
+  "reb-flat-high-t0.9-high",     // Apex oben rechts, direkt an der Plot-Ecke
+  "reb-flat-low-t0.2-high",      // längster Ast, flachster Schwung
+  "reb-supp-high-floor-t0.5-low",// kleinster Hub: von floor auf low
+  "reb-supp-mid-low-t0.9-mid",   // spät + mittlere Höhe
+  "reb-rise-low-mid-t0.5-mid",   // Ereignis unterbricht einen Anstieg
+  "collapse-rise-low-mid-t0.9",  // Bestandsform spät
+  "reset-supp-mid-low-t0.2"      // Bestandsform früh
+]);
+
+// Weitere Fallnamen als Argumente → zusätzlich screenshotten (Nachschau bei Befunden).
+for (const n of process.argv.slice(3)) SHOT.add(n);
+
+const matrixCard = (label, base, t, afterStop, reboundTo) => ({
+  type: "curve",
+  text: `Ereignis-Matrix ${label}: Startniveau, Zeitpunkt und Apex-Höhe variiert.`,
+  xlabel: "ZEIT", ylabel: "NIVEAU",
+  stop: { t, label: "EREIGNIS" },
+  series: [
+    { label: "Referenz", color: "es", shape: "linear-rise", from: "low", to: "high", dash: true },
+    { label: "Ereignis", color: "ueberich", ...base, afterStop, ...(reboundTo ? { reboundTo } : {}) }
+  ],
+  notes: [{ label: "APEX-NOTE", series: 1, at: "apex" }],
+  caption: label
+});
+
+const MATRIX = [];
+for (const [bn, base] of EVENT_BASES) for (const t of STOPS) {
+  for (const r of REBOUND_TO) {
+    const name = `reb-${bn}-t${t}-${r}`;
+    MATRIX.push([name, matrixCard(name, base, t, "rebound", r)]);
+  }
+  if (PLAIN_BASES.includes(bn)) for (const a of ["collapse", "reset"]) {
+    const name = `${a}-${bn}-t${t}`;
+    MATRIX.push([name, matrixCard(name, base, t, a, null)]);
+  }
+}
+
+// Gemessen wird mit demselben Chokepoint wie in audit-lesson.mjs (label-audit.mjs):
+// Text-Kollision/Clipping, Geometrie-Clipping, Zuordenbarkeit, Leader-Deckel und das
+// Sticky-Gate der Serien-Label-Bindung.
+
 const url = "file://" + resolve("karten-grammatik.html");
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 560, height: 1000 } });
 await page.emulateMedia({ reducedMotion: "reduce" });
 page.on("pageerror", (e) => console.error("PAGEERROR:", e.message));
+await page.goto(url);
+await page.waitForTimeout(150);
 
 let findings = 0;
-for (const [name, card] of CASES) {
-  await page.goto(url);
-  await page.waitForTimeout(150);
-  const report = await page.evaluate((c) => {
-    area.innerHTML = RENDERERS.curve(c);
-    const svg = document.querySelector(".diagram svg");
-    const vb = svg.viewBox.baseVal;
-    const out = [];
-    const texts = [...svg.querySelectorAll("text")].map((el) => {
-      const b = el.getBBox();
-      return { label: el.textContent.trim(), x: b.x, y: b.y, w: b.width, h: b.height };
-    });
-    for (const a of texts) {
-      if (a.x < vb.x || a.y < vb.y || a.x + a.w > vb.x + vb.width || a.y + a.h > vb.y + vb.height)
-        out.push(`CLIP  "${a.label}"`);
-    }
-    for (let i = 0; i < texts.length; i++) for (let j = i + 1; j < texts.length; j++) {
-      const a = texts[i], b = texts[j], p = -2;
-      if (!(a.x + a.w + p < b.x || b.x + b.w + p < a.x || a.y + a.h + p < b.y || b.y + b.h + p < a.y))
-        out.push(`TEXT² "${a.label}" × "${b.label}"`);
-    }
-    const strokes = [...svg.querySelectorAll("polyline, line:not(.leader)")];
-    for (const a of texts) for (const el of strokes) {
-      const len = el.getTotalLength ? el.getTotalLength() : 0;
-      if (!len) continue;
-      for (let d = 0; d <= len; d += 3) {
-        const pt = el.getPointAtLength(d);
-        if (pt.x >= a.x - 1.5 && pt.x <= a.x + a.w + 1.5 && pt.y >= a.y - 1.5 && pt.y <= a.y + a.h + 1.5) {
-          out.push(`PATH  "${a.label}" × ${el.tagName}`); break;
-        }
-      }
-    }
-    return out;
-  }, card);
-  await page.locator(".phone").screenshot({ path: `${outdir}/${name}.png` });
-  if (report.length === 0) console.log(`${name}: OK`);
-  else { findings += report.length; console.log(`${name}:\n  ` + report.join("\n  ")); }
+const run = async (name, card, shot) => {
+  const { out, ast } = await page.evaluate(auditCurveCard, { card });
+  if (shot) await page.locator(".phone").screenshot({ path: `${outdir}/${name}.png` });
+  const kennz = ast ? `  [${ast.art} apex=${ast.niveau} maxWinkel=${ast.maxDeg}°]` : "";
+  const echt = out.filter((o) => !o.startsWith("INFO"));
+  if (out.length === 0) console.log(`${name}: OK${kennz}`);
+  else { findings += echt.length; console.log(`${name}: ${echt.length ? "" : "OK "}${kennz}\n  ` + out.join("\n  ")); }
+  return ast;
+};
+
+console.log("——— Solver-Stresstests ———");
+for (const [name, card] of CASES) await run(name, card, true);
+
+console.log("——— Ereignis-Matrix ———");
+const asts = [];
+for (const [name, card] of MATRIX) {
+  const ast = await run(name, card, SHOT.has(name));
+  if (ast) asts.push({ name, ...ast });
 }
+const rebs = asts.filter((a) => a.art === "rebound");
+const steil = [...rebs].sort((a, b) => b.maxDeg - a.maxDeg).slice(0, 5);
+console.log(`MATRIX ${MATRIX.length} Kombinationen, davon ${rebs.length} rebound`);
+console.log("Steilste Äste: " + steil.map((a) => `${a.name}=${a.maxDeg}°`).join("  "));
+console.log(`Apex-Niveaus: min=${Math.min(...rebs.map((a) => a.niveau))} max=${Math.max(...rebs.map((a) => a.niveau))}`);
+
 await browser.close();
 console.log(findings === 0 ? "ADVERSARIAL PASS" : `ADVERSARIAL FAIL — ${findings} Befunde`);
 process.exit(findings === 0 ? 0 : 1);

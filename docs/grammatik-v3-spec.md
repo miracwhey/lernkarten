@@ -8,6 +8,8 @@ Das LLM sagt **was** verstanden werden soll, nie **wie** oder **wo** etwas aussi
 
 **Richtung (Leon, 14.08.):** „Herzstück" heißt nicht ein einziges Diagramm — die Lektionen brauchen **visuelle Vielfalt** und zum Thema passende Visuals. Die Freiheit entsteht im **Angebot** (Katalog-Breite, Asset-Library, thematische Passung der Typ-Wahl), nicht in der Komposition durchs LLM.
 
+**Leitplanke gegen Über-Constraining (Leon, 14.08.):** Robustheit darf nie durch Verengung des Ausdrucksraums erkauft werden — zu enge Contracts erzeugen Karten, die „gefühlt immer das Gleiche" sind. Ziel ist Individualität, konkret-präzise zur jeweiligen Lektion. Prüffrage an jede neue Regel/jedes Gate: Macht sie eine FALSCHE Aussage unausdrückbar (gut) oder eine mögliche Ausdrucksform seltener (schlecht)? Neue Contract-Felder additiv; Gates messen Ehrlichkeit und Layout, nie Inhalts-Vielfalt.
+
 **Nicht-Ziele:** freie Primitives-Komposition durchs LLM · Layout/Koordinaten vom LLM · generative Asset-Pipeline (spätere Ausbaustufe) · 3D · Lottie (zweite Geometrie-Quelle neben SVG/CSS — abgelehnt).
 
 ---

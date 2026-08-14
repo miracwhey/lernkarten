@@ -138,6 +138,10 @@ const RENDERERS = {
     const sx = (t) => PLOT.x0 + t * (PLOT.x1 - PLOT.x0);
     const sy = (v) => PLOT.y0 - (v / 100) * (PLOT.y0 - PLOT.y1);
     const LEVELS = { floor: 2, low: 8, mid: 52, high: 88 };
+    // Smoothstep: waagerechter Ein- UND Ausgang. Ein Ast, der so ansetzt, hat am
+    // Ereignis keinen Knick und am Apex keine Spitze — er liest sich als eine
+    // Bewegung, nicht als zweite, unbeschriftete Linie.
+    const smooth = (v) => v * v * (3 - 2 * v);
     const NORM = {
       "linear-rise": (t) => t,
       "compound-rise": (t) => (Math.exp(3 * t) - 1) / (Math.exp(3) - 1),
@@ -150,92 +154,247 @@ const RENDERERS = {
     const defTo = (s) => s.shape === "decay-halflife" ? "floor"
       : (s.shape === "flat" || s.shape === "suppressed") ? (s.from ?? defFrom(s)) : "high";
     const tStop = card.stop ? card.stop.t : null;
+    // Unterdrückt heißt: einmal sanft absenken, dann UNTEN BLEIBEN — bis zum Stop
+    // bzw. bis Kurvenende. Zielniveau ist ein ausdrücklich tieferes `to`, sonst die
+    // halbe Ausgangshöhe. Ein Wiederanstieg davor läse sich als Erholung.
+    const heldLevel = (s, base) => {
+      const to = s.to !== undefined ? LEVELS[s.to] : null;
+      return to != null && to < base ? to : Math.max(LEVELS.floor + 2, base * 0.5);
+    };
+    // Apex des Rebound-Asts: Höhe ist DEKLARIERT (reboundTo, Default high) und wird
+    // eingehalten — die Endhöhe ist die Aussage der Karte, nicht der Spielraum des
+    // Renderers. Bleibt nach einem späten Stop wenig Breite, degradiert die FORM
+    // (der Ast wird steiler), nicht die Höhe; der Smoothstep hält ihn geschwungen,
+    // ein Senkrecht-Sprung entsteht nie. APEX_MIN_RISE hält ihn auch dann sichtbar,
+    // wenn das Stop-Niveau schon auf oder über dem Wunsch liegt.
+    const APEX_CEIL = 96, APEX_MIN_RISE = 10;
+    const apexLevel = (s, yStop) =>
+      Math.min(APEX_CEIL, Math.max(yStop + APEX_MIN_RISE, LEVELS[s.reboundTo] ?? LEVELS.high));
 
     // 1) Sample-Punkte je Serie: Form lebt bis zum Stop (wenn afterStop), sonst bis 1.
     const samples = card.series.map((s) => {
       const from = LEVELS[s.from ?? defFrom(s)];
       const to = LEVELS[s.to ?? defTo(s)];
       const tEnd = s.afterStop && tStop != null ? tStop : 1;
+      const held = heldLevel(s, from);
       const N = 56, pts = [];
       for (let i = 0; i <= N; i++) {
         const u = i / N;
         let y = from + (to - from) * NORM[s.shape](u);
-        if (s.shape === "suppressed") y = from - from * 0.5 * Math.exp(-(((u - 0.3) / 0.32) ** 2));
+        if (s.shape === "suppressed") y = from + (held - from) * smooth(Math.min(1, u / 0.32));
         pts.push([u * tEnd, Math.max(0, y)]);
       }
       if (s.afterStop === "collapse") pts.push([Math.min(1, tEnd + 0.03), LEVELS.floor], [1, LEVELS.floor]);
       if (s.afterStop === "reset") pts.push([Math.min(1, tEnd + 0.17), from]);
-      if (s.afterStop === "rebound") pts.push([Math.min(1, tEnd + 0.2), LEVELS.high + 4]);
-      return { s, pts, stopIdx: s.afterStop ? 56 : null };
+      if (s.afterStop === "rebound") {
+        // Geschwungener Ast über die volle Restbreite bis zum Apex — kein Senkrecht-Sprung.
+        const yStop = pts[pts.length - 1][1], span = Math.max(0, 1 - tEnd);
+        const apex = apexLevel(s, yStop);
+        for (let k = 1; k <= 14; k++) pts.push([tEnd + span * (k / 14), yStop + (apex - yStop) * smooth(k / 14)]);
+      }
+      return { s, pts, stopIdx: s.afterStop ? N : null };
     });
-    // Endniveau-Spreizung: enden zwei Serien gleich hoch, endet die steilere höher.
+    // Endniveau-Spreizung: enden zwei Serien gleich hoch, trennt der Renderer sie um
+    // ±3.5. Beim Rebound wird dafür der GANZE Ast skaliert — nur den Endpunkt zu
+    // verschieben knickte die Spitze — und der Rebound nimmt den unteren Platz: ein
+    // Ast, der nach dem Ereignis aufholt, überholt die unmaskierte Kurve nicht.
+    const nudge = (sm, d) => {
+      const last = sm.pts.length - 1;
+      if (sm.s.afterStop === "rebound" && sm.stopIdx != null) {
+        const yStop = sm.pts[sm.stopIdx][1], rise = sm.pts[last][1] - yStop;
+        if (rise > 0.1) {
+          const f = (rise + d) / rise;
+          for (let i = sm.stopIdx + 1; i <= last; i++) sm.pts[i][1] = yStop + (sm.pts[i][1] - yStop) * f;
+          return;
+        }
+      }
+      sm.pts[last][1] += d;
+    };
     if (samples.length === 2) {
       const ends = samples.map((sm) => sm.pts[sm.pts.length - 1][1]);
       if (Math.abs(ends[0] - ends[1]) < 6) {
-        const slope = samples.map((sm) => {
-          const [ta, ya] = sm.pts[sm.pts.length - 2], [tb, yb] = sm.pts[sm.pts.length - 1];
-          return tb > ta ? (yb - ya) / (tb - ta) : 0;
-        });
-        const hi = slope[0] >= slope[1] ? 0 : 1;
-        samples[hi].pts[samples[hi].pts.length - 1][1] += 3.5;
-        samples[1 - hi].pts[samples[1 - hi].pts.length - 1][1] -= 3.5;
+        const reb = samples.map((sm) => sm.s.afterStop === "rebound");
+        let hi;
+        if (reb[0] !== reb[1]) hi = reb[0] ? 1 : 0;
+        else {
+          const slope = samples.map((sm) => {
+            const [ta, ya] = sm.pts[sm.pts.length - 2], [tb, yb] = sm.pts[sm.pts.length - 1];
+            return tb > ta ? (yb - ya) / (tb - ta) : 0;
+          });
+          hi = slope[0] >= slope[1] ? 0 : 1;
+        }
+        nudge(samples[hi], 3.5);
+        nudge(samples[1 - hi], -3.5);
       }
     }
 
-    // 2) Label-Solver: Kandidaten testen, erster kollisionsfreier gewinnt.
-    const measure = (txt, size) => {
-      MEASURE_CTX.font = `700 ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    // 2) Label-Schicht: jedes Label wird AUS seiner Bindung konstruiert.
+    // Serien-Label ↔ eigener Strich, Ereignis-Label ↔ Stop-Linie, Note ↔ Ankerpunkt.
+    // Gesucht wird nur INNERHALB der erlaubten Familie — nicht im ganzen Plot mit der
+    // Bedeutung als Aufschlag im Platz-Score. Ein besserer freier Platz kann die
+    // Zuordnung damit nicht mehr überstimmen: sie ist konstruktiv wahr, nicht gewichtet.
+    // Gewicht mitmessen: Notes rendern leichter als Serien-Labels, sonst misst der
+    // Solver eine andere Breite als der Browser zeichnet.
+    const measure = (txt, size, weight = 700) => {
+      MEASURE_CTX.font = `${weight} ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
       return MEASURE_CTX.measureText(txt).width + txt.length * size * 0.08;
     };
-    const placed = [];   // {x,y,w,h} — Mittelpunkt-Boxen
-    const box = (cx, cy, w, h) => ({ x: cx - w / 2, y: cy - h / 2, w, h });
-    const inView = (b) => b.x >= 4 && b.x + b.w <= 396 && b.y >= 12 && b.y + b.h <= 252;
-    const hitBox = (a, b) => !(a.x + a.w < b.x || b.x + b.w < a.x || a.y + a.h < b.y || b.y + b.h < a.y);
-    const pad = (b, p) => ({ x: b.x - p, y: b.y - p, w: b.w + 2 * p, h: b.h + 2 * p });
-    // Pfade pixeldicht abtasten — auch lange Einzelsegmente (Collapse-Schwanz) werden Hindernis.
-    const allPix = samples.flatMap((sm) => {
+    const RAD = Math.PI / 180;
+    // Textkörper in Zahlen, an der ECHTEN Schrift gemessen (probes: getBBox gegen
+    // font-size): die Box ist 1.21·Größe hoch und ihre Mitte liegt 0.385·Größe über der
+    // Grundlinie. Ein geschätztes Kasten-Maß ließe Renderer und Audit über verschieden
+    // große Rechtecke streiten — dieselbe Zahl auf beiden Seiten macht die Prüfung erst
+    // aussagekräftig. Etwas größer als die reale Box ist sie bewusst (Sicherheitssaum).
+    const BOX_H = 1.21, BASE_OFF = 0.385;
+    const boxH = (size) => size * BOX_H + 1;
+    // Ein Sticky-Label liegt auf der Tangente seines Strichs — seine Box ist GEDREHT.
+    // Achsparallel gerechnet wäre sie an einer 25°-Kurve ein Vielfaches zu groß und
+    // schlüge Lagen aus, die der Text nie berührt. Die ganze Schicht rechnet deshalb
+    // mit orientierten Rechtecken; deg=0 ist der Sonderfall (Note, Achse, Ereignis).
+    const rect = (cx, cy, w, h, deg = 0) => ({ cx, cy, w, h, deg });
+    const toLocal = (r, x, y) => {
+      const a = r.deg * RAD, c = Math.cos(a), s = Math.sin(a), dx = x - r.cx, dy = y - r.cy;
+      return [dx * c + dy * s, dy * c - dx * s];
+    };
+    const toWorld = (r, lx, ly) => {
+      const a = r.deg * RAD, c = Math.cos(a), s = Math.sin(a);
+      return [r.cx + lx * c - ly * s, r.cy + lx * s + ly * c];
+    };
+    const cornersOf = (r) => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => toWorld(r, u * r.w / 2, v * r.h / 2));
+    const grow = (r, px, py = px) => rect(r.cx, r.cy, r.w + 2 * px, r.h + 2 * py, r.deg);
+    const inRect = (r, x, y) => { const [u, v] = toLocal(r, x, y); return Math.abs(u) <= r.w / 2 && Math.abs(v) <= r.h / 2; };
+    // Abstand einer Label-BOX zu einem Punkt. Bewusst von der Box aus gemessen, nicht
+    // vom Mittelpunkt: ein breites Label kann mit der Mitte weit von einer Kurve liegen
+    // und mit dem Rand direkt daran — das Auge (und das Audit) sehen den Rand.
+    const distRect = (r, x, y) => {
+      const [u, v] = toLocal(r, x, y);
+      return Math.hypot(Math.max(Math.abs(u) - r.w / 2, 0), Math.max(Math.abs(v) - r.h / 2, 0));
+    };
+    // Überlappung zweier orientierter Rechtecke: Trennachsen-Test über beide Achsenpaare.
+    const hitRect = (A, B) => {
+      const ca = cornersOf(A), cb = cornersOf(B);
+      for (const R of [A, B]) {
+        const a = R.deg * RAD;
+        for (const [ax, ay] of [[Math.cos(a), Math.sin(a)], [-Math.sin(a), Math.cos(a)]]) {
+          let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+          for (const [x, y] of ca) { const p = x * ax + y * ay; if (p < a0) a0 = p; if (p > a1) a1 = p; }
+          for (const [x, y] of cb) { const p = x * ax + y * ay; if (p < b0) b0 = p; if (p > b1) b1 = p; }
+          if (a1 < b0 || b1 < a0) return false;
+        }
+      }
+      return true;
+    };
+    const placed = [];   // orientierte Boxen aller schon gesetzten Objekte
+    const put = (r) => { placed.push(r); return r; };
+    // `bottom` ist die Unterkante, die ein Label nicht unterschreiten darf. Notes
+    // bekommen eine höhere Grenze als 252: sie dürfen nie in die Zeile der
+    // x-Achsen-Beschriftung rutschen und dort wie deren Fortsetzung wirken.
+    const inView = (r, bottom = 252) => cornersOf(r).every(([x, y]) => x >= 4 && x <= 396 && y >= 12 && y <= bottom);
+    const hitPlaced = (r, px = 4, py = px) => { const q = grow(r, px, py); return placed.some((o) => hitRect(q, o)); };
+    // Abstand zwischen zwei BESCHRIFTUNGEN, gerichtet: LÄNGS der Leserichtung braucht es
+    // mehr als den Wortabstand der Schrift, sonst lesen sich zwei Texte als ein Satz
+    // („Gefühlter Druck DRUCK MASKIERT"). QUER dazu genügt wenig — zwei Zeilen
+    // übereinander liest niemand als eine; die gestapelte Apex-Note lebt genau davon.
+    // Gewachsen wird im gedrehten Rahmen des Labels, „längs" ist also seine Grundlinie.
+    const LUFT_X = 7, LUFT_Y = 2;
+    // Pfade pixeldicht abtasten — auch lange Einzelsegmente (Collapse-Schwanz) werden
+    // Hindernis. Je Serie getrennt: die Zuordnung Label→Kurve misst am eigenen Verlauf.
+    // Der Schritt ist FEINER als der des Audits (dort 2–3 px): grober abgetastet könnte
+    // eine Kurve die Ecke einer Box streifen, ohne dass der Renderer einen Punkt darin
+    // findet — das Gate sähe den Treffer, der Renderer nie.
+    const PIX_STEP = 1.5;
+    const pixOf = (sm) => {
       const out = [];
       for (let i = 1; i < sm.pts.length; i++) {
         const [ta, va] = sm.pts[i - 1], [tb, vb] = sm.pts[i];
         const ax = sx(ta), ay = sy(va), bx = sx(tb), by = sy(vb);
-        const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 4));
+        const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / PIX_STEP));
         for (let k = 0; k <= n; k++) out.push([ax + (bx - ax) * (k / n), ay + (by - ay) * (k / n)]);
       }
       return out;
-    });
-    const hitPath = (b) => { const q = pad(b, 3); return allPix.some(([px, py]) => px >= q.x && px <= q.x + q.w && py >= q.y && py <= q.y + q.h); };
-    const free = (b) => inView(b) && !hitPath(b) && !placed.some((o) => hitBox(pad(b, 4), o));
-    const put = (b) => { placed.push(b); return b; };
+    };
+    const seriesPix = samples.map(pixOf);
+    // Das Achsenkreuz ist Hindernis wie jede Kurve: ein Label auf der x-Achse liest
+    // sich als deren Beschriftung, nicht als die seiner Serie.
+    const axisPix = [];
+    for (let y = PLOT.y1; y <= PLOT.y0; y += PIX_STEP) axisPix.push([PLOT.x0, y]);
+    for (let x = PLOT.x0; x <= PLOT.x1; x += PIX_STEP) axisPix.push([x, PLOT.y0]);
+    // Die Stop-Vertikale wird kürzer, wenn ein Label über ihr sitzt — ihre Punkte
+    // entstehen deshalb erst, wenn ihr oberes Ende feststeht (setStopTop).
+    let stopPix = [];
+    const hindernisPix = () => seriesPix.flat().concat(axisPix, stopPix);
+    // x-Bänder: ein Kandidat prüft nur Punkte in seiner Spalte statt aller ~1000.
+    const BAND = 8;
+    const bandsOf = (pix) => {
+      const m = new Map();
+      for (const p of pix) { const k = Math.floor(p[0] / BAND); if (!m.has(k)) m.set(k, []); m.get(k).push(p); }
+      return m;
+    };
+    const inBand = (bands, r, reichweite) => {
+      const xs = cornersOf(r).map((c) => c[0]);
+      const out = [];
+      for (let k = Math.floor((Math.min(...xs) - reichweite) / BAND); k <= Math.floor((Math.max(...xs) + reichweite) / BAND); k++) {
+        const b = bands.get(k);
+        if (b) for (const p of b) out.push(p);
+      }
+      return out;
+    };
+    const hitPix = (r, pix) => pix.some(([x, y]) => inRect(r, x, y));
+    // Schadensmaß für Notlagen. EIN Kurventreffer wiegt schwerer als jede Zahl von
+    // Reservierungs-Überschneidungen: Text auf einer Linie ist ein sichtbarer Defekt,
+    // ein Anschnitt an der (großzügig bemessenen) Endpunkt-Reservierung ist keiner.
+    const schadenVon = (r, pix) => {
+      const q = grow(r, 2);
+      const treffer = pix.filter(([x, y]) => inRect(q, x, y)).length;
+      return (treffer ? 1000 + treffer : 0) + 40 * placed.filter((o) => hitRect(q, o)).length;
+    };
+    const distPix = (r, pix) => { let best = Infinity; for (const [x, y] of pix) { const d = distRect(r, x, y); if (d < best) best = d; } return best; };
+    // Zuordenbarkeit: ein Label, das näher an einer FREMDEN Kurve klebt als an der
+    // eigenen, beschriftet optisch die falsche Linie.
+    const fremdDist = (own, r) => {
+      let d = Infinity;
+      seriesPix.forEach((p, i) => { if (i !== own) d = Math.min(d, distPix(r, p)); });
+      return d;
+    };
 
     // Reservierungen: Achsen-Beschriftungen.
-    put(box(PLOT.x0 + measure(card.ylabel, 11) / 2, 20, measure(card.ylabel, 11), 14));
-    put(box(PLOT.x1 - measure(card.xlabel, 11) / 2, 262, measure(card.xlabel, 11), 14));
+    put(rect(PLOT.x0 + measure(card.ylabel, 11) / 2, 20, measure(card.ylabel, 11), 14));
+    put(rect(PLOT.x1 - measure(card.xlabel, 11) / 2, 262, measure(card.xlabel, 11), 14));
 
-    // Stop-Label: oben an der Grenz-Vertikalen, horizontal in die viewBox geklemmt.
-    // Die Vertikale selbst ist Hindernis — kein Label darf sie schneiden.
-    let stopSvg = "";
+    // Ereignis-Label: blanke CAPS über der Linie, KEIN Chip. Ein Kasten machte aus dem
+    // Ereignis ein zweites Objekt, das mit den Serien-Labels um Aufmerksamkeit
+    // wetteifert; lesbar bleibt der Text über den Papier-Halo. Reagiert GENAU EINE
+    // Serie auf das Ereignis, trägt das Label deren Farbe — die Bindung steht dann im
+    // Bild statt in einer Legende.
+    const STOP_SIZE = 10.5;
+    let stopRect = null, stopX = null, stopTop = PLOT.y1, stopFill = C("ink");
+    // Die Vertikale beginnt unter ihrer Beschriftung — sonst schnitte die Linie ihr
+    // eigenes Label. Ihre Hindernis-Punkte hängen deshalb an ihrem oberen Ende.
+    const setStopTop = (y) => {
+      stopTop = y;
+      stopPix = [];
+      for (let py = stopTop; py <= PLOT.y0; py += PIX_STEP) stopPix.push([stopX, py]);
+    };
     if (card.stop) {
-      for (let y = PLOT.y1; y <= PLOT.y0; y += 4) allPix.push([sx(tStop), y]);
-      const w = measure(card.stop.label, 10.5);
-      const lx = sx(tStop);
+      const reagiert = samples.map((sm, i) => (sm.s.afterStop ? i : -1)).filter((i) => i >= 0);
+      if (reagiert.length === 1) stopFill = C(samples[reagiert[0]].s.color);
+      const w = measure(card.stop.label, STOP_SIZE), h = boxH(STOP_SIZE);
+      stopX = sx(tStop);
+      const klemm = (x) => Math.min(396 - w / 2 - 4, Math.max(4 + w / 2 + 4, x));
       // Kandidaten: zentriert über der Linie, rechts daneben, links daneben — je 2 Höhen.
       let best = null;
       outer: for (const cy of [24, 40]) {
-        for (const cx of [lx, lx + 8 + w / 2, lx - 8 - w / 2]) {
-          const cc = Math.min(396 - w / 2, Math.max(4 + w / 2, cx));
-          const b = box(cc, cy, w, 13);
-          if (inView(b) && !placed.some((o) => hitBox(pad(b, 3), o))) { best = b; break outer; }
+        for (const cx of [stopX, stopX + 10 + w / 2, stopX - 10 - w / 2]) {
+          const r = rect(klemm(cx), cy, w, h);
+          if (inView(grow(r, 3)) && !hitPlaced(r, 3)) { best = r; break outer; }
         }
       }
-      best = best || box(Math.min(396 - w / 2, Math.max(4 + w / 2, lx)), 24, w, 13);
-      put(best);
-      stopSvg = `<line x1="${lx}" y1="34" x2="${lx}" y2="244"
-          stroke="${C("ink")}" stroke-width="1.5" stroke-dasharray="5 5"/>
-        <text x="${best.x + best.w / 2}" y="${best.y + 10}" font-size="10.5" font-weight="700" letter-spacing="0.08em"
-          fill="${C("ink")}" text-anchor="middle">${card.stop.label}</text>`;
+      stopRect = put(best || rect(klemm(stopX), 24, w, h));
+      const ueberLinie = stopX >= stopRect.cx - stopRect.w / 2 - 2 && stopX <= stopRect.cx + stopRect.w / 2 + 2;
+      setStopTop(ueberLinie ? Math.max(PLOT.y1, stopRect.cy + h / 2 + 4) : PLOT.y1);
     }
     // Endpunkt-Dots reservieren.
-    samples.forEach((sm) => { const [t, v] = sm.pts[sm.pts.length - 1]; put(box(sx(t), sy(v), 12, 12)); });
+    samples.forEach((sm) => { const [t, v] = sm.pts[sm.pts.length - 1]; put(rect(sx(t), sy(v), 12, 12)); });
 
     const yOnCurve = (sm, t) => {
       const pts = sm.pts;
@@ -247,76 +406,331 @@ const RENDERERS = {
     };
     window.__curveDebug = { samples, yOnCurve };   // Mess-Hook: notecheck.mjs misst am Renderer-Original, keine Zweit-Geometrie
 
-    // Platziert ein Label nahe seines Ankers; Rückgabe {x,y,box,leader}.
-    // Leader-Linien dürfen keine Kurve schneiden (Anker-Nähe ausgenommen — dort endet sie).
-    const leaderFree = (from, to) => {
-      const n = Math.max(1, Math.ceil(Math.hypot(to[0] - from[0], to[1] - from[1]) / 4));
-      for (let k = 0; k <= n; k++) {
-        const x = from[0] + (to[0] - from[0]) * (k / n), y = from[1] + (to[1] - from[1]) * (k / n);
-        if (Math.hypot(x - to[0], y - to[1]) < 9) continue;
-        if (allPix.some(([px, py]) => Math.hypot(px - x, py - y) < 3)) return false;
+    // Kandidaten-Stützstellen: die Kurve gleichmäßig in Pixelschritten abgetastet, NICHT
+    // die Roh-Stützstellen der Form. Ein Collapse-Schwanz besteht aus zwei Punkten über
+    // 250 px — an ihm gäbe es sonst genau zwei mögliche Label-Lagen, beide an den Enden.
+    // Der feste Schritt hält außerdem das Tangenten-Fenster längentreu (±3 · 6 px).
+    const XY_STEP = 2;
+    const denseXY = (sm) => {
+      const out = [];
+      for (let i = 1; i < sm.pts.length; i++) {
+        const [ta, va] = sm.pts[i - 1], [tb, vb] = sm.pts[i];
+        const ax = sx(ta), ay = sy(va), bx = sx(tb), by = sy(vb);
+        const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / XY_STEP));
+        // Ast-Kennung mitführen: Haupt- und Nach-Stop-Ast treffen sich in einem KNICK.
+        // Ein Tangenten-Fenster über ihn hinweg mittelte zwei Richtungen zu einer
+        // dritten, die keine der beiden ist.
+        const ast = sm.stopIdx != null && i > sm.stopIdx ? 1 : 0;
+        for (let k = i === 1 ? 0 : 1; k <= n; k++) {
+          const f = k / n;
+          out.push([ax + (bx - ax) * f, ay + (by - ay) * f, ta + (tb - ta) * f, ast]);
+        }
+      }
+      return out.length ? out : [[sx(sm.pts[0][0]), sy(sm.pts[0][1]), sm.pts[0][0], 0]];
+    };
+    const seriesXY = samples.map(denseXY);
+    // Tangente über ein Fenster mitteln, nicht am Einzelsegment ablesen: ein Segment
+    // von 3 px zittert, das Fenster liefert die Richtung, die das Auge sieht. Das
+    // Fenster ist in PIXELN definiert (±18 px), nicht in Stützstellen — sonst hinge die
+    // gemessene Richtung an der Abtastdichte und das Audit misst eine andere als der
+    // Renderer.
+    const TAN_WIN = Math.round(18 / XY_STEP);
+    // Das Fenster endet am Ast-Wechsel: gemessen wird die Richtung EINES Strichs.
+    const tangentAt = (xy, i) => {
+      const ast = xy[i][3];
+      let lo = i, hi = i;
+      while (lo > 0 && i - lo < TAN_WIN && xy[lo - 1][3] === ast) lo--;
+      while (hi < xy.length - 1 && hi - i < TAN_WIN && xy[hi + 1][3] === ast) hi++;
+      if (lo === hi) return 0;
+      return Math.atan2(xy[hi][1] - xy[lo][1], xy[hi][0] - xy[lo][0]) / RAD;
+    };
+    const nearestIdx = (xy, r) => {
+      let bi = 0, bd = Infinity;
+      for (let i = 0; i < xy.length; i++) { const d = distRect(r, xy[i][0], xy[i][1]); if (d < bd) { bd = d; bi = i; } }
+      return bi;
+    };
+
+    // ——— Serien-Label: sticky am eigenen Strich ———
+    // Drei harte Regeln machen die Bindung wahr statt wahrscheinlich: NAH (die Box steht
+    // dicht am eigenen Strich), PARALLEL (sie liegt auf dessen Tangente) und NICHTS
+    // DAZWISCHEN (in der Lücke zwischen Text und Strich verläuft keine fremde Kurve).
+    // Degradiert wird die Schriftgröße — nie die Bindung: ein Leader machte die
+    // Zuordnung wieder zur Behauptung des Renderers statt zur Eigenschaft der Lage.
+    const STICKY_ABOVE = -7, STICKY_BELOW = 14;   // Grundlinien-Abstand zum Strich
+    const STICKY_SIZES = [13, 11.5, 10, 9];
+    // Kreuzen sich zwei Kurven unter dem Label, ragt die fremde für Bruchteile eines
+    // Pixels in die Lücke. Das ist kein „verläuft dazwischen" — erst ein Eindringen von
+    // mehr als einer halben Strichstärke trennt Text und eigenen Strich sichtbar.
+    const GAP_TOL = 1.5;
+    // Lücke zwischen Textkante und eigenem Strich, im gedrehten Rahmen des Labels
+    // gemessen: liegt dort eine fremde Kurve, zeigt das Label über sie hinweg.
+    const gapClear = (r, ownXY, fremd, above) => {
+      const kante = above ? r.h / 2 : -r.h / 2;
+      const own = [];
+      for (const [x, y] of ownXY) { const p = toLocal(r, x, y); if (Math.abs(p[0]) <= r.w / 2 + 8) own.push(p); }
+      if (!own.length) return true;
+      for (const [x, y] of fremd) {
+        const [u, v] = toLocal(r, x, y);
+        if (Math.abs(u) > r.w / 2) continue;
+        // Läuft der eigene Strich mehrfach durch diese Spalte (Reset-Ast kehrt zurück),
+        // zählt der Ast, an dem das Label KLEBT — der andere spannte ein Intervall quer
+        // durchs Bild auf und erklärte jede fremde Kurve zum Zwischenläufer.
+        let vo = null, bd = Infinity;
+        for (const [ou, ov] of own) {
+          if (Math.abs(ou - u) > 4) continue;
+          const d = Math.abs(ov - kante);
+          if (d < bd) { bd = d; vo = ov; }
+        }
+        // Endet der eigene Strich vor dieser Spalte, gibt es dort keine Lücke.
+        if (vo === null) continue;
+        if (v > Math.min(kante, vo) + GAP_TOL && v < Math.max(kante, vo) - GAP_TOL) return false;
       }
       return true;
     };
-    const solve = (anchor, txt, size, sideWish) => {
-      const wishSign = sideWish === "below" ? 1 : -1;
-      for (const sz of size > 9 ? [size, Math.max(8.5, size - 1.5)] : [size]) {
-        const w = measure(txt, sz), h = sz + 3;
-        const cands = [];
-        for (const side of [-1, 1]) for (const dist of [16, 26, 38, 52, 66]) {
-          for (const dx of [0, -24, 24, -48, 48, -76, 76, -104, 104]) {
-            cands.push({
-              b: box(anchor[0] + dx, anchor[1] + side * dist, w, h),
-              score: Math.hypot(dx, dist) + (sideWish && side !== wishSign ? 34 : 0),
-              far: Math.hypot(dx, dist) > 58
-            });
+    const stickyPlace = (si, txt) => {
+      const xy = seriesXY[si], own = seriesPix[si];
+      // Fremde KURVEN und die Achse sind hart: sie sind die Aussage des Bildes. Die
+      // gestrichelte Ereignis-Linie ist Chrome — ein Label mit Papier-Halo darf sie im
+      // Notfall queren (es unterbricht dann die Strichelung), aber erst, wenn nichts
+      // anderes bleibt.
+      const fremdKurven = seriesPix.filter((_, k) => k !== si).flat();
+      const fremd = fremdKurven.concat(axisPix);
+      const ownB = bandsOf(own), fremdB = bandsOf(fremd), stopB = bandsOf(stopPix);
+      // Der Versatz ist auf die Box-MITTE gerechnet: die Grundlinie liegt um 0.36·Größe
+      // unter ihr, gemessen wird aber die Box.
+      const boxAt = (i, deg, above, extra, size, w, h) => {
+        const a = deg * RAD, off = (above ? STICKY_ABOVE - extra : STICKY_BELOW + extra) - size * BASE_OFF;
+        return rect(xy[i][0] - Math.sin(a) * off, xy[i][1] + Math.cos(a) * off, w, h, deg);
+      };
+      // Verlaufen eigene und fremde Kurve im x-Band des Labels als EIN Strich
+      // (Strichstärke 3), kann keine Lage eindeutig sein — dann sind „nichts dazwischen"
+      // und „näher an der eigenen" nicht erfüllbar und deshalb ausgesetzt. Das ist
+      // dieselbe Ausnahme, die das Audit als INFO ausweist, nicht als Befund.
+      const bandSep = (r) => {
+        const a = inBand(ownB, r, 6), b = inBand(fremdB, r, 6);
+        let sep = Infinity;
+        for (const [ax, ay] of a) for (const [bx, by] of b) sep = Math.min(sep, Math.hypot(ax - bx, ay - by));
+        return sep;
+      };
+      const suche = (degMax, nahMax, winkelMax, offs, bandAus) => {
+        for (const size of STICKY_SIZES) {
+          const w = measure(txt, size), h = boxH(size);
+          let best = null;
+          for (let i = 0; i < xy.length; i++) {
+            const deg = tangentAt(xy, i);
+            if (Math.abs(deg) > degMax) continue;
+            const t = xy[i][2];
+            for (const above of [true, false]) for (const extra of offs) {
+              // Lage-Güte zuerst: ein Kandidat, der ohnehin schlechter steht als der
+              // beste bisher, muss nicht gegen tausend Pixel geprüft werden. Aufschläge
+              // kommen nur dazu — die Grundgüte ist damit eine gültige Untergrenze.
+              const grund = Math.abs(t - 0.42) + (above ? 0 : 0.3) + Math.abs(deg) / 90 * 0.35 + extra * 0.03;
+              if (best && grund >= best.score) continue;
+              const r = boxAt(i, deg, above, extra, size, w, h);
+              if (!inView(r, 250) || hitPlaced(r, LUFT_X, LUFT_Y)) continue;
+              const q = grow(r, 2);
+              const ownNah = inBand(ownB, r, 24), fremdNah = inBand(fremdB, r, 24);
+              if (hitPix(q, ownNah) || hitPix(q, fremdNah)) continue;
+              const dOwn = distPix(r, ownNah);
+              if (dOwn > nahMax) continue;
+              if (Math.abs(deg - tangentAt(xy, nearestIdx(xy, r))) > winkelMax) continue;
+              const dFremd = fremdDist(si, r);
+              let aufschlag = hitPix(q, inBand(stopB, r, 4)) ? 30 : 0;
+              if (dFremd < dOwn - 1.5 || !gapClear(r, xy, fremdNah, above)) {
+                // Nur in der Band-Ausnahme überhaupt zulässig — und dann so teuer, dass
+                // JEDE eindeutige Lage gewinnt, egal wie weit sie vom Idealpunkt liegt.
+                if (!(bandAus && bandSep(r) < 10)) continue;
+                aufschlag += 2;
+              }
+              // Sanfte Vorliebe für Abschnitte, an denen der eigene Strich allein läuft:
+              // Eindeutigkeit ist eine Eigenschaft der STELLE, nicht nur der Box.
+              aufschlag += Math.max(0, 24 - dFremd) * 0.03;
+              const score = grund + aufschlag;
+              if (!best || score < best.score) best = { r, size, score };
+            }
+          }
+          if (best) return best;
+        }
+        return null;
+      };
+      // Notnagel: nichts ist frei. Die Bindung bleibt trotzdem — es gewinnt die
+      // sticky Lage mit dem geringsten Schaden, nie ein freier Platz mit Leader.
+      const notnagel = () => {
+        const size = STICKY_SIZES[STICKY_SIZES.length - 1], w = measure(txt, size), h = boxH(size);
+        let best = null;
+        for (let i = 0; i < xy.length; i++) {
+          const deg = tangentAt(xy, i);
+          for (const above of [true, false]) {
+            const r = boxAt(i, deg, above, 0, size, w, h);
+            if (!inView(r, 250)) continue;
+            const bad = schadenVon(r, inBand(fremdB, r, 4).concat(inBand(ownB, r, 4))) + Math.abs(deg) * 0.2;
+            if (!best || bad < best.bad) best = { r, size, bad };
           }
         }
-        cands.sort((a, b) => a.score - b.score);
-        for (const c of cands) {
-          if (!free(c.b)) continue;
-          const center = [c.b.x + c.b.w / 2, c.b.y + c.b.h / 2];
-          if (c.far && !leaderFree(center, anchor)) continue;
-          return { box: put(c.b), size: sz, leader: c.far ? anchor : null };
-        }
-      }
-      // Notnagel 1: Rastersuche im Plot — nächstgelegene freie Zelle mit freiem Leader-Weg.
-      const sz = Math.max(8.5, size - 1.5), w = measure(txt, sz), h = sz + 3;
-      const cells = [];
-      for (let gy = 24; gy <= 240; gy += 16) for (let gx = PLOT.x0 + w / 2 + 4; gx <= PLOT.x1 - w / 2; gx += 20)
-        cells.push([gx, gy, Math.hypot(gx - anchor[0], gy - anchor[1])]);
-      cells.sort((a, b) => a[2] - b[2]);
-      for (const pass of [true, false]) {
-        for (const [gx, gy] of cells) {
-          const b = box(gx, gy, w, h);
-          if (free(b) && (!pass || leaderFree([gx, gy], anchor))) return { box: put(b), size: sz, leader: anchor };
-        }
-      }
-      // Notnagel 2: nirgends frei — Position mit geringstem Schaden (Pfad-Treffer, Overlaps).
-      let leastBad = null;
-      for (const [gx, gy, d] of cells) {
-        const b = box(gx, gy, w, h), q = pad(b, 3);
-        const hits = allPix.reduce((n, [px, py]) => n + (px >= q.x && px <= q.x + q.w && py >= q.y && py <= q.y + q.h ? 1 : 0), 0);
-        const overlaps = placed.reduce((n, o) => n + (hitBox(pad(b, 4), o) ? 1 : 0), 0);
-        const bad = hits + 40 * overlaps + d * 0.05;
-        if (!leastBad || bad < leastBad.bad) leastBad = { b, bad };
-      }
-      return { box: put(leastBad.b), size: sz, leader: anchor };
-    };
-    const labelSvg = (r, txt, fill) => {
-      const size = r.size;
-      const cx = r.box.x + r.box.w / 2, cy = r.box.y + r.box.h / 2;
-      const lead = r.leader ? (() => {
-        const ex = cx + Math.sign(r.leader[0] - cx) * Math.min(r.box.w / 2, Math.abs(r.leader[0] - cx));
-        const ey = cy + Math.sign(r.leader[1] - cy) * (r.box.h / 2 + 1);
-        return `<line class="leader" x1="${ex}" y1="${ey}" x2="${r.leader[0]}" y2="${r.leader[1]}" stroke="${C("muted")}" stroke-width="1.2"/>`;
-      })() : "";
-      return `${lead}<text class="svglabel" x="${cx}" y="${cy + size * 0.36}" font-size="${size}"
-        fill="${fill}" text-anchor="middle" letter-spacing="0.08em">${txt}</text>`;
+        return best;
+      };
+      // Ladder: Regellage → weiter weg/steiler → Band-Ausnahme → Notnagel.
+      return suche(30, 10, 12, [0, 4, 8], false)
+        || suche(45, 16, 18, [0, 4, 8, 13], false)
+        || suche(45, 16, 18, [0, 4, 8, 13], true)
+        || notnagel();
     };
 
+    // ——— Note: Punkt-Marker auf der Kurve + Label unmittelbar daneben ———
+    // Der Marker bindet, das Label steht daneben. Ein Leader ist die letzte Degradation
+    // und hart gedeckelt: ein 150-px-Strich quer durchs Bild verbindet zwar formal,
+    // wird aber als eigene Geometrie gelesen statt als Zeigefinger.
+    const NOTE_SIZE = 9.5, NOTE_BOTTOM = 238, LEADER_MAX = 40, LEADER_AB = 12;
+    // Austrittspunkt AUF der Verbindung Mitte→Anker (Slab-Schnitt mit der Box). Ein an
+    // der Box-Kante entlang gerechneter Startpunkt läge bei breiten Labels genau unter
+    // dem Anker — der Strich stünde senkrecht und läse sich wie eine zweite
+    // Ereignis-Linie. Kollinear gerechnet erbt er die geprüfte Diagonale.
+    const leaderGeom = (r, anchor) => {
+      const dx = anchor[0] - r.cx, dy = anchor[1] - r.cy;
+      const tx = dx ? (r.w / 2 + 1) / Math.abs(dx) : Infinity;
+      const ty = dy ? (r.h / 2 + 1) / Math.abs(dy) : Infinity;
+      const k = Math.min(tx, ty, 1);
+      const ex = r.cx + dx * k, ey = r.cy + dy * k;
+      // Kurz halten: der Strich endet vor dem Punkt-Marker, statt ihn zu treffen.
+      const d = Math.hypot(anchor[0] - ex, anchor[1] - ey) || 1;
+      return { x1: ex, y1: ey, x2: anchor[0] - (anchor[0] - ex) / d * 5, y2: anchor[1] - (anchor[1] - ey) / d * 5 };
+    };
+    const leaderLen = (g) => Math.hypot(g.x2 - g.x1, g.y2 - g.y1);
+    // Ein Leader darf nur DIAGONAL laufen: senkrecht stünde er wie eine zweite
+    // Ereignis-Linie neben der gestrichelten Stop-Linie, waagerecht wie ein
+    // Achsen-Strich. Kriterium ist der Winkel des GEZEICHNETEN Strichs — Komponenten
+    // in Pixeln zu prüfen ließe eine Lage wie 104×16 px durchgehen, die als 9°-Strich
+    // praktisch waagerecht liegt.
+    const diagonal = (g) => {
+      const a = Math.atan2(Math.abs(g.y2 - g.y1), Math.abs(g.x2 - g.x1)) / RAD;
+      return a >= 18 && a <= 72;
+    };
+    const leaderFree = (g, pix) => {
+      const n = Math.max(1, Math.ceil(leaderLen(g) / 4));
+      for (let k = 0; k <= n; k++) {
+        const x = g.x1 + (g.x2 - g.x1) * (k / n), y = g.y1 + (g.y2 - g.y1) * (k / n);
+        if (Math.hypot(x - g.x2, y - g.y2) < 9) continue;
+        if (pix.some(([px, py]) => Math.hypot(px - x, py - y) < 3)) return false;
+      }
+      return true;
+    };
+    const notePlace = (anchor, txt, sideWish, si) => {
+      const pix = hindernisPix();
+      const wish = sideWish === "below" ? 1 : sideWish === "above" ? -1 : 0;
+      const cands = [];
+      for (const size of [NOTE_SIZE, 9]) {
+        const w = measure(txt, size, 600), h = boxH(size);
+        // Seitliche Versätze skalieren MIT der Textbreite: ein 145 px breites Label
+        // steht bei dx=48 immer noch über seinem Anker — es muss um die halbe eigene
+        // Breite ausweichen können, sonst bleibt am Rand oder an der Achse keine Lage.
+        for (const side of [-1, 1]) for (const dist of [12, 16, 21, 27, 34, 42])
+          for (const dx of [0, -16, 16, -32, 32, -48, 48, -(w / 2 + 8), w / 2 + 8, -(w / 2 + 26), w / 2 + 26]) {
+          const r = rect(anchor[0] + dx, anchor[1] + side * dist, w, h);
+          const g = leaderGeom(r, anchor), braucht = distRect(r, anchor[0], anchor[1]) > LEADER_AB;
+          cands.push({ r, size, g, braucht,
+            score: distRect(r, anchor[0], anchor[1]) + (wish && side !== wish ? 18 : 0)
+              + (braucht ? 24 : 0) + (NOTE_SIZE - size) * 12 });
+        }
+      }
+      // Die Stop-Vertikale ist Chrome, keine Aussage: ein Note-Text mit Papier-Halo darf
+      // sie im Notfall queren (er unterbricht dann die Strichelung, statt unlesbar zu
+      // werden). Teuer im Score, damit es die letzte Wahl bleibt — anders als bei einer
+      // Kurve oder der Achse, die als Hindernis hart bleiben.
+      for (const c of cands) if (hitPix(grow(c.r, 2), stopPix)) c.score += 30;
+      cands.sort((a, b) => a.score - b.score);
+      const kurvenPix = seriesPix.flat().concat(axisPix);
+      const frei = (c) => inView(c.r, NOTE_BOTTOM) && !hitPlaced(c.r, LUFT_X, LUFT_Y) && !hitPix(grow(c.r, 2), kurvenPix)
+        && (!c.braucht || (leaderLen(c.g) <= LEADER_MAX && diagonal(c.g) && leaderFree(c.g, pix)));
+      const eindeutig = (c) => fremdDist(si, c.r) >= distPix(c.r, seriesPix[si]) - 1.5;
+      for (const streng of [true, false]) for (const c of cands)
+        if (frei(c) && (!streng || eindeutig(c))) return { r: put(c.r), size: c.size, leader: c.braucht ? c.g : null };
+      // Notnagel: nirgends frei — Lage mit geringstem Schaden, Deckel bleibt.
+      let schlecht = null;
+      for (const c of cands) {
+        if (!inView(c.r, NOTE_BOTTOM) || (c.braucht && leaderLen(c.g) > LEADER_MAX)) continue;
+        const bad = schadenVon(c.r, pix) + c.score * 0.05;
+        if (!schlecht || bad < schlecht.bad) schlecht = { c, bad };
+      }
+      const c = schlecht ? schlecht.c : cands[0];
+      // Auch im Notnagel gilt der Leader-Contract: ein senkrechter oder zu langer
+      // Strich wäre schlimmer als gar keiner — der Punkt-Marker bindet weiter.
+      const brauchbar = c.braucht && leaderLen(c.g) <= LEADER_MAX && diagonal(c.g);
+      return { r: put(c.r), size: c.size, leader: brauchbar ? c.g : null };
+    };
+
+    // ——— Apex-Note: blanker CAPS-Text am Nach-Stop-Ast ———
+    // Kein Kasten, kein langer Leader. Gesucht wird NUR in der Tasche am eigenen Ast
+    // (links davon); ist sie zu eng — später Stop, der Ast steht fast senkrecht in der
+    // Ecke —, greift eine deterministische Stapelung unter dem Ereignis-Label: beide
+    // Texte hängen dann an derselben Linie und lesen sich als EIN Ereignis.
+    const apexPlace = (anchor, txt, si) => {
+      const pix = hindernisPix();
+      // Die Tasche liegt normalerweise LINKS vom Ast — der Apex sitzt am rechten Rand,
+      // links ist die einzige Seite mit Platz. Endet der Ast mitten im Plot (reset,
+      // collapse), ist rechts davon frei; die Seite ist dann eine Frage des Platzes,
+      // die Bindung bleibt dieselbe. Der Score hält links vorn und den Abstand klein.
+      // Die Tasche gilt nur, wenn sie die Bindung trägt: näher am eigenen Ast als an
+      // jeder fremden Kurve. Eine „fast passende" Lage neben der fremden Linie wäre
+      // schlechter als die Stapelung — sie behauptete eine Zugehörigkeit, die das Bild
+      // nicht zeigt. Deshalb gibt es hier keinen weichen zweiten Durchgang.
+      for (const size of [NOTE_SIZE, 9]) {
+        const w = measure(txt, size, 600), h = boxH(size);
+        let best = null;
+        // Feines dy-Raster: die Tasche ist oft ein Streifen von wenigen Pixeln zwischen
+        // Ereignis-Label und eigener Linie. Ein grobes Raster überspringt ihn und
+        // erzwingt die Stapelung, obwohl Platz da ist.
+        for (const links of [true, false]) for (const abstand of [8, 13, 19, 26, 34, 42])
+          for (const dy of [0, -5, 5, -10, 10, -15, 15, -20, 20, -25, 25, -30, 30, -35, 35, -40, 40, -45, 45]) {
+            const score = abstand * 0.5 + Math.abs(dy) + (links ? 0 : 14);
+            if (best && score >= best.score) continue;
+            const r = rect(anchor[0] + (links ? -1 : 1) * (abstand + w / 2), anchor[1] + dy, w, h);
+            if (!inView(r, NOTE_BOTTOM) || hitPlaced(r, LUFT_X, LUFT_Y) || hitPix(grow(r, 2), pix)) continue;
+            if (fremdDist(si, r) < distPix(r, seriesPix[si]) - 1.5) continue;
+            best = { r, size, score };
+          }
+        if (best) return { r: put(best.r), size: best.size, leader: null };
+      }
+      if (!stopRect) return null;
+      // Tasche zu eng (später Stop: der Ast steht fast senkrecht in der Ecke) —
+      // deterministische Stapelung unter dem Ereignis-Label, zentriert auf der
+      // Stop-Linie. Beide Texte hängen dann an derselben Linie.
+      const size = NOTE_SIZE, w = measure(txt, size, 600), h = size + 3;
+      const cx = Math.min(396 - w / 2 - 4, Math.max(4 + w / 2 + 4, stopRect.cx));
+      const oben = stopRect.cy + stopRect.h / 2 + 3 + h / 2;
+      // Ist die erste Stufe belegt, rückt die Note nach unten. Bleibt keine Stufe frei
+      // (Ecke voll), gewinnt die mit dem geringsten Schaden — nicht stur die erste.
+      // Die Stop-Vertikale zählt hier NICHT als Hindernis: die Note hängt absichtlich an
+      // ihr, und die Linie beginnt gleich unter ihr (setStopTop). Zählte man sie mit,
+      // wäre jede Stufe „katastrophal" und die Wahl fiele auf die zufällig letzte.
+      const ohneStopLinie = seriesPix.flat().concat(axisPix);
+      let r = null, schaden = Infinity;
+      for (let k = 0; k < 6; k++) {
+        const kand = rect(cx, oben + k * (h + 2), w, h);
+        if (!inView(kand, NOTE_BOTTOM)) break;
+        const bad = schadenVon(kand, ohneStopLinie);
+        if (bad === 0) { r = kand; break; }
+        if (bad < schaden) { schaden = bad; r = kand; }
+      }
+      r = r || rect(cx, oben, w, h);
+      setStopTop(Math.max(stopTop, r.cy + h / 2 + 4));
+      return { r: put(r), size, leader: null, gestapelt: true };
+    };
+
+    // `attrs` trägt die Serien-Zugehörigkeit ins DOM — Audits messen die Zuordnung
+    // damit am gezeichneten Objekt, ohne die Geometrie ein zweites Mal zu berechnen.
+    // Die Farbe steht INLINE: die Klassenregeln (.c-series/.c-note) tragen einen
+    // Grundton und schlügen ein fill-Attribut.
+    const textSvg = (r, size, txt, cls, fill, attrs = "") => {
+      const dreh = r.deg ? ` rotate(${r.deg.toFixed(1)})` : "";
+      return `<text class="svglabel ${cls}" transform="translate(${r.cx.toFixed(1)} ${r.cy.toFixed(1)})${dreh}"
+        y="${(size * BASE_OFF).toFixed(2)}" font-size="${size}" text-anchor="middle" style="fill:${fill}" ${attrs}>${txt}</text>`;
+    };
+    const leaderSvg = (g) => g
+      ? `<line class="leader" x1="${g.x1.toFixed(1)}" y1="${g.y1.toFixed(1)}" x2="${g.x2.toFixed(1)}" y2="${g.y2.toFixed(1)}"/>`
+      : "";
+
     // 3) Zeichnen: Pfade (Stop-Folge-Segment gestrichelt bei collapse), dann Labels.
-    const series = samples.map((sm) => {
+    const series = samples.map((sm, si) => {
       const { s, pts } = sm;
       const px = (arr) => arr.map(([t, v]) => `${sx(t).toFixed(1)},${sy(v).toFixed(1)}`).join(" ");
       const main = sm.stopIdx != null ? pts.slice(0, sm.stopIdx + 1) : pts;
@@ -324,43 +738,60 @@ const RENDERERS = {
       const [et, ev] = pts[pts.length - 1];
       const areaPts = s.afterStop === "collapse" ? main : pts;
       return `${s.area ? `<polygon points="${sx(areaPts[0][0])},244 ${px(areaPts)} ${sx(areaPts[areaPts.length - 1][0])},244" fill="${C(s.color)}" opacity="0.1"/>` : ""}
-        <polyline points="${px(main)}" fill="none" stroke="${C(s.color)}" stroke-width="3"
+        <polyline data-series="${si}" points="${px(main)}" fill="none" stroke="${C(s.color)}" stroke-width="3"
               stroke-linejoin="round" stroke-linecap="round"
               ${s.dash ? 'stroke-dasharray="6 6"' : ""} ${s.faded ? 'opacity="0.4"' : ""}/>
-        ${tail.length ? `<polyline points="${px(tail)}" fill="none" stroke="${C(s.color)}" stroke-width="3"
+        ${tail.length ? `<polyline data-series="${si}" data-tail="${s.afterStop}" points="${px(tail)}" fill="none" stroke="${C(s.color)}" stroke-width="3"
               stroke-linejoin="round" stroke-linecap="round"
               ${s.afterStop === "collapse" ? 'stroke-dasharray="6 6"' : (s.dash ? 'stroke-dasharray="6 6"' : "")}
               ${s.faded ? 'opacity="0.4"' : ""}/>` : ""}
         <circle cx="${sx(et)}" cy="${sy(ev)}" r="4.5" fill="${C(s.color)}" ${s.faded ? 'opacity="0.4"' : ""}/>`;
     }).join("");
-    const seriesLabels = samples.map((sm) => {
-      if (!sm.s.label) return "";
-      let best = null;
-      for (const t of [0.72, 0.55, 0.86, 0.4, 0.28]) {
-        const a = [sx(t), sy(yOnCurve(sm, t))];
-        const r = solve(a, sm.s.label, 13);
-        if (!r.leader) { best = r; break; }
-        if (!best) best = r;
-        placed.pop();   // Kandidat mit Leader wieder freigeben, nächsten Anker testen
-      }
-      if (placed[placed.length - 1] !== best.box) placed.push(best.box);
-      return labelSvg(best, sm.s.label, C("ink"));
-    }).join("");
+    // Reihenfolge: erst die Notes, dann die Serien-Labels. Eine Note haftet an EINEM
+    // Punkt (t oder Apex) und kann kaum ausweichen; ein Serien-Label darf entlang der
+    // ganzen Kurve wandern. Der Unflexible wählt zuerst — sonst belegt das Serien-Label
+    // die Tasche am Apex und die Note müsste stapeln.
     const notes = (card.notes || []).map((n) => {
-      const sm = samples[typeof n.series === "number" ? n.series
-        : Math.max(0, card.series.findIndex((s) => s.label === n.series))];
-      const a = [sx(n.t), sy(yOnCurve(sm, n.t))];
-      return labelSvg(solve(a, n.label, 10, n.side), n.label, C("muted"));
+      const si = typeof n.series === "number" ? n.series
+        : Math.max(0, card.series.findIndex((s) => s.label === n.series));
+      const sm = samples[si];
+      const atApex = n.at === "apex";
+      const [nt, nv] = atApex ? sm.pts[sm.pts.length - 1] : [n.t, yOnCurve(sm, n.t)];
+      const a = [sx(nt), sy(nv)];
+      // CAPS erzwingen und in derselben Schreibweise messen, in der gezeichnet wird.
+      const txt = /</.test(String(n.label)) ? String(n.label) : String(n.label).toUpperCase();
+      const r = (atApex ? apexPlace(a, txt, si) : null) || notePlace(a, txt, n.side, si);
+      // Am Apex trägt die vorhandene Endpunkt-Kugel den Marker schon — kein zweiter Punkt.
+      const dot = atApex ? ""
+        : `<circle class="c-notedot" cx="${a[0].toFixed(1)}" cy="${a[1].toFixed(1)}" r="3" fill="${C(sm.s.color)}"/>`;
+      return dot + leaderSvg(r.leader) + textSvg(r.r, r.size, txt, "c-note halo", C(sm.s.color),
+        `data-note-series="${si}"${atApex ? ' data-at="apex"' : ""}${r.leader ? ' data-leader="1"' : ""}`
+        + (r.gestapelt ? ' data-stacked="1"' : ""));
     }).join("");
-
+    const seriesLabels = samples.map((sm, si) => {
+      if (!sm.s.label) return "";
+      const r = stickyPlace(si, sm.s.label);
+      // Halo auch am Serien-Label: auf freiem Papier unsichtbar (er hat dessen Farbe),
+      // aber er trägt die eine Lage, in der das Label die Ereignis-Linie queren muss.
+      return r ? textSvg(put(r.r), r.size, sm.s.label, "c-series halo", C(sm.s.color), `data-series-label="${si}"`) : "";
+    }).join("");
+    // Erst jetzt steht das obere Ende der Vertikalen fest: eine gestapelte Apex-Note
+    // hängt unter dem Ereignis-Label und schiebt den Linienanfang nach unten.
+    const stopSvg = card.stop
+      ? `<line class="c-stopline" x1="${stopX.toFixed(1)}" y1="${stopTop.toFixed(1)}" x2="${stopX.toFixed(1)}" y2="244"/>`
+      : "";
+    // Das Ereignis-Label wird NACH den Kurven gezeichnet: sein Papier-Halo trägt nur,
+    // wenn nichts mehr darüber liegt.
+    const stopText = card.stop ? textSvg(stopRect, STOP_SIZE, card.stop.label, "c-stop halo", stopFill) : "";
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
       <div class="diagram"><svg viewBox="0 0 400 278" role="img" aria-label="Kurvendiagramm: ${card.ylabel} über ${card.xlabel}">
-        <path d="M52,34 L52,244 L382,244" fill="none" stroke="${C("muted")}" stroke-width="1.5"/>
+        <path class="c-axis" d="M52,34 L52,244 L382,244" fill="none" stroke="${C("muted")}" stroke-width="1.5"/>
         <text x="52" y="22" font-size="11" font-weight="700" letter-spacing="0.1em" fill="${C("muted")}">${card.ylabel}</text>
         <text x="382" y="266" font-size="11" font-weight="700" letter-spacing="0.1em" fill="${C("muted")}" text-anchor="end">${card.xlabel}</text>
         ${stopSvg}
         ${series}
+        ${stopText}
         ${seriesLabels}
         ${notes}
       </svg></div>

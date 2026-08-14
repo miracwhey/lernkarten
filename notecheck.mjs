@@ -128,9 +128,13 @@ export async function noteMeasurements(lesson) {
         // Das Mess-Fenster endet, wo der gezeichnete Verlauf endet (afterStop-Schwänze
         // laufen nicht zwingend bis t=1) — sonst misst es die Klemmung, nicht die Kurve.
         const tMax = sm.pts[sm.pts.length - 1][0];
-        const tc = Math.min(Math.max(n.t, 0), tMax);
+        // at:"apex" hat kein freies t: die Note sitzt am Ende des Nach-Stop-Asts.
+        // Gemessen wird trotzdem — nur eben an genau diesem Punkt.
+        const atApex = n.at === "apex";
+        const tAnchor = atApex ? tMax : n.t;
+        const tc = Math.min(Math.max(tAnchor, 0), tMax);
         const tL = Math.max(0, tc - dt), tR = Math.min(tMax, tc + dt);
-        return { label: n.label, t: n.t, level: yOnCurve(sm, n.t),
+        return { label: n.label, t: tAnchor, atApex, level: yOnCurve(sm, tAnchor),
                  seriesLabel: sm.s.label, pts: sm.pts,
                  fenster: { tL, tc, tR, yL: yOnCurve(sm, tL), yC: yOnCurve(sm, tc), yR: yOnCurve(sm, tR) } };
       });
@@ -171,7 +175,8 @@ export function measuredDirection(m) {
 export async function noteFindings(lesson) {
   const findings = [];
   for (const m of await noteMeasurements(lesson)) {
-    const base = { path: `cards[${m.card}].notes[${m.note}]`, label: m.label, t: m.t, series: m.seriesLabel };
+    const base = { path: `cards[${m.card}].notes[${m.note}]`, label: m.label, t: m.t,
+                   series: m.seriesLabel, atApex: m.atApex };
 
     const claimed = claimedFraction(m.label);
     if (claimed != null) {
@@ -179,6 +184,9 @@ export async function noteFindings(lesson) {
       const actual = m.level / max;
       const lvl = { ...base, check: "level", claimed, actual };
       if (Math.abs(actual - claimed) <= TOL) findings.push({ ...lvl, kind: "OK" });
+      // Apex-Notes tragen kein freies t — ein t-Versatz ist hier kein verfügbarer Fix.
+      // Der Zahlen-Claim bleibt aber messbar: er gilt für den Apex-Punkt.
+      else if (m.atApex) findings.push({ ...lvl, kind: "HART" });
       else {
         let tFix = solveT(m.pts, claimed * max, m.t);
         if (tFix != null) {
@@ -211,9 +219,10 @@ const DIR_WORT = { up: "STEIGEND", down: "FALLEND", flat: "FLACH", unklar: "nich
 
 export function reportLine(f) {
   const pc = (x) => Math.round(x * 100) + "%";
+  const stelle = f.atApex ? `am Apex (t=${Number(f.t).toFixed(2)})` : `bei t=${f.t}`;
   if (f.check === "richtung") {
     const gemessen = f.globalFlat ? "verläuft über die ganze Breite FLACH"
-      : `verläuft bei t=${f.t} ${DIR_WORT[f.actual]} (${f.rate >= 0 ? "+" : ""}${f.rate.toFixed(1)} Niveau-Punkte je t-Einheit)`;
+      : `verläuft ${stelle} ${DIR_WORT[f.actual]} (${f.rate >= 0 ? "+" : ""}${f.rate.toFixed(1)} Niveau-Punkte je t-Einheit)`;
     if (f.kind === "OK")
       return `OK    ${f.path} "${f.label}": Claim ${DIR_WORT[f.claimed]}, Kurve "${f.series}" ${gemessen} — kein Widerspruch`;
     return `HART  ${f.path}.label: "${f.label}" behauptet ${DIR_WORT[f.claimed]}, die Serie "${f.series}" ${gemessen}`
@@ -224,6 +233,9 @@ export function reportLine(f) {
     return `OK    ${f.path} "${f.label}": ${pc(f.actual)} vom Maximum (behauptet ${pc(f.claimed)}) — konsistent`;
   if (f.kind === "FIX")
     return `FIX   ${f.path}.t: "${f.label}" sitzt bei ${pc(f.actual)} vom Maximum von "${f.series}", behauptet ${pc(f.claimed)} — setze t=${f.tFix} (war ${f.t})`;
+  if (f.atApex)
+    return `HART  ${f.path}.label: "${f.label}" behauptet ${pc(f.claimed)} vom Maximum, der Apex von "${f.series}" liegt bei ${pc(f.actual)}`
+      + ` — at:"apex" hat kein t zum Verschieben; ändere die Zahl im Note-Text oder reboundTo der Serie`;
   return `HART  ${f.path}.label: "${f.label}" behauptet ${pc(f.claimed)} vom Maximum — auf der Kurve "${f.series}" unerreichbar; Zahl im Note-Text oder die Serie ändern (t-Versatz löst das nicht)`;
 }
 

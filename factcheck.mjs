@@ -106,6 +106,27 @@ export function geometryFlags(lesson) {
           + ` Widersprechen text, caption oder ein Noten-Label dieser Richtung (z. B. „senkt" auf einer steigenden Serie)?`
           + ` Passen xlabel/ylabel zu der Größe, die hier dargestellt wird, und zum Dossier?` });
     }
+    // Diagramm-Begriffe (alle Karten-Typen): Labels/Achsen einsammeln und als
+    // Greifbarkeits-Auftrag an den Judge geben. Feldnamen-Whitelist statt Typ-Liste —
+    // neue Diagramm-Typen mit label/sub-Feldern sind automatisch abgedeckt.
+    // Lehrsatz-Register (text/caption/quote/source) gehört NICHT dazu: Fachbegriffe
+    // sind dort erwünscht, auf dem Graphen steht ihre greifbare Übersetzung.
+    if (typ && !["title", "quiz", "insight"].includes(typ)) {
+      const begriffe = [];
+      const sammle = (v, p) => {
+        if (Array.isArray(v)) v.forEach((x, k) => sammle(x, `${p}[${k}]`));
+        else if (v && typeof v === "object") Object.entries(v).forEach(([k, x]) => {
+          if (["text", "caption", "quote", "source", "options"].includes(k)) return;
+          if (["label", "sub", "xlabel", "ylabel"].includes(k) && typeof x === "string") begriffe.push([`${p}.${k}`, x]);
+          else sammle(x, `${p}.${k}`);
+        });
+      };
+      sammle(c, path);
+      if (begriffe.length) flags.push({ kind: "begriff-greifbar", path,
+        detail: `Diagramm-Begriffe dieser Karte: ${begriffe.map(([bp, w]) => `${bp} = „${w}"`).join("; ")}.`
+          + ` Versteht ein Leser OHNE Fachwissen jeden Begriff sofort (Erlebnis-/Alltagssprache)?`
+          + ` Wiederholt ein Noten-Label sinngemäß ein Serien- oder Ereignis-Label derselben Karte?` });
+    }
     if (typ === "balance") {
       // Der Renderer kippt den Balken statisch: linker Arm endet tiefer (y=107 gegen
       // y=85), linke Schale hängt unten — LINKS ist die schwerere Seite. Verifiziert

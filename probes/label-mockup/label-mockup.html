@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Label-Bindung — Mockup: Ist / Sticky / Serienfarbe / Legende</title>
+<link rel="stylesheet" href="../../renderer.css">
+<style>
+  /* Seiten-Rahmen fürs Mockup — Karten-Look kommt aus renderer.css */
+  body { margin: 0; padding: 28px 32px 48px; background: #E9E7E0;
+         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1E2230; }
+  h1 { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: 22px; margin: 0 0 4px; }
+  .sub { color: #6B6F7E; font-size: 13px; margin: 0 0 24px; }
+  .grid { display: grid; grid-template-columns: 150px repeat(4, 420px); gap: 14px 14px; align-items: start; }
+  .colhead { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+             color: #1E2230; padding: 6px 2px; }
+  .colhead small { display: block; font-weight: 400; text-transform: none; letter-spacing: 0;
+                   color: #6B6F7E; margin-top: 2px; }
+  .rowhead { font-size: 12px; color: #6B6F7E; padding-top: 120px; line-height: 1.5; }
+  .rowhead b { color: #1E2230; font-size: 13px; display: block; margin-bottom: 4px; }
+  .cell { background: #FBFAF7; border: 1px solid #DCDAD1; border-radius: 14px; padding: 14px 10px 8px; }
+  .cell svg { width: 100%; height: auto; display: block; }
+  /* Papier-Halo: Text bleibt lesbar, wo er Geometrie kreuzt — ohne Kasten-Chrome */
+  .halo { paint-order: stroke; stroke: #FBFAF7; stroke-width: 3px; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<h1>Label-Bindung — vier Varianten an den drei härtesten Fällen</h1>
+<p class="sub">Kurven, Achsen und Stop-Chip 1:1 aus dem echten Renderer extrahiert — nur die Label-Schicht variiert. Sticky = Serien-Label läuft parallel am eigenen Strich; Ereignis-Note = blanker CAPS-Text direkt am Nach-Stop-Ast (Papier-Halo statt Kasten, kein Leader); Stop-Label = blanke CAPS über der Linie.</p>
+<div class="grid" id="grid"></div>
+
+<script src="cases.js"></script>
+<script>
+// ————— Geometrie-Helfer: arbeiten auf den ECHTEN Polyline-Punkten des Renderers —————
+const parseSvg = (str) => {
+  const t = document.createElement("template");
+  t.innerHTML = str.trim();
+  return t.content.firstChild;
+};
+// Punkte einer Serie: Haupt-Polyline + Tail (Nach-Stop-Ast) in Zeichenreihenfolge.
+const seriesPts = (svg, si) => {
+  const pts = [];
+  svg.querySelectorAll(`polyline[data-series="${si}"]`).forEach((pl) => {
+    pl.getAttribute("points").trim().split(/\s+/).forEach((p) => {
+      const [x, y] = p.split(",").map(Number);
+      pts.push([x, y]);
+    });
+  });
+  return pts;
+};
+// Kurvenpunkt + Tangentenwinkel (Grad, Bildschirm-Koordinaten) an x-Position.
+const atX = (pts, x) => {
+  let i = pts.findIndex((p) => p[0] >= x);
+  if (i < 1) i = 1;
+  const w = 14; // Tangente über ein Fenster mitteln, nicht am Einzelsegment ablesen
+  const a = pts[Math.max(0, i - 3)], b = pts[Math.min(pts.length - 1, i + 3)];
+  const [ax, ay] = a, [bx, by] = b;
+  const seg = pts[i - 1], [sx1, sy1] = seg, [sx2, sy2] = pts[i];
+  const f = (x - sx1) / Math.max(1e-6, sx2 - sx1);
+  return { x, y: sy1 + (sy2 - sy1) * f, deg: Math.atan2(by - ay, bx - ax) * 180 / Math.PI };
+};
+const apexOf = (pts) => pts[pts.length - 1];
+
+const MEAS = document.createElement("canvas").getContext("2d");
+const widthOf = (txt, size, weight = 700) => {
+  MEAS.font = `${weight} ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  return MEAS.measureText(txt).width + txt.length * size * 0.08;
+};
+const NS = "http://www.w3.org/2000/svg";
+const el = (name, attrs, text) => {
+  const e = document.createElementNS(NS, name);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  return e;
+};
+
+// ————— Bausteine der neuen Label-Schicht —————
+// Sticky-Serien-Label: parallel zum eigenen Strich, fester Abstand, gedreht auf Tangente.
+const stickyLabel = (svg, card, sp, colorMode) => {
+  const pts = seriesPts(svg, sp.series);
+  const p = atX(pts, 52 + sp.t * 330);
+  const deg = sp.deg !== undefined ? sp.deg : p.deg;
+  const off = sp.off !== undefined ? sp.off : (sp.side === "below" ? 14 : -7);
+  // Versatz rein senkrecht zur Tangente: off < 0 = über dem Strich.
+  const rad = deg * Math.PI / 180;
+  const px = p.x - Math.sin(rad) * off;
+  const py = p.y + Math.cos(rad) * off;
+  const stroke = svg.querySelector(`polyline[data-series="${sp.series}"]`).getAttribute("stroke");
+  return el("text", {
+    class: "svglabel c-series", "font-size": sp.size || 13,
+    // style schlägt die .c-series-Klassenregel (fill: var(--ink)) — Attribut täte es nicht.
+    style: `fill: ${colorMode === "color" ? stroke : "var(--ink)"}`,
+    transform: `translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${deg.toFixed(1)})`,
+    "text-anchor": "middle"
+  }, card.series[sp.series].label);
+};
+// Ereignis-Note: blanker CAPS-Text direkt am Nach-Stop-Ast — kein Kasten, kein
+// Leader. Lesbarkeit über Papier-Halo (paint-order), Bindung über Nähe + Farbe.
+const eventNote = (svg, card, sp, colorMode) => {
+  const n = card.notes[sp.note];
+  const si = typeof n.series === "number" ? n.series : 0;
+  const stroke = svg.querySelector(`polyline[data-series="${si}"]`).getAttribute("stroke");
+  return el("text", {
+    class: "svglabel c-note halo", "font-size": sp.size || 9.5,
+    style: `fill: ${colorMode === "sticky" ? "var(--muted)" : stroke}`,
+    x: sp.x, y: sp.y, "text-anchor": sp.anchor || "end"
+  }, n.label.toUpperCase());
+};
+// Freie t-Note: Punkt-Marker + Label direkt daneben (kein Leader).
+const freeNote = (svg, card, sp, colorMode) => {
+  const n = card.notes[sp.note];
+  const pts = seriesPts(svg, typeof n.series === "number" ? n.series : 0);
+  const p = atX(pts, 52 + n.t * 330);
+  const stroke = svg.querySelector(`polyline[data-series="${n.series}"]`).getAttribute("stroke");
+  const g = el("g", {});
+  g.appendChild(el("circle", { class: "c-notedot", cx: p.x.toFixed(1), cy: p.y.toFixed(1), r: 3, fill: stroke }));
+  g.appendChild(el("text", { class: "svglabel c-note halo", x: (p.x + sp.dx).toFixed(1), y: (p.y + sp.dy).toFixed(1),
+    style: `fill: ${colorMode === "sticky" ? "var(--muted)" : stroke}`,
+    "font-size": 9.5, "text-anchor": sp.anchor || "middle" }, n.label.toUpperCase()));
+  return g;
+};
+// Legende: Strich-Swatch in Serienfarbe (inkl. Dash) + Name, gestapelt.
+const legend = (svg, card, lx, ly) => {
+  const g = el("g", {});
+  card.series.forEach((s, i) => {
+    const pl = svg.querySelector(`polyline[data-series="${i}"]`);
+    const y = ly + i * 19;
+    g.appendChild(el("line", { x1: lx, y1: y, x2: lx + 22, y2: y,
+      stroke: pl.getAttribute("stroke"), "stroke-width": 3, "stroke-linecap": "round",
+      ...(pl.getAttribute("stroke-dasharray") ? { "stroke-dasharray": "5 5" } : {}) }));
+    g.appendChild(el("text", { class: "svglabel", x: lx + 30, y: y + 4, "font-size": 12,
+      fill: "var(--ink)" }, s.label));
+  });
+  return g;
+};
+
+// ————— Hand-Specs je Fall: WO sticky sitzt und WO der Chip hängt (Design-Arbeit) —————
+const SPEC = {
+  A: {
+    sticky: [
+      { series: 0, t: 0.36, side: "above" },              // Adenosin am steigenden Bogen
+      { series: 1, t: 0.42, side: "above" }               // Müdigkeitsgefühl überm Plateau
+    ],
+    legend: [62, 50],
+    stopColorSeries: 1,                           // Ereignis-Label in Farbe der Crash-Serie
+    wording: { series: ["Echte Müdigkeit", "Was du spürst"], stop: "KOFFEIN-CRASH", hideY: true }
+  },
+  B: {
+    sticky: [
+      { series: 0, t: 0.46, side: "above" },              // Referenz an der Diagonale
+      { series: 1, t: 0.40, side: "above" }               // Ereignis überm Plateau
+    ],
+    eventNote: { note: 0, x: 344, y: 47, anchor: "middle" },  // gestapelt unterm Stop-Label (33px-Tasche)
+    legend: [62, 50]
+  },
+  C: {
+    sticky: [
+      { series: 0, t: 0.34, side: "above" },              // Adenosin am steigenden Bogen
+      { series: 1, t: 0.26, side: "above" }               // Gefühlter Druck überm Plateau
+    ],
+    legend: [62, 50],
+    stopColorSeries: 1,
+    wording: { series: ["Echte Müdigkeit", "Was du spürst"], stop: "KOFFEIN-CRASH", hideY: true }
+  }
+};
+
+// ————— Varianten-Transformationen —————
+const strip = (svg, sel) => svg.querySelectorAll(sel).forEach((n) => n.remove());
+const variant = (caseObj, mode) => {
+  const svg = parseSvg(caseObj.svg);
+  if (mode === "ist") return svg;
+  const spec = SPEC[caseObj.id];
+  let card = caseObj.card;
+  if (spec.wording) {
+    card = structuredClone(card);
+    const w = spec.wording;
+    (w.series || []).forEach((t, i) => { card.series[i].label = t; });
+    Object.entries(w.notes || {}).forEach(([i, t]) => { card.notes[i].label = t; });
+    const st = svg.querySelector("text.c-stop");
+    if (w.stop && st) st.textContent = w.stop;
+    const ax = svg.querySelectorAll("text:not([class])");
+    if (w.ylabel && ax[0]) ax[0].textContent = w.ylabel;
+    if (w.xlabel && ax[1]) ax[1].textContent = w.xlabel;
+    if (w.hideY && ax[0]) ax[0].remove();
+  }
+  if (spec.stopColorSeries != null && mode !== "sticky") {
+    const st = svg.querySelector("text.c-stop");
+    const pl = svg.querySelector(`polyline[data-series="${spec.stopColorSeries}"]`);
+    if (st && pl) st.setAttribute("style", `fill: ${pl.getAttribute("stroke")}`);
+  }
+  strip(svg, ".c-series, .c-note, .leader, .c-notedot");
+  strip(svg, "rect.c-chip");   // Stop-Label wird blanker CAPS-Text überm Strich
+  svg.querySelectorAll("text.c-stop").forEach((t) => t.classList.add("halo"));
+  if (mode === "sticky" || mode === "color") {
+    spec.sticky.forEach((sp) => svg.appendChild(stickyLabel(svg, card, sp, mode)));
+  }
+  if (mode === "legend") {
+    svg.appendChild(legend(svg, card, ...spec.legend));
+  }
+  (spec.freeNotes || []).forEach((sp) => svg.appendChild(freeNote(svg, card, sp, mode)));
+  if (spec.eventNote) svg.appendChild(eventNote(svg, card, spec.eventNote, mode));
+  return svg;
+};
+
+// ————— Grid aufbauen —————
+const MODES = [
+  ["ist", "Ist-Zustand", "Solver: Platz-Score + Leader"],
+  ["sticky", "Sticky + Chip", "Label parallel am eigenen Strich · Ereignis blank am Ast"],
+  ["color", "Sticky + Serienfarbe", "wie Sticky, Serien-Label + Ereignis-Note in Serienfarbe"],
+  ["legend", "Legende", "Serien-Namen raus aus dem Plot · Ereignis-Chip bleibt"]
+];
+const grid = document.getElementById("grid");
+grid.appendChild(document.createElement("div"));   // Spacer über der Rowhead-Spalte
+for (const [, name, sub] of MODES) {
+  const d = document.createElement("div");
+  d.className = "colhead";
+  d.innerHTML = name + "<small>" + sub + "</small>";
+  grid.appendChild(d);
+}
+for (const c of CASES) {
+  const rh = document.createElement("div");
+  rh.className = "rowhead";
+  rh.innerHTML = "<b>Fall " + c.id + "</b>" + c.name;
+  grid.appendChild(rh);
+  for (const [mode] of MODES) {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    cell.id = "cell-" + c.id + "-" + mode;
+    cell.appendChild(variant(c, mode));
+    grid.appendChild(cell);
+  }
+}
+</script>
+</body>
+</html>

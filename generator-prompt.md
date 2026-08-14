@@ -60,23 +60,35 @@ Im `text` sind erlaubt: `<b>…</b>` (Indigo — der Lösungs-/Kernbegriff), `<s
 ```
 { "relation":"trend", "text", "xlabel":"<CAPS ≤ 12>", "ylabel":"<CAPS ≤ 12>",
   "series":[ … 1–2 Serien … ],
-  "stop": { "label":"<CAPS ≤ 14>", "t": 0.15–0.9 }?,
-  "notes":[ { "label":"<CAPS ≤ 22>", "series": <Index>, "t": 0–1, "side":"above"|"below"? } ]? (max 2),
+  "stop": { "label":"<CAPS ≤ 20>", "t": 0.15–0.9 }?,
+  "notes":[ { "label":"<CAPS ≤ 22>", "series": <Index>, "t": 0–1 | "at":"apex", "side":"above"|"below"? } ]? (max 2),
   "caption" }
 ```
-Serie: `{ "label":"<≤ 18>"?, "color", "shape", "from"?, "to"?, "afterStop"?, "area":true?, "dash":true?, "faded":true? }`
+Serie: `{ "label":"<≤ 18>"?, "color", "shape", "from"?, "to"?, "afterStop"?, "reboundTo"?, "area":true?, "dash":true?, "faded":true? }`
 
 - `shape` — die **Form der Entwicklung**, wähle nach der Aussage:
   - `linear-rise` — stetig proportional (Gehalt pro Stunde)
   - `compound-rise` — beschleunigt sich selbst, am Anfang unscheinbar (Zinseszins, Assets)
   - `saturating-rise` — steigt erst schnell, flacht ab (Sättigung, Akkumulation mit Grenze)
   - `decay-halflife` — fällt erst schnell, flacht ab (Halbwertszeit, Zerfall)
-  - `suppressed` — künstlich niedrig gedrückt (verdeckter Zustand)
+  - `suppressed` — künstlich niedrig gedrückt (verdeckter Zustand): senkt sich einmal ab und **bleibt unten**, bis das Ereignis kommt; ein `to` unter `from` sagt, wie tief
   - `flat` — konstant niedrig/hoch (Referenzlinie)
 - `from`/`to` — Start-/Endniveau: `floor` | `low` | `mid` | `high` (Default: rise low→high, decay high→floor). Nutze Niveaus für Beziehungen zwischen Serien: endet A über B, gib A `to:"high"` und B `to:"mid"`.
 - `stop` — EIN Ereignis als gestrichelte Vertikale; `t` = wann im Verlauf (0–1). `afterStop` sagt pro Serie, was das Ereignis mit ihr macht: `collapse` (bricht auf null), `reset` (fällt zurück auf Start), `rebound` (schnellt nach oben).
-- `notes` — Anmerkungen ankern an einer Serie bei `t`; das System platziert sie kollisionsfrei.
+- `reboundTo` — nur zusammen mit `afterStop:"rebound"`: wie hoch der Ast steigt (`low` | `mid` | `high`, Default `high`). Du entscheidest die Endhöhe: `high`, wenn das Verdeckte voll durchschlägt; `mid`, wenn es den aufgestauten Wert nur teilweise einholt.
+- `notes` — Anmerkungen ankern an einer Serie, wahlweise bei einem freien `t` (0–1) **oder** mit `"at":"apex"` am Ende des Nach-Stop-Asts. Der Apex-Anker bindet Ereignis-Linie, Ast und Anmerkung zu EINEM Ereignis zusammen (typisch: der Crash, wenn die Blockade endet) — er setzt eine Serie mit `afterStop` voraus, höchstens eine je Serie. Das System platziert alles kollisionsfrei.
+- **Später Stop + hoher Rebound = fast senkrechter Ast.** Bleibt nach `stop.t` kaum Breite (ab etwa 0.8), muss der Ast die ganze Höhe auf wenigen Pixeln machen. Wähle den Stop früher, wenn die Aussage es zulässt — das Ereignis ist selten an eine späte Uhrzeit gebunden, der Ast danach aber immer an den Platz.
 - **Keine Koordinaten, keine Punktlisten.** Das System zeichnet die Form.
+
+#### Wortwahl im Diagramm: Erlebnis, nicht Fachsprache
+
+Jeder Text IM Bild (Serien-Label, `notes`, `stop.label`, Achsen) steht aus der Perspektive des Lesers — was er erlebt, nicht wie das Phänomen heißt. Der Fachbegriff gehört in den Lehrsatz, wo Platz für seine Einführung ist; auf dem Graphen steht er ohne Erklärung und macht das Bild stumm.
+
+- Serien: „Echte Müdigkeit" / „Was du spürst" statt „Adenosin" / „Müdigkeitsgefühl".
+- Ereignis: „KOFFEIN-CRASH" statt „WIRKUNG ENDET".
+- Achse: „WACHZEIT" statt „ZEIT (H)" — benenne die Größe des Lesers, nicht die Messeinheit.
+
+**Begriffs-Budget** (Leitlinie, kein Limit): ein Label je Serie, ein Ereignis-Begriff, höchstens ein Achsen-Label mit Eigenaussage. `notes` nur für etwas, das die Kurve allein nicht sagt — eine Anmerkung, die ihr Serien-Label wiederholt, ist Lärm im Bild. Lieber ein Begriff weniger und der bleibt hängen.
 
 ### relation: multiplication
 `{ "relation":"multiplication", "text", "source":{"label":"<≤ 12>","sub":"<≤ 22>","color"}, "count":5-6, "result":{"label":"<≤ 12>"}, "caption" }`

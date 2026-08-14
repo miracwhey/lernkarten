@@ -24,3 +24,7 @@ worker/jobs/
 
 # Bench-Läufe (reproduzierbar, große Artefakt-Bäume)
 bench-runs/
+
+# Mockup-Shots (reproduzierbar via shot-mockup.mjs)
+probes/label-mockup/shots/
+probes/verify-shots/

@@ -41,6 +41,9 @@ const STRUCT_TYPES = new Set(["title", "quiz", "insight"]);
 const SHAPES = ["linear-rise", "compound-rise", "saturating-rise", "decay-halflife", "suppressed", "flat"];
 const LEVEL_ORD = { floor: 0, low: 1, mid: 2, high: 3 };
 const AFTER_STOP = ["collapse", "reset", "rebound"];
+// Apex-Höhe des Rebound-Asts. `floor` fehlt bewusst: ein Rebound schnellt nach oben,
+// ein Apex auf dem Boden wäre keine Höhe, sondern ein Widerspruch zur Form.
+const REBOUND_LEVELS = ["low", "mid", "high"];
 const COLORS = new Set(["es", "ich", "ueberich"]);
 
 // Setzt fehlende Typen aus der Relation. Mutiert nicht; liefert Kopie.
@@ -100,21 +103,58 @@ export function validateLesson(lesson, opts = {}) {
           if (!AFTER_STOP.includes(s.afterStop)) err(sp + ".afterStop", `ungültig "${s.afterStop}" (erlaubt: ${AFTER_STOP.join(", ")})`);
           if (!c.stop) err(sp + ".afterStop", "braucht ein stop-Ereignis auf der Karte");
         }
+        // reboundTo beschreibt die Apex-Höhe des Nach-Stop-Asts. Ohne rebound gibt es
+        // keinen Apex — die Angabe wäre nicht bloß überflüssig, sondern bezöge sich
+        // auf nichts.
+        if (s.reboundTo !== undefined) {
+          if (!REBOUND_LEVELS.includes(s.reboundTo))
+            err(sp + ".reboundTo", `ungültiges Niveau "${s.reboundTo}" (erlaubt: ${REBOUND_LEVELS.join(", ")})`);
+          if (s.afterStop !== "rebound")
+            err(sp + ".reboundTo", `nennt die Apex-Höhe des Rebound-Asts und braucht dafür afterStop:"rebound" `
+              + `(ist ${s.afterStop === undefined ? "nicht gesetzt" : `"${s.afterStop}"`}) — setze afterStop:"rebound" oder entferne reboundTo`);
+        }
       });
       if (c.stop) {
-        str(c.stop.label, p + ".stop.label", 14);
+        // 20 statt 14: das Ereignis-Label ist blanker Text über der Linie, kein Chip —
+        // die Breite ist nicht mehr durch einen Kasten begrenzt, und Erlebnis-Sprache
+        // („KOFFEIN-CRASH", „WIRKUNG LÄSST NACH") braucht den Platz.
+        str(c.stop.label, p + ".stop.label", 20);
         if (!(c.stop.t >= 0.15 && c.stop.t <= 0.9)) err(p + ".stop.t", `muss zwischen 0.15 und 0.9 liegen (ist ${c.stop.t})`);
       }
-      if (c.notes !== undefined && arr(c.notes, p + ".notes", 1, 2)) c.notes.forEach((n, i) => {
-        const np = `${p}.notes[${i}]`;
-        str(n.label, np + ".label", 22);
-        if (n.x !== undefined || n.y !== undefined) err(np, "Contract v2: keine Koordinaten — verankere mit series + t (0–1)");
-        const byIdx = typeof n.series === "number" && n.series >= 0 && n.series < (c.series || []).length;
-        const byLabel = typeof n.series === "string" && (c.series || []).some((s) => s.label === n.series);
-        if (!byIdx && !byLabel) err(np + ".series", "muss Index oder Label einer vorhandenen Serie sein");
-        if (!(n.t >= 0 && n.t <= 1)) err(np + ".t", `muss zwischen 0 und 1 liegen (ist ${n.t})`);
-        if (n.side !== undefined && !["above", "below"].includes(n.side)) err(np + ".side", `ungültig "${n.side}" (erlaubt: above, below)`);
-      });
+      if (c.notes !== undefined && arr(c.notes, p + ".notes", 1, 2)) {
+        const apexJeSerie = new Map();
+        c.notes.forEach((n, i) => {
+          const np = `${p}.notes[${i}]`;
+          str(n.label, np + ".label", 22);
+          if (n.x !== undefined || n.y !== undefined) err(np, "Contract v2: keine Koordinaten — verankere mit series + t (0–1)");
+          const byIdx = typeof n.series === "number" && n.series >= 0 && n.series < (c.series || []).length;
+          const byLabel = typeof n.series === "string" && (c.series || []).some((s) => s.label === n.series);
+          if (!byIdx && !byLabel) err(np + ".series", "muss Index oder Label einer vorhandenen Serie sein");
+          const si = byIdx ? n.series : (c.series || []).findIndex((s) => s.label === n.series);
+          // at:"apex" ist eine ZUSÄTZLICHE Ankerform neben t, kein Ersatz: die Note
+          // sitzt am Ende des Nach-Stop-Asts, statt bei einem freien t.
+          if (n.at !== undefined) {
+            if (n.at !== "apex") err(np + ".at", `ungültig "${n.at}" (erlaubt: apex)`);
+            else {
+              const s = (c.series || [])[si];
+              if (s && s.afterStop === undefined)
+                err(np + ".at", `at:"apex" ankert am Ende des Nach-Stop-Asts, die Serie hat aber kein afterStop — `
+                  + `gib der Serie afterStop (${AFTER_STOP.join("/")}) oder verankere die Note mit t`);
+              if (si >= 0) apexJeSerie.set(si, (apexJeSerie.get(si) || 0) + 1);
+            }
+          }
+          // Ohne apex-Anker ist t die Verankerung und Pflicht; mit apex-Anker nur dann
+          // zu prüfen, wenn es überhaupt dasteht.
+          if (n.at !== "apex" || n.t !== undefined) {
+            if (!(n.t >= 0 && n.t <= 1)) err(np + ".t", `muss zwischen 0 und 1 liegen (ist ${n.t})`);
+          }
+          if (n.side !== undefined && !["above", "below"].includes(n.side)) err(np + ".side", `ungültig "${n.side}" (erlaubt: above, below)`);
+        });
+        // Zwei apex-Notes derselben Serie zeigten auf denselben Punkt.
+        for (const [si, n] of apexJeSerie) if (n > 1)
+          err(`${p}.notes`, `${n} Notes mit at:"apex" auf series[${si}] — sie ankern auf demselben Punkt; `
+            + `behalte eine und verankere die andere mit t`);
+      }
     },
     fanout(c, p) {
       str(c.text, p + ".text", 220); str(c.caption, p + ".caption", 90);
