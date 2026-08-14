@@ -4,6 +4,8 @@ import SwiftUI
 struct LibraryView: View {
     let lessons: [Lesson]
     let srs: [CardKey: CardSRS]
+    var jobs: [GenerationJob] = []
+    var enqueueError: String?
     var onLearn: (Lesson) -> Void
     var onPractice: () -> Void
     var onCreate: () -> Void
@@ -33,6 +35,12 @@ struct LibraryView: View {
                 dueBlock
 
                 VStack(spacing: 0) {
+                    // Laufende und gescheiterte Bau-Aufträge stehen als normale
+                    // Zeile oben in der Liste — der einzige Ort für Bau-Status.
+                    ForEach(jobs) { job in
+                        JobRow(job: job)
+                        Divider().overlay(Theme.line.opacity(0.6))
+                    }
                     ForEach(lessons) { lesson in
                         Button { onLearn(lesson) } label: {
                             LessonRow(lesson: lesson, dueCount: lesson.dueIndices(srs).count)
@@ -42,6 +50,13 @@ struct LibraryView: View {
                             Divider().overlay(Theme.line.opacity(0.6))
                         }
                     }
+                }
+
+                if let enqueueError {
+                    Text(enqueueError)
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(Theme.bad)
+                        .accessibilityIdentifier("enqueue-error")
                 }
 
                 VStack(spacing: 10) {
@@ -112,6 +127,51 @@ struct LibraryView: View {
         f.locale = Locale(identifier: "de_DE")
         f.dateFormat = "EEEE, d. MMMM"
         return f.string(from: Date())
+    }
+}
+
+/// Bau-Zeile: gedämpftes Motiv, gedämpfter Titel, darunter Punkt + Stufe — genau
+/// die `.lesson.building`-Zeile aus Mockup S1. Kein Fällig-Count, kein Tap-Ziel.
+struct JobRow: View {
+    let job: GenerationJob
+
+    private var accent: Color { job.failed ? Theme.bad : Theme.ich }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            motif
+            VStack(alignment: .leading, spacing: 3) {
+                Text(job.displayTitle)
+                    .font(Theme.serif(18, weight: .medium))
+                    .foregroundStyle(Theme.muted)
+                    .multilineTextAlignment(.leading)
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Circle()
+                        .fill(accent)
+                        .frame(width: 7, height: 7)
+                        .offset(y: -2)
+                    Text(job.statusLine)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(accent)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("job-status")
+            }
+            Spacer(minLength: 8)
+        }
+        .padding(.vertical, 13)
+    }
+
+    /// Zwei blasse Kreise statt der drei Farbkreise — die Lektion hat noch kein Motiv.
+    private var motif: some View {
+        ZStack {
+            Circle().fill(Color(hex: 0xC9C6BB).opacity(0.55)).frame(width: 20, height: 20).offset(x: -11)
+            Circle().fill(Color(hex: 0xA9A69A).opacity(0.45)).frame(width: 20, height: 20).offset(x: -1)
+        }
+        .compositingGroup()
+        .frame(width: 46, height: 24)   // gleicher Rahmen wie LessonRow — Motive fluchten
     }
 }
 

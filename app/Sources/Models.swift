@@ -30,6 +30,24 @@ struct Lesson: Identifiable {
     var motifSeed: Int {
         id.unicodeScalars.reduce(0) { $0 + Int($1.value) }
     }
+
+    /// Eine Lektion aus rohen Karten-Objekten — derselbe Weg für gebündelte
+    /// Dateien und für Rows aus public.lessons.
+    static func make(id: String, title: String, source: String, cards: [[String: Any]]) -> Lesson? {
+        let jsons: [String] = cards.compactMap {
+            guard let d = try? JSONSerialization.data(withJSONObject: $0) else { return nil }
+            return String(data: d, encoding: .utf8)
+        }
+        guard jsons.count == cards.count, !cards.isEmpty else { return nil }
+        return Lesson(
+            id: id,
+            title: title,
+            source: source,
+            eyebrow: cards.first?["eyebrow"] as? String ?? "",
+            cardsJSON: jsons,
+            cardTypes: cards.map { $0["type"] as? String ?? "" }
+        )
+    }
 }
 
 enum LessonStore {
@@ -53,18 +71,6 @@ enum LessonStore {
               let id = obj["id"] as? String,
               let title = obj["title"] as? String,
               let cards = obj["cards"] as? [[String: Any]] else { return nil }
-        let jsons: [String] = cards.compactMap {
-            guard let d = try? JSONSerialization.data(withJSONObject: $0) else { return nil }
-            return String(data: d, encoding: .utf8)
-        }
-        guard jsons.count == cards.count else { return nil }
-        return Lesson(
-            id: id,
-            title: title,
-            source: obj["source"] as? String ?? "",
-            eyebrow: cards.first?["eyebrow"] as? String ?? "",
-            cardsJSON: jsons,
-            cardTypes: cards.map { $0["type"] as? String ?? "" }
-        )
+        return Lesson.make(id: id, title: title, source: obj["source"] as? String ?? "", cards: cards)
     }
 }

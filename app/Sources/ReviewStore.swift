@@ -31,12 +31,12 @@ final class ReviewStore: ObservableObject {
             return
         }
         outbox = (try? JSONDecoder.iso.decode([ReviewEvent].self, from: Data(contentsOf: outboxURL))) ?? []
-        let client = SupabaseClient(supabaseURL: Config.supabaseURL, supabaseKey: Config.supabaseKey)
+        // Ein Client für Reviews und Jobs — sonst laufen zwei anonyme Sitzungen
+        // nebeneinander und jede sieht nur ihre eigenen Rows.
+        let client = Supa.client
         self.client = client
         do {
-            if (try? await client.auth.session) == nil {
-                try await client.auth.signInAnonymously()
-            }
+            try await Supa.signInIfNeeded()
             await flushOutbox()
             events = try await client.from("review_events")
                 .select("id, lesson_slug, card_index, grade, reviewed_at")

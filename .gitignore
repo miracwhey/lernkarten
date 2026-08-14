@@ -17,3 +17,7 @@ refA/
 refB/
 refC/
 supabase/.temp/
+
+# Worker: Service-Role-Key und Job-Arbeitsverzeichnisse
+worker/.env
+worker/jobs/

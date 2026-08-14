@@ -5,7 +5,8 @@
 // gepatcht) → Render-Audit (Geometrie ist Systemsache — ein Fail hier ist UNSER Bug).
 // Nutzung: node glm-generate.mjs [modell-id] [dossier.md]
 //          node glm-generate.mjs --from <lesson.json> [dossier.md]   (nur Prüf-Stufen)
-import { readFileSync, writeFileSync } from "fs";
+//          zusätzlich: --topic <text> --dossier <pfad> --outdir <dir> (Worker-Betrieb)
+import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import { execFileSync } from "child_process";
 import { normalizeLesson, validateLesson } from "./validate-lesson.mjs";
 import { suspiciousWords, wordFindings } from "./spellcheck.mjs";
@@ -34,6 +35,16 @@ const jIdx = argv.indexOf("--judge");
 const judgeModelArg = jIdx > -1 ? argv.splice(jIdx, 2)[1] : null;
 const jkIdx = argv.indexOf("--judgekey");
 const judgeKeyArg = jkIdx > -1 ? argv.splice(jkIdx, 2)[1] : null;
+// --topic <text>: Thema der Lektion (Default = die Bestands-Blindtest-Vorgabe unten).
+const tIdx = argv.indexOf("--topic");
+const topicArg = tIdx > -1 ? argv.splice(tIdx, 2)[1] : null;
+// --dossier <pfad>: Fakten-Dossier explizit (sonst wie bisher positional/Default).
+const dIdx = argv.indexOf("--dossier");
+const dossierArg = dIdx > -1 ? argv.splice(dIdx, 2)[1] : null;
+// --outdir <dir>: Ablage aller Lauf-Artefakte (Default = Repo-Wurzel wie bisher);
+// parallele Worker-Jobs überschreiben einander sonst über den gemeinsamen TAG.
+const oIdx = argv.indexOf("--outdir");
+const outdirArg = oIdx > -1 ? argv.splice(oIdx, 2)[1] : null;
 const judgeOpts = { ...(judgeModelArg && { model: judgeModelArg }), ...(judgeKeyArg && { keyName: judgeKeyArg }) };
 const fromFile = argv[0] === "--from" ? argv[1] : null;
 // --from <lesson.json> [modell] [dossier.md] — Prüf-Stufen mit beliebigem Fixer-Modell
@@ -55,8 +66,10 @@ console.log("Nutze Key:", keyName);
 const KEY = isAnthropic ? null : loadKey(keyName);
 const BASE = baseOverride ?? "https://integrate.api.nvidia.com/v1";
 const HEADERS = { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
-const DOSSIER_PATH = (fromFile ? (fromModel ? argv[3] : argv[2]) : argv[1]) ?? `${DIR}/facts/why-we-sleep.md`;
+const DOSSIER_PATH = dossierArg ?? (fromFile ? (fromModel ? argv[3] : argv[2]) : argv[1]) ?? `${DIR}/facts/why-we-sleep.md`;
 const dossier = readFileSync(DOSSIER_PATH, "utf8");
+const OUT = outdirArg ?? DIR;
+if (outdirArg) mkdirSync(OUT, { recursive: true });
 
 let model = modelArg;
 if (!model) {
@@ -73,7 +86,8 @@ const slug = (m) => m.split("/").pop().toLowerCase().replace(/[^a-z0-9.-]/g, "")
 const TAG = fromFile ? (fromModel ? slug(fromModel) + "-refix" : "glm") : slug(model);
 
 const system = readFileSync(`${DIR}/generator-prompt.md`, "utf8");
-const userBase = `Thema: „Why We Sleep" von Matthew Walker (2017) — warum wir schlafen, Schlafdruck, Koffein, was Schlafmangel anrichtet.
+const TOPIC = topicArg ?? `„Why We Sleep" von Matthew Walker (2017) — warum wir schlafen, Schlafdruck, Koffein, was Schlafmangel anrichtet.`;
+const userBase = `Thema: ${TOPIC}
 
 ## Fakten-Dossier (bindend — Regel 9)
 
@@ -168,7 +182,7 @@ async function llm(messages) {
 }
 
 function parseAndValidate(raw, tag) {
-  writeFileSync(`${DIR}/${TAG}-raw-${tag}.txt`, raw);
+  writeFileSync(`${OUT}/${TAG}-raw-${tag}.txt`, raw);
   const start = raw.indexOf("{"), end = raw.lastIndexOf("}");
   if (start < 0 || end <= start) return { errors: ["Antwort enthält kein JSON-Objekt."] };
   let json;
@@ -217,7 +231,7 @@ full: for (let i = 1; fromFile ? false : i <= MAX_FULL; i++) {
       messages.push({ role: "assistant", content: raw });
       messages.push({ role: "user", content: `Korrigiere NUR die fehlerhaften Felder. Fehlerliste:\n${r.errors.map((e) => "- " + e).join("\n")}\n\nAntworte mit einem flachen JSON-Objekt { "<pfad>": <neuer Wert>, … } — Pfade exakt wie in der Fehlerliste (z. B. "cards[4].left.sub"). Nur das JSON, nichts sonst.` });
       raw = await llm(messages);
-      writeFileSync(`${DIR}/${TAG}-raw-v2-patch${pr}.txt`, raw);
+      writeFileSync(`${OUT}/${TAG}-raw-v2-patch${pr}.txt`, raw);
       let patch;
       try { patch = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1)); }
       catch (e) { console.log("Patch nicht parsebar:", e.message); continue; }
@@ -343,7 +357,7 @@ if (post.length) {
   const stillBad = post.filter((f) => !r2.checks.some((c) => String(c.auftrag).includes(f.path) && c.ergebnis === "ok"));
   if (stillBad.length) {
     console.log("Pipeline lehnt ab — unbelegte Zahl überlebt zwei Judge-Runden: " + stillBad.map((f) => f.path).join(", "));
-    writeFileSync(`${DIR}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
+    writeFileSync(`${OUT}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
     process.exit(1);
   }
 }
@@ -354,13 +368,13 @@ if (finalErrs.length) {
   catch (e) { console.log("Patch-Runde nicht möglich (API):", e.message); }
   if (finalErrs.length) {
     console.log("Pipeline lehnt ab — verbleibende Contract-Fehler:\n" + finalErrs.map((e) => "- " + e).join("\n"));
-    writeFileSync(`${DIR}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
+    writeFileSync(`${OUT}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
     process.exit(1);
   }
   console.log("Contract PASS nach Patch-Runde");
 }
 
-const file = `${DIR}/${TAG}-lesson-v2.json`;
+const file = `${OUT}/${TAG}-lesson-v2.json`;
 writeFileSync(file, JSON.stringify(lesson, null, 2));
 console.log("→", file);
 
@@ -390,14 +404,14 @@ if (hardClaims.length) {
   } catch (e) { console.log("Patch-Runde nicht möglich (API):", e.message); }
   if (hardClaims.length) {
     console.log("Pipeline lehnt ab — Bild-Text-Zahl-Widerspruch bleibt.");
-    writeFileSync(`${DIR}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
+    writeFileSync(`${OUT}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
     process.exit(1);
   }
 }
 
 // Render-Audit: Geometrie-Beweis. Ein Fail hier ist ein System-Bug, kein Retry-Fall.
 try {
-  console.log(execFileSync("node", [`${DIR}/audit-lesson.mjs`, file, `${DIR}/${TAG}-v2-shots`], { encoding: "utf8" }).trim());
+  console.log(execFileSync("node", [`${DIR}/audit-lesson.mjs`, file, `${OUT}/${TAG}-v2-shots`], { encoding: "utf8" }).trim());
 } catch (e) {
   console.log((e.stdout || e.message).trim());
   console.log("↑ SYSTEM-BUG im Solver/Renderer — nicht dem Modell anlasten.");

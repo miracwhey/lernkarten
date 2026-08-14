@@ -7,7 +7,8 @@ final class ShellUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments = ["-srs-local-only"]   // kein Netz, keine Events in der echten DB
+        // Kein Netz: weder Review-Events noch Bau-Aufträge landen in der echten DB.
+        app.launchArguments = ["-srs-local-only", "-jobs-local-only"]
         app.launch()
         XCTAssert(app.staticTexts["Bibliothek"].waitForExistence(timeout: 5))
     }
@@ -56,7 +57,7 @@ final class ShellUITests: XCTestCase {
         XCTAssert(app.staticTexts["Bibliothek"].waitForExistence(timeout: 3))
     }
 
-    // Ebene 2: Sheet — Segmente, Thema-Eingabe, Bestätigen; Bauen bleibt bis Worker aus; X bricht ab.
+    // Ebene 2: Sheet — Segmente, Thema-Eingabe, Bestätigen; X bricht ab.
     func testCreateSheetFlow() throws {
         app.buttons["Neues lernen"].tap()
         XCTAssert(app.staticTexts["Erfassen"].waitForExistence(timeout: 3))
@@ -69,12 +70,38 @@ final class ShellUITests: XCTestCase {
         shot("sheet-2-topic")
         app.buttons["Weiter"].tap()
         XCTAssert(app.staticTexts["Schwarze Löcher"].waitForExistence(timeout: 3))
-        let build = app.buttons["Lektion bauen"]
+        let build = app.buttons["build-lesson"]
         XCTAssert(build.exists)
-        XCTAssertFalse(build.isEnabled, "Bauen ist erst mit dem Worker scharf")
+        XCTAssert(build.isEnabled, "Thema steht und Standard ist vorgewählt — Bauen ist scharf")
         app.buttons["depth-Kompakt"].tap()
         shot("sheet-3-confirm")
         app.buttons["sheet-close"].tap()
         XCTAssert(app.staticTexts["Bibliothek"].waitForExistence(timeout: 3))
+    }
+
+    // Ebene 2 → Ebene 1: „Lektion bauen" schließt das Sheet und der Bau-Status
+    // erscheint als Zeile in der Bibliothek — nirgendwo sonst.
+    func testBuildCreatesLibraryStatusRow() throws {
+        XCTAssertFalse(app.staticTexts["job-status"].exists, "Ohne Auftrag keine Statuszeile")
+        app.buttons["Neues lernen"].tap()
+        XCTAssert(app.staticTexts["Erfassen"].waitForExistence(timeout: 3))
+        app.buttons["Thema"].tap()
+        let field = app.textFields.firstMatch
+        XCTAssert(field.waitForExistence(timeout: 2))
+        field.tap()
+        field.typeText("Photosynthese")
+        app.buttons["Weiter"].tap()
+        XCTAssert(app.staticTexts["Schwarze Löcher"].exists == false)
+        app.buttons["depth-Standard"].tap()
+        app.buttons["build-lesson"].tap()
+
+        // Sheet ist zu, Bibliothek trägt die Zeile.
+        XCTAssert(app.staticTexts["Bibliothek"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["Erfassen"].exists, "Das Erstellen-Sheet ist kurzlebig")
+        let status = app.staticTexts["job-status"]
+        XCTAssert(status.waitForExistence(timeout: 3), "Bau-Status gehört in die Bibliothekszeile")
+        XCTAssert(status.label.contains("Wird gebaut"), "Statuszeile: \(status.label)")
+        XCTAssert(app.staticTexts["Photosynthese"].exists, "Die Bau-Zeile trägt das Thema als Titel")
+        shot("library-1-building-row")
     }
 }

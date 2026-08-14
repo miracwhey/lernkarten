@@ -13,6 +13,15 @@ enum Depth: String, CaseIterable, Identifiable {
     case tief = "Tief"
     var id: String { rawValue }
 
+    /// Wert der Spalte generation_jobs.depth (ASCII, klein — so steht es im CHECK).
+    var slug: String {
+        switch self {
+        case .kompakt: return "kompakt"
+        case .standard: return "standard"
+        case .tief: return "tief"
+        }
+    }
+
     var estimate: String {
         switch self {
         case .kompakt: return "ca. 7 Karten · 4 Min"
@@ -23,14 +32,29 @@ enum Depth: String, CaseIterable, Identifiable {
 }
 
 /// Ebene 2 — Erstellen. Kurzlebiges Sheet: Erfassen → Bestätigen → Sheet schließt.
-/// Jederzeit abbrechbar, hinterlässt keine halben Zustände.
-/// Kamera (VisionKit) und „Lektion bauen" werden mit Foto-Fluss/Worker verdrahtet.
+/// Jederzeit abbrechbar, hinterlässt keine halben Zustände. „Lektion bauen" legt
+/// den Job an und schließt sofort — der Bau-Status wohnt in der Bibliothek.
+/// Die Kamera (VisionKit) wird mit dem Foto-Fluss verdrahtet.
 struct CreateSheetView: View {
+    @ObservedObject var jobs: JobStore
     @Environment(\.dismiss) private var dismiss
     @State private var mode: CaptureMode = .foto
     @State private var topic = ""
     @State private var ownText = ""
+    @State private var depth: Depth = .standard
     @State private var path: [String] = []
+
+    /// Bauen ist scharf, sobald eine Eingabe steht (Thema oder eigener Text) und
+    /// eine Tiefe gewählt ist — im Mockup ist Standard vorgewählt.
+    static func canBuild(mode: CaptureMode, topic: String, ownText: String, depth: Depth?) -> Bool {
+        guard depth != nil else { return false }
+        let input = mode == .text ? ownText : topic
+        return !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var buildEnabled: Bool {
+        Self.canBuild(mode: mode, topic: topic, ownText: ownText, depth: depth)
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -154,22 +178,31 @@ struct CreateSheetView: View {
                 Text("Tiefe")
                     .microCaps()
                     .foregroundStyle(Theme.muted)
-                DepthPicker()
+                DepthPicker(depth: $depth)
             }
             .padding(.horizontal, 20)
 
             Spacer()
 
-            // Verdrahtet mit dem Worker (Job-Queue) in Schritt 5.
-            Button {} label: {
+            // Job anlegen und sofort schließen — der Worker übernimmt, die
+            // Bibliothekszeile berichtet. Kein Warte-Screen im Sheet.
+            Button {
+                let (m, t, o, d) = (mode, topic, ownText, depth)
+                Task { await jobs.enqueue(mode: m, topic: t, ownText: o, depth: d) }
+                dismiss()
+            } label: {
                 Text("Lektion bauen")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Theme.card)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
-                    .background(Theme.muted.opacity(0.4), in: RoundedRectangle(cornerRadius: 14))
+                    .background(
+                        buildEnabled ? Theme.ink : Theme.muted.opacity(0.4),
+                        in: RoundedRectangle(cornerRadius: 14)
+                    )
             }
-            .disabled(true)
+            .disabled(!buildEnabled)
+            .accessibilityIdentifier("build-lesson")
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
         }
@@ -214,7 +247,7 @@ struct CreateSheetView: View {
 }
 
 struct DepthPicker: View {
-    @State private var depth: Depth = .standard
+    @Binding var depth: Depth
 
     var body: some View {
         VStack(spacing: 8) {
