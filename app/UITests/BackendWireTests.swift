@@ -87,6 +87,40 @@ final class BackendWireTests: XCTestCase {
         XCTAssert(app.staticTexts["Bibliothek"].waitForExistence(timeout: 3))
     }
 
+    /// Foto-Fluss gegen die echte Edge Function `erkenne-foto`: Fake-Kamera (der
+    /// Simulator hat keine), aber echter Function-Aufruf mit den echten Testfotos
+    /// der Serie B. Es wird NICHT gebaut — der Lauf prüft die Erkennungs-Leitung,
+    /// nicht die Job-Queue, und legt darum keine Row an.
+    func testFotoErkennungWireGegenEdgeFunction() throws {
+        try skipUnlessReal()
+        let app = XCUIApplication()
+        app.launchArguments = ["-srs-local-only", "-foto-fake-kamera"]
+        app.launch()
+        XCTAssert(app.staticTexts["Bibliothek"].waitForExistence(timeout: 10))
+
+        app.buttons["Neues lernen"].tap()
+        XCTAssert(app.staticTexts["Erfassen"].waitForExistence(timeout: 5))
+        app.buttons["foto-start"].tap()
+        XCTAssert(app.buttons["foto-ausloeser"].waitForExistence(timeout: 5))
+
+        let zaehler = app.staticTexts["foto-zaehler"]
+        for i in 1...3 {
+            app.buttons["foto-ausloeser"].tap()
+            expectation(for: NSPredicate(format: "label == %@", "\(i)"), evaluatedWith: zaehler)
+            waitForExpectations(timeout: 10)
+        }
+
+        app.buttons["foto-fertig"].tap()
+
+        // 60s: echter Modell-Aufruf inkl. Bild-Upload.
+        let titel = app.staticTexts["foto-titel"]
+        XCTAssert(titel.waitForExistence(timeout: 60), "Erkennung kam nicht zurück")
+        XCTAssertFalse(app.staticTexts["foto-fehler"].exists,
+                       "Technischer Fehler statt Erkennung — Function-Leitung prüfen")
+        shot("wire-foto-erkennung")
+        print("WIRE-ERKENNUNG Titel: \(titel.label)")
+    }
+
     private func shot(_ name: String) {
         let a = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         a.name = name

@@ -43,6 +43,7 @@ struct CreateSheetView: View {
     @State private var ownText = ""
     @State private var depth: Depth = .standard
     @State private var path: [String] = []
+    @State private var fotoFluss = false
 
     /// Bauen ist scharf, sobald eine Eingabe steht (Thema oder eigener Text) und
     /// eine Tiefe gewählt ist — im Mockup ist Standard vorgewählt.
@@ -63,6 +64,15 @@ struct CreateSheetView: View {
                 .navigationDestination(for: String.self) { _ in
                     confirmStep.toolbar(.hidden, for: .navigationBar)
                 }
+        }
+        // Der Foto-Fluss ist ein Vollbild-Ausflug aus dem Sheet: liegt der Job an,
+        // schließt beides — sonst kommt man zum Erfassen zurück.
+        .fullScreenCover(isPresented: $fotoFluss) {
+            FotoFlussView(
+                jobs: jobs,
+                onGebaut: { fotoFluss = false; dismiss() },
+                onAbbruch: { fotoFluss = false }
+            )
         }
     }
 
@@ -103,27 +113,32 @@ struct CreateSheetView: View {
         .background(Theme.paper)
     }
 
+    /// Fläche und Auslöser sind zusammen der Einstieg — ein Tap öffnet den
+    /// Kamera-Screen; alles Weitere passiert dort und endet mit dem Job.
     private var photoPane: some View {
-        VStack(spacing: 14) {
-            RoundedRectangle(cornerRadius: 22)
-                .fill(Theme.ink)
-                .frame(height: 360)
-                .overlay {
-                    VStack(spacing: 14) {
-                        Image(systemName: "text.viewfinder")
-                            .font(.system(size: 44, weight: .light))
-                            .foregroundStyle(Theme.paper.opacity(0.85))
-                        Text("Seite ins Bild — Text wird auf dem Gerät gelesen")
-                            .font(.system(size: 13))
-                            .foregroundStyle(Theme.paper.opacity(0.75))
+        Button { fotoFluss = true } label: {
+            VStack(spacing: 14) {
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(Theme.ink)
+                    .frame(height: 360)
+                    .overlay {
+                        VStack(spacing: 14) {
+                            Image(systemName: "text.viewfinder")
+                                .font(.system(size: 44, weight: .light))
+                                .foregroundStyle(Theme.paper.opacity(0.85))
+                            Text("Seite ins Bild — Text wird auf dem Gerät gelesen")
+                                .font(.system(size: 13))
+                                .foregroundStyle(Theme.paper.opacity(0.75))
+                        }
                     }
-                }
-            // Auslöser — scharf geschaltet mit dem Foto-Fluss (VisionKit).
-            Circle()
-                .stroke(Theme.ink.opacity(0.3), lineWidth: 3)
-                .frame(width: 62, height: 62)
-                .overlay(Circle().fill(Theme.ink.opacity(0.25)).frame(width: 48, height: 48))
+                Circle()
+                    .stroke(Theme.ink.opacity(0.3), lineWidth: 3)
+                    .frame(width: 62, height: 62)
+                    .overlay(Circle().fill(Theme.ink).frame(width: 48, height: 48))
+            }
         }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("foto-start")
     }
 
     private var topicPane: some View {

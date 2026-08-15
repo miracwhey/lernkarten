@@ -6,7 +6,8 @@ final class JobTests: XCTestCase {
 
     private func job(status: String, stage: String? = nil, error: String? = nil,
                      topic: String? = "Photosynthese", kind: String = "topic") -> GenerationJob {
-        GenerationJob(id: UUID(), kind: kind, topic: topic, sourceText: kind == "text" ? "Text" : nil,
+        GenerationJob(id: UUID(), kind: kind, topic: topic, source: nil,
+                      sourceText: kind == "text" ? "Text" : nil,
                       status: status, stage: stage, error: error, createdAt: .now)
     }
 

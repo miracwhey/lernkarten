@@ -29,6 +29,8 @@ targets:
       base:
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UIUserInterfaceStyle: Light
+        # Foto-Fluss: die Kamera ist der Haupteinstieg ins Erstellen.
+        INFOPLIST_KEY_NSCameraUsageDescription: "Zum Fotografieren von Buchseiten, Covern und Schaubildern, aus denen deine Lektion entsteht."
         GENERATE_INFOPLIST_FILE: true
         MARKETING_VERSION: "0.1"
         CURRENT_PROJECT_VERSION: "1"

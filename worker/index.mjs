@@ -144,8 +144,11 @@ async function runJob(job) {
   writeFileSync(logPath, `Job ${job.id} · ${job.kind} · Tiefe ${job.depth} · Versuch ${job.attempts}\n`);
   const log = (m) => { console.log("   ", m); appendFileSync(logPath, m + "\n"); };
 
+  // Foto-Jobs tragen beides: der OCR-Block (source_text) speist das Dossier, das
+  // vom Nutzer bestätigte Thema führt die Karten-Stufe. Nur bei kind='text' gibt es
+  // kein Thema — dort bleibt der Platzhalter, der auf das Dossier verweist.
   const input = job.kind === "topic" ? job.topic : job.source_text;
-  const topic = job.kind === "topic" ? job.topic : "Der vom Nutzer eingereichte Text (siehe Dossier)";
+  const topic = job.kind === "text" ? "Der vom Nutzer eingereichte Text (siehe Dossier)" : job.topic;
 
   // 1 — Quellen sammeln. Kette auch hier: das Dossier ist der teuerste Einzel-Call.
   const dossierPath = `${dir}/dossier.md`;
@@ -154,7 +157,7 @@ async function runJob(job) {
     try {
       log(`Dossier mit ${model.id}…`);
       const md = await mitDeadline(
-        (signal) => makeDossier({ kind: job.kind, input, depth: job.depth, model, log, signal }),
+        (signal) => makeDossier({ kind: job.kind, input, depth: job.depth, topic: job.topic, model, log, signal }),
         DOSSIER_TIMEOUT_MS, `Dossier-Stufe (${model.id})`);
       writeFileSync(dossierPath, md);
       dossierModel = model;
@@ -207,7 +210,10 @@ async function speichern(job, dir, model, log) {
     user_id: job.user_id,
     slug,
     title: lesson.title,
-    source: lesson.source ?? "",
+    // Die vom Nutzer bestätigte Quelle schlägt den Titel, den sich das Modell aus
+    // dem Dossier ableitet. job.source trägt nur ein Foto-Job (bei topic/text ist
+    // die Spalte NULL, dann bleibt es bei lesson.source).
+    source: job.source ?? lesson.source ?? "",
     cards: lesson.cards,
   }).select("id").single();
   if (error) { log("Insert fehlgeschlagen: " + error.message); return failJob(job.id, USER_ERROR.save); }

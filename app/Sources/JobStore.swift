@@ -7,6 +7,9 @@ struct GenerationJob: Codable, Identifiable, Equatable {
     let id: UUID
     let kind: String
     let topic: String?
+    /// Bestätigte Quelle des Foto-Flusses (Buchtitel, Autor). Nullbar und in jeder
+    /// Richtung optional: Jobs aus der Zeit vor der Spalte tragen sie nicht.
+    let source: String?
     let sourceText: String?
     let status: String
     let stage: String?
@@ -14,7 +17,7 @@ struct GenerationJob: Codable, Identifiable, Equatable {
     let createdAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case id, kind, topic, status, stage, error
+        case id, kind, topic, source, status, stage, error
         case sourceText = "source_text"
         case createdAt = "created_at"
     }
@@ -45,6 +48,7 @@ struct GenerationJob: Codable, Identifiable, Equatable {
 private struct NewJob: Encodable {
     let kind: String
     let topic: String?
+    let source: String?
     let source_text: String?
     let depth: String
 }
@@ -93,7 +97,7 @@ final class JobStore: ObservableObject {
         guard !localOnly else { return }
         do {
             jobs = try await Supa.client.from("generation_jobs")
-                .select("id, kind, topic, source_text, status, stage, error, created_at")
+                .select("id, kind, topic, source, source_text, status, stage, error, created_at")
                 .in("status", values: ["queued", "running", "failed"])
                 .order("created_at", ascending: false)
                 .execute().value
@@ -126,16 +130,37 @@ final class JobStore: ObservableObject {
     func enqueue(mode: CaptureMode, topic: String, ownText: String, depth: Depth) async {
         let kind = mode == .text ? "text" : "topic"
         let trimmed = (kind == "text" ? ownText : topic).trimmingCharacters(in: .whitespacesAndNewlines)
-        let new = NewJob(
+        await insert(NewJob(
             kind: kind,
             topic: kind == "topic" ? trimmed : nil,
+            source: nil,
             source_text: kind == "text" ? trimmed : nil,
             depth: depth.slug
-        )
+        ))
+    }
 
+    /// Foto-Auftrag: bestätigtes Thema, bestätigte Quelle (darf fehlen) und der
+    /// OCR-Block der Fotos. Die Längen sind die der Spalten-CHECKs — ein zu langes
+    /// Thema soll den Auftrag kürzen, nicht scheitern lassen.
+    func enqueuePhoto(topic: String, source: String?, sourceText: String, depth: Depth) async {
+        let thema = String(topic.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
+        let quelle = source
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .flatMap { $0.isEmpty ? nil : String($0.prefix(300)) }
+        await insert(NewJob(
+            kind: "photo",
+            topic: thema,
+            source: quelle,
+            source_text: String(sourceText.prefix(FotoQuelltext.maxLaenge)),
+            depth: depth.slug
+        ))
+    }
+
+    private func insert(_ new: NewJob) async {
         guard !localOnly else {
-            jobs.insert(GenerationJob(id: UUID(), kind: kind, topic: new.topic, sourceText: new.source_text,
-                                      status: "queued", stage: nil, error: nil, createdAt: .now), at: 0)
+            jobs.insert(GenerationJob(id: UUID(), kind: new.kind, topic: new.topic, source: new.source,
+                                      sourceText: new.source_text, status: "queued", stage: nil,
+                                      error: nil, createdAt: .now), at: 0)
             return
         }
 

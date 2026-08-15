@@ -1,9 +1,10 @@
-// Dossier-Stufe (Mockup S4, Schritt „Quellen sammeln"): Thema bzw. eigener Text →
-// Fakten-Dossier im Format von facts/why-we-sleep.md. Das Dossier ist die EINZIGE
+// Dossier-Stufe (Mockup S4, Schritt „Quellen sammeln"): Thema, eigener Text bzw.
+// fotografiertes Material → Fakten-Dossier im Format von facts/why-we-sleep.md. Das Dossier ist die EINZIGE
 // Grounding-Quelle, die Generator UND Judge danach lesen — steht ein Fakt nicht
 // drin, darf er nicht in die Lektion. Darum steht vor der Weitergabe ein
 // deterministisches Format-Gate: fehlende oder zu dünne Sektion = kein Dossier.
-// Nutzung: node worker/make-dossier.mjs --kind topic --depth standard --input "Photosynthese" [--out d.md]
+// Nutzung: node worker/make-dossier.mjs --kind topic|text|photo --depth standard --input "Photosynthese" [--out d.md]
+//          --kind photo erwartet als --input den Block aus der App (QUELLE/TYP/OCR je Foto).
 //          --kein-zahlen-gate überspringt die Judge-Prüfung der Zahlen (Debug).
 import { readFileSync, writeFileSync } from "fs";
 import { cardRange } from "../validate-lesson.mjs";
@@ -88,7 +89,9 @@ const VORBILD = () => `## Vorbild (Format — Inhalt ist ein anderes Thema, nur 
 ${readFileSync(VORBILD_PATH, "utf8")}
 \`\`\``;
 
-function auftrag({ kind, input, depth }) {
+/// Der kind-abhängige Auftragsteil des Prompts (exportiert, damit ein Test ihn
+/// ohne Modell-Call prüfen kann).
+export function auftrag({ kind, input, depth, topic }) {
   const min = DEPTHS[depth] ?? DEPTHS.standard;
   const [lo, hi] = cardRange(DEPTHS[depth] ? depth : "standard");
   const umfang = `Umfang für Tiefe „${depth}": ${min.soll}, mindestens 1 Zitat, mindestens ${min["Typische Fehler"]} typische Fehler.`
@@ -104,6 +107,28 @@ ${umfang}
 
 ${input}`;
   }
+  if (kind === "photo") {
+    return `Erstelle das Dossier zu dem, was der Nutzer fotografiert hat. Der Block unten kommt aus der App: erst die vom Nutzer bestätigten Kopfzeilen (Quelle, Foto-Typ, bei Schaubildern die Interpretation), darunter je Foto der Text, den die Erkennung auf dem Gerät gelesen hat (OCR).
+
+Der fotografierte Text ist die PRIMÄRE Quelle. Die Lektion soll auf dem aufbauen, was der Nutzer vor sich hatte: seine Begriffe, seine Beispiele, sein Gedankengang zuerst.
+${topic ? `
+Der Nutzer hat als Thema der Lektion bestätigt: „${topic}". Dieses Thema ist die Richtschnur des Dossiers — besonders dort, wo das Fotografierte selbst wenig hergibt (etwa ein reines Cover-Foto), lieferst du den Stoff ZU DIESEM Thema.
+` : ""}
+
+ANDERS als bei eingereichtem Text darfst du ergänzen: Trägt das Fotografierte die geforderte Tiefe nicht — ein Cover liefert kaum mehr als Titel und Autor —, füll mit dem etablierten Wissensstand ZUM Thema des Fotografierten und ZUR genannten Quelle auf. Bleib dabei beim Thema des Fotografierten; kein Abschweifen in Nachbargebiete und keine Zahl, keine Studie, die du nicht belegen kannst.
+
+OCR liest nicht fehlerfrei: zerhackte Wörter, verrutschte Zeilen, Buchstabendreher, Zeichensalat sind Artefakte der Erkennung, nicht Aussagen des Werks. Geh stillschweigend über sie hinweg — nicht kommentieren, nicht als Lesefehler benennen — und übernimm NIEMALS einen Artefakt-Wert als Fakt, besonders keine Zahl, die aus einem Lesefehler stammen kann.
+
+Steht eine Zeile „INTERPRETATION (vom Nutzer bestätigt)" im Block, hat der Nutzer diese Lesart des Schaubilds bestätigt. Sie ist damit gültig: nimm sie ins Dossier auf, statt eine eigene Deutung danebenzustellen.
+
+Zitate: wörtliche Sätze aus dem OCR-Text sind zulässige Zitate, Urheber ist das fotografierte Werk (Kopfzeile QUELLE). Zitiere nur, was wörtlich und unverstümmelt dasteht.
+
+${umfang}
+
+## Fotografiertes Material
+
+${input}`;
+  }
   return `Erstelle das Dossier zum Thema: ${input}
 
 ${umfang}
@@ -116,10 +141,10 @@ Nimm den etablierten Wissensstand des Fachgebiets. Ist das Thema breit, wähle d
 /// Zwei Gates hintereinander: FORMAT (deterministisch, hier) und ZAHLEN
 /// (unabhängiger Judge, dossier-check.mjs) — Letzteres kann Zeilen streichen,
 /// darum läuft das Format-Gate danach ein zweites Mal.
-export async function makeDossier({ kind, input, depth, model, log = console.log, signal, zahlenGate = true }) {
+export async function makeDossier({ kind, input, depth, topic, model, log = console.log, signal, zahlenGate = true }) {
   const messages = [
     { role: "system", content: SYSTEM },
-    { role: "user", content: `${VORBILD()}\n\n---\n\n${auftrag({ kind, input, depth })}` },
+    { role: "user", content: `${VORBILD()}\n\n---\n\n${auftrag({ kind, input, depth, topic })}` },
   ];
   let md = "", errs = [];
   for (let runde = 1; runde <= 2; runde++) {
@@ -168,6 +193,7 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()
     kind: arg("kind") ?? "topic",
     input: arg("input"),
     depth: arg("depth") ?? "standard",
+    topic: arg("topic"),
     model: CHAIN.find((m) => m.id === arg("model")) ?? CHAIN[0],
     zahlenGate: !process.argv.includes("--kein-zahlen-gate"),
   });
