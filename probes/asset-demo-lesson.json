@@ -1,0 +1,157 @@
+{
+  "id": "asset-demo",
+  "title": "Assets: Gegenstände mit Ankern",
+  "source": "Design-Gate v3, Panel (a) und (c) — plus zwei Bestands-Objekte aus der Library",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "GRAMMATIK V3",
+      "title": "Asset-Slot",
+      "sub": "Zwei Themen, zwei eigene Objekte — zwei weitere aus dem Bestand.",
+      "stats": "6 Karten · 4 Min"
+    },
+    {
+      "type": "asset",
+      "relation": "object",
+      "text": "Erst wenn genug Reize zusammenkommen, feuert das Neuron — dann läuft <span class=\"w-ich\">ein Signal</span> bis zur Synapse und springt auf die nächste Zelle über.",
+      "asset": {
+        "ref": "biology.neuron",
+        "role": "hero",
+        "labels": {
+          "reize": "REIZE KOMMEN AN",
+          "feuert": "AB HIER FEUERT ES",
+          "sprung": "SIGNAL SPRINGT ÜBER"
+        }
+      },
+      "caption": "Wie ein Klingelknopf: Erst fester Druck löst das Klingeln aus.",
+      "trigger": "auto",
+      "sequence": [
+        {
+          "verb": "reveal",
+          "target": "asset:neuron"
+        },
+        {
+          "verb": "pulse",
+          "from": "node:dendrit",
+          "to": "node:soma"
+        },
+        {
+          "verb": "pulse",
+          "from": "node:soma",
+          "to": "node:synapse"
+        },
+        {
+          "verb": "highlight",
+          "target": "label:sprung"
+        }
+      ]
+    },
+    {
+      "type": "asset",
+      "relation": "object",
+      "text": "Luftmoleküle streuen kurzwelliges <span class=\"w-ich\">blaues Licht</span> in alle Richtungen — was du als Himmel siehst, ist gestreutes Sonnenlicht.",
+      "asset": {
+        "ref": "physics.sky-scatter",
+        "role": "hero",
+        "labels": {
+          "sonnenlicht": "SONNENLICHT",
+          "blau": "BLAU — IN ALLE RICHTUNGEN",
+          "rot": "ROT — LÄUFT DURCH"
+        }
+      },
+      "caption": "Mittags kommt Blau von überall — die Sonne selbst bleibt gelblich-weiß.",
+      "trigger": "auto",
+      "sequence": [
+        {
+          "verb": "reveal",
+          "target": "asset:sky-scatter"
+        },
+        {
+          "verb": "pulse",
+          "from": "node:sun",
+          "to": "node:molecule"
+        },
+        {
+          "verb": "reveal",
+          "target": "region:scatter"
+        },
+        {
+          "verb": "reveal",
+          "target": "ray:forward"
+        }
+      ]
+    },
+    {
+      "type": "asset",
+      "relation": "object",
+      "text": "Was andere von dir sehen, ist die Oberfläche. Der <span class=\"w-es\">Antrieb</span> darunter entscheidet mit — auch wenn er nie zur Sprache kommt.",
+      "asset": {
+        "ref": "psyche.person",
+        "role": "inline",
+        "labels": {
+          "innen": "WAS DARUNTER ARBEITET",
+          "aussen": "WAS DU ZEIGST"
+        }
+      },
+      "caption": "Dieselbe Person, zwei Ebenen — die untere meldet sich selten direkt.",
+      "trigger": "auto",
+      "sequence": [
+        {
+          "verb": "reveal",
+          "target": "asset:person"
+        },
+        {
+          "verb": "pulse",
+          "from": "region:innen",
+          "to": "node:koerper"
+        }
+      ]
+    },
+    {
+      "type": "balance",
+      "relation": "weighing",
+      "text": "Die Waage kommt seit v3 aus derselben Library — dieselbe Geometrie, dieselbe Karte, kein Unterschied im Bild.",
+      "left": {
+        "label": "ES",
+        "sub": "Lustprinzip",
+        "color": "es"
+      },
+      "right": {
+        "label": "ÜBER-ICH",
+        "sub": "Moral",
+        "color": "ueberich"
+      },
+      "pivot": {
+        "label": "ICH",
+        "sub": "Realitätsprinzip",
+        "color": "ich"
+      }
+    },
+    {
+      "type": "quiz",
+      "question": "Woher weiß der Renderer, wo das Label „AB HIER FEUERT ES“ steht?",
+      "options": [
+        {
+          "label": "Das LLM gibt Koordinaten an",
+          "correct": false
+        },
+        {
+          "label": "Das Objekt bringt seine Label-Plätze mit",
+          "correct": true
+        },
+        {
+          "label": "Der Text wird frei über das Bild gelegt",
+          "correct": false
+        }
+      ],
+      "explain": "Der Platz gehört zur Gestaltung des Objekts; die Karte liefert nur den Text.",
+      "wrong": "Koordinaten kommen nie aus dem Karten-JSON — das gilt in v3 weiter."
+    },
+    {
+      "type": "insight",
+      "quote": "Die Library ist ein Cache, keine Grenze.",
+      "cite": "Grammatik v3, Abschnitt 3",
+      "explain": "Fehlt ein Objekt, wird es für dieses Thema gebaut und eingelagert — der Miss steht im Backlog."
+    }
+  ]
+}

@@ -151,8 +151,19 @@ export const auditCurveCard = ({ card, limits, seqStep }) => {
     const pts = [];
     const len = el.getTotalLength ? el.getTotalLength() : 0;
     if (!len) return pts;
+    // Ein platziertes Asset rechnet in EIGENEN Einheiten (eine Asset-Einheit = zwei
+    // Karten-Einheiten). Seine Punkte müssen in Karten-Koordinaten stehen, bevor sie
+    // mit Text-Boxen oder der viewBox verglichen werden — sonst prüfte das Gate zwei
+    // verschiedene Maßsysteme gegeneinander und meldete Nähe, wo Abstand ist.
+    // Für alles andere bleibt die Rechnung unverändert: keine Matrix, dieselben Zahlen.
+    const imAsset = el.closest && el.closest("[data-asset]");
+    const m = imAsset ? svg.getScreenCTM().inverse().multiply(el.getScreenCTM()) : null;
+    const skal = m ? (Math.hypot(m.a, m.b) || 1) : 1;
     for (const [a, b] of spans(el, len))
-      for (let d = a; d <= b; d += step) { const p = el.getPointAtLength(d); pts.push([p.x, p.y]); }
+      for (let d = a; d <= b; d += step / skal) {
+        const p = el.getPointAtLength(d);
+        pts.push(m ? [m.a * p.x + m.c * p.y + m.e, m.b * p.x + m.d * p.y + m.f] : [p.x, p.y]);
+      }
     return pts;
   };
 
@@ -160,7 +171,13 @@ export const auditCurveCard = ({ card, limits, seqStep }) => {
   // Die Achse gehört dazu: ein Label auf der x-Achse liest sich als deren Beschriftung.
   // Sie ist ein `path` und fiel deshalb aus der alten Auswahl heraus — das Gate sah
   // die Kollision nicht, weil es an der falschen Stelle suchte.
-  const strokes = sichtbare("polyline, line:not(.leader), path.c-axis")
+  //
+  // Asset-Karten bringen ihre Geometrie als Teile eines platzierten Objekts mit. Sie
+  // gehört genauso zum Bild wie eine Kurve: ein Label, das auf dem Dendriten liegt,
+  // ist derselbe Befund wie ein Label auf der Serie. `.a-route` bleibt außen vor — der
+  // Puls-Weg wird nie gemalt, er wäre ein Hindernis, das niemand sieht.
+  const strokes = sichtbare("polyline, line:not(.leader), path.c-axis, "
+    + "[data-asset] path:not(.a-route), [data-asset] line, [data-asset] polygon, [data-asset] circle")
     .map((el) => ({ el, pts: sample(el, 3) }));
   const kurven = sichtbare("polyline[data-series]");
   // Zwei Ebenen: je Serie ALLE Punkte (Abstände) und je Serie die EINZELNEN Striche
@@ -210,6 +227,14 @@ export const auditCurveCard = ({ card, limits, seqStep }) => {
       if (cx - r < vb.x || cy - r < vb.y || cx + r > vb.x + vb.width || cy + r > vb.y + vb.height)
         out.push(`GEOM  Punkt (${cx.toFixed(0)},${cy.toFixed(0)}) ragt aus der viewBox`);
     }
+  }
+
+  // ——— Asset-Geometrie: das Objekt muss in der viewBox liegen ———
+  // Dieselbe Regel wie für Kurven, nur für das platzierte Objekt: was über den Rand
+  // ragt, ist abgeschnitten — unabhängig davon, ob ein Label betroffen ist.
+  for (const el of sichtbare("[data-asset] path:not(.a-route), [data-asset] line, [data-asset] polygon, [data-asset] circle")) {
+    const raus = sample(el, 4).find(([x, y]) => x < vb.x || y < vb.y || x > vb.x + vb.width || y > vb.y + vb.height);
+    if (raus) out.push(`GEOM  Asset-Teil <${el.tagName}> ragt aus der viewBox (${raus[0].toFixed(0)},${raus[1].toFixed(0)})`);
   }
 
   // ——— Leader: Winkel UND Länge ———
@@ -347,6 +372,19 @@ export const auditCurveCard = ({ card, limits, seqStep }) => {
       for (const [x, y] of pts) d = Math.min(d, Math.hypot(x - ax, y - ay));
       if (d > 6) out.push(`LEER  "${a.label}" zeigt auf (${ax.toFixed(0)},${ay.toFixed(0)}) — dort ist von Serie ${own}`
         + ` nichts gezeichnet (nächste Tinte ${d.toFixed(1)} px)${leader}`);
+    }
+    // Asset-Labels hängen an einem Gegenstand des Objekts (data-label-anchor). Ist der
+    // Gegenstand in diesem Zustand nicht da, steht die Beschriftung im Leeren — dieselbe
+    // Regel wie für Note-Labels an einer noch nicht gezogenen Serie, nur dass der Bezug
+    // hier ein Anker ist. Gemessen wird die BERECHNETE Deckkraft des Ankers, nicht seine
+    // Klassenliste.
+    for (const a of texts) {
+      const anker = a.el.dataset.labelAnchor;
+      if (!anker) continue;
+      const ziele = [...svg.querySelectorAll(`[data-anchor~="${anker}"]`)];
+      if (!ziele.length) { out.push(`LEER  "${a.label}" nennt Anker ${anker}, den es im Bild nicht gibt`); continue; }
+      if (!ziele.some((z) => deckkraft(z) > 0))
+        out.push(`LEER  "${a.label}" beschriftet ${anker}, das in diesem Zustand nicht sichtbar ist`);
     }
     // Der Puls-Punkt ist im eingefrorenen Bild unsichtbar — sein Endzustand IST das
     // Verschwinden. Hier gemessen statt geglaubt: stünde er doch im Bild, wäre er ein

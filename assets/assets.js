@@ -1,19 +1,3 @@
-<meta charset="utf-8">
-<title>Karten-Canvas</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<link rel="stylesheet" href="renderer.css">
-<style>
-  /* Canvas-Host: das WKWebView IST die Karten-Fläche — die Shell (SwiftUI) rahmt mit Topbar/Progress. */
-  html, body { height: 100%; }
-  body { display: block; min-height: 100%; background: var(--card); }
-  #cardhost { position: fixed; inset: 0; overflow: hidden; -webkit-tap-highlight-color: transparent; }
-</style>
-<div id="cardhost" class="cardarea"></div>
-<!-- Asset-Library INLINE (nicht als eigene Datei): die App bündelt genau die in
-     app/project.yml gelisteten Ressourcen — ein zusätzlicher Pfad fehlte im Bundle.
-     Erzeugt und geprüft von build-assets.mjs / asset-check.mjs; nicht von Hand ändern. -->
-<!-- ASSETS:BEGIN (generiert von build-assets.mjs) -->
-<script>
 // GENERIERT von build-assets.mjs — nicht von Hand ändern.
 // Quelle: assets/manifest.json + assets/*.svg (node asset-check.mjs prüft die Gleichheit).
 window.ASSET_MANIFEST = {
@@ -235,27 +219,3 @@ window.ASSETS_SRC = {
   "nature.eisberg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 200\" data-ref=\"nature.eisberg\">\n  <!-- Eisberg — extrahiert aus RENDERERS.layers (Freud-Karte). Die Kontur ist dort\n       DREIFACH in Gebrauch: als clipPath für die Instanz-Flächen, als gezeichnete\n       Kontur und als Bezug der Wasserlinien. Genau deshalb gehört sie in die Library:\n       eine Geometrie-Quelle statt drei Fundstellen im Renderer.\n       Asset-Einheit = halbe Karten-Einheit (Bestands-Koordinaten exakt durch 2). -->\n  <path data-part=\"berg\" d=\"M112.5,23 L124,48 L129,66 L134,79 L153,98 L161,129 L150,165 L130,189 L113,196 L90,193 L70,178 L56,149 L53,119 L63,93 L79,78 L93,55 L103,36 Z\" fill=\"none\" stroke=\"none\"/>\n  <!-- Lichtfacette an der Spitze: dieselbe Kante wie die Kontur, nur als Fläche. -->\n  <path data-part=\"facette\" d=\"M112.5,23 L124,48 L116,56 Z\" fill=\"var(--water1)\" stroke=\"none\" opacity=\"0.25\"/>\n</svg>\n",
   "psyche.waage": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 200 200\" data-ref=\"psyche.waage\">\n  <!-- Waage — extrahiert aus RENDERERS.balance. Im Renderer entstanden die Seile zur\n       Laufzeit aus einem Kreis-Schnitt (ropeSegs); hier stehen sie als das, was sie\n       sind: gezeichnete Geometrie eines feststehenden Objekts (der Balken ist statisch\n       gekippt). Die FARBIGEN Flächen (Schalen-Scheiben, Drehpunkt-Feld) sind KEIN Teil\n       des Objekts — sie sind der Karten-Inhalt, der in den Schalen liegt, und bleiben\n       im Karten-Typ. Asset-Einheit = halbe Karten-Einheit.\n       Der Arm (seile + schale) existiert EINMAL; der Karten-Typ setzt ihn zweimal mit\n       dem Versatz der jeweiligen Balkenseite. -->\n  <line data-part=\"balken\" class=\"a-beam a-round\" x1=\"36\" y1=\"53.5\" x2=\"164\" y2=\"42.5\" stroke=\"var(--ink)\"/>\n  <g data-part=\"seile\">\n    <line class=\"a-hair\" x1=\"36\" y1=\"53.5\" x2=\"34.45\" y2=\"55.85\" stroke=\"var(--ink)\"/>\n    <line class=\"a-hair\" x1=\"20.9\" y1=\"75.95\" x2=\"18.5\" y2=\"79.5\" stroke=\"var(--ink)\"/>\n    <line class=\"a-hair\" x1=\"36\" y1=\"53.5\" x2=\"37.55\" y2=\"55.85\" stroke=\"var(--ink)\"/>\n    <line class=\"a-hair\" x1=\"51.1\" y1=\"75.95\" x2=\"53.5\" y2=\"79.5\" stroke=\"var(--ink)\"/>\n  </g>\n  <path data-part=\"schale\" class=\"a-line\" d=\"M18.5,79.5 A17.5,7.5 0 0 0 53.5,79.5\" fill=\"var(--card)\" stroke=\"var(--ink)\"/>\n  <g data-part=\"drehpunkt\">\n    <path d=\"M100,48 L88,76 L112,76 Z\" fill=\"var(--ink)\" stroke=\"none\"/>\n    <line class=\"a-heavy a-round\" x1=\"70\" y1=\"76\" x2=\"130\" y2=\"76\" stroke=\"var(--ink)\"/>\n    <circle class=\"a-heavy\" cx=\"100\" cy=\"48\" r=\"3.5\" fill=\"var(--card)\" stroke=\"var(--ink)\"/>\n  </g>\n</svg>\n"
 };
-</script>
-<!-- ASSETS:END -->
-<script src="renderer.js"></script>
-<script>
-const host = document.getElementById("cardhost");
-function post(msg) {
-  if (window.webkit && webkit.messageHandlers && webkit.messageHandlers.card)
-    webkit.messageHandlers.card.postMessage(msg);
-}
-window.renderCard = (card) => {
-  renderCardInto(host, card, {
-    onAdvance: () => post({ type: "advance" }),
-    onQuizResult: (correct) => post({ type: "quizResult", correct }),
-    onSave: (saved) => post({ type: "save", saved }),
-  });
-};
-// Tap-Zonen wie im Mockup (links 35 % zurück, rechts weiter) — was passiert, entscheidet die Shell.
-host.addEventListener("click", (e) => {
-  if (e.target.closest("button")) return;
-  const r = host.getBoundingClientRect();
-  post({ type: "tap", dir: (e.clientX - r.left) / r.width < 0.35 ? -1 : 1 });
-});
-post({ type: "ready" });
-</script>

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" data-ref="biology.neuron">
+  <!-- Neuron — Ziel-Optik ist das abgenommene Design-Gate-Mockup (Panel a),
+       Koordinaten exakt halbiert (Asset-Einheit = halbe Karten-Einheit).
+       Gestaltetes Objekt, keine Andeutung: die Dendriten sind verzweigte Bäumchen mit
+       eigenen Impuls-Punkten an den Spitzen, das Soma hat einen Kern, das Axon einen
+       Hügel, die Synapse einen Endknopf mit Spalt und Empfänger-Dendrit. -->
+  <g data-part="neuron">
+    <g data-anchor="node:dendrit" data-ton="es">
+      <path class="a-line a-round" d="M52,64 Q42,52 34,44" fill="none" stroke="var(--ink)"/>
+      <path class="a-hair a-round" d="M34,44 Q29,38 27,31" fill="none" stroke="var(--ink)"/>
+      <path class="a-hair a-round" d="M34,44 Q26,42 19,40" fill="none" stroke="var(--ink)"/>
+      <path class="a-line a-round" d="M47,75 Q35,75 26,74" fill="none" stroke="var(--ink)"/>
+      <path class="a-hair a-round" d="M26,74 Q20,70 16,65" fill="none" stroke="var(--ink)"/>
+      <path class="a-hair a-round" d="M26,74 Q20,79 15,82" fill="none" stroke="var(--ink)"/>
+      <path class="a-line a-round" d="M52,86 Q42,98 35,105" fill="none" stroke="var(--ink)"/>
+      <path class="a-hair a-round" d="M35,105 Q31,112 30,119" fill="none" stroke="var(--ink)"/>
+      <path class="a-hair a-round" d="M35,105 Q27,108 21,109" fill="none" stroke="var(--ink)"/>
+      <circle cx="27" cy="31" r="2.25" fill="var(--es)" stroke="none"/>
+      <circle cx="16" cy="65" r="2.25" fill="var(--es)" stroke="none"/>
+      <circle cx="30" cy="119" r="2.25" fill="var(--es)" stroke="none"/>
+      <circle cx="19" cy="40" r="1.5" fill="var(--es)" stroke="none" opacity="0.45"/>
+      <circle cx="15" cy="82" r="1.5" fill="var(--es)" stroke="none" opacity="0.45"/>
+    </g>
+    <circle class="a-line" data-anchor="node:soma" data-glow-fill="es" cx="63" cy="75" r="15" fill="none" stroke="var(--ink)"/>
+    <circle class="a-hair" cx="63" cy="75" r="5" fill="var(--chrome)" stroke="var(--ink)"/>
+    <path class="a-line a-round" d="M77.5,72 Q83,73.5 87,74.5" fill="none" stroke="var(--ink)"/>
+    <path class="a-line a-round" d="M77.5,78 Q83,76.5 87,75.5" fill="none" stroke="var(--ink)"/>
+    <path class="a-line a-round" d="M87,75 C108,68 122,82 147,75.5" fill="none" stroke="var(--ink)"/>
+    <circle class="a-line" data-anchor="node:synapse" data-glow-fill="ich" cx="154" cy="75" r="6.5" fill="none" stroke="var(--ink)"/>
+    <path class="a-hair a-round" d="M166,63 Q170.5,75 166,87" fill="none" stroke="var(--ink)"/>
+    <path class="a-line a-round" d="M173,57 Q178.5,75 173,93" fill="none" stroke="var(--ink)"/>
+  </g>
+  <!-- Puls-Wege: der Weg, den ein Signal nimmt, gehört zum Objekt — er wird hier
+       gezeichnet, nicht vom Karten-JSON erfunden. `a-route` malt nie (kein stroke). -->
+  <path class="a-route" data-link="node:dendrit&gt;node:soma" data-ton="es" d="M23,37 Q42,48 52,64 L63,75"/>
+  <path class="a-route" data-link="node:soma&gt;node:synapse" data-ton="ich" d="M78,75 C105,66 120,84 148,76"/>
+  <!-- Label-Plätze: WO die Erklärung steht, gehört zur Gestaltung des Objekts;
+       WAS dort steht, liefert die Karte. Jeder Platz nennt seinen Anker — daran
+       hängt seine Sichtbarkeit im Sequenz-Schritt und die Prüfung im Audit. -->
+  <text data-slot="reize" data-anchor-ref="node:dendrit" x="23" y="23"></text>
+  <text data-slot="feuert" data-anchor-ref="node:soma" data-ton="es" x="48" y="106"></text>
+  <text data-slot="sprung" data-anchor-ref="node:synapse" data-ton="ich" data-align="end" x="184" y="53"></text>
+</svg>

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" data-ref="physics.sky-scatter">
+  <!-- Himmels-Streuung — Ziel-Optik ist das abgenommene Design-Gate-Mockup (Panel c),
+       Koordinaten exakt halbiert. Zweites Thema, eigene Bildsprache: die Sonne strahlt
+       (Kreis MIT Ticks, kein nackter Ball), das Licht kommt als gebündelter Keil, das
+       Molekül ist ein Doppelring, die Streuung ein Fächer mit eigenen Endpunkten. -->
+  <g data-part="himmel">
+    <g data-anchor="node:sun" data-ton="ueberich">
+      <circle class="a-line" cx="32" cy="31" r="12" fill="var(--ueberich-soft)" stroke="var(--ink)"/>
+      <line class="a-line a-round" x1="32" y1="12" x2="32" y2="6" stroke="var(--ink)"/>
+      <line class="a-line a-round" x1="32" y1="50" x2="32" y2="56" stroke="var(--ink)"/>
+      <line class="a-line a-round" x1="13" y1="31" x2="7" y2="31" stroke="var(--ink)"/>
+      <line class="a-line a-round" x1="51" y1="31" x2="57" y2="31" stroke="var(--ink)"/>
+      <line class="a-line a-round" x1="18.5" y1="17.5" x2="14" y2="13" stroke="var(--ink)"/>
+      <line class="a-line a-round" x1="45.5" y1="44.5" x2="50" y2="49" stroke="var(--ink)"/>
+      <line class="a-line a-round" x1="45.5" y1="17.5" x2="50" y2="13" stroke="var(--ink)"/>
+      <line class="a-line a-round" x1="18.5" y1="44.5" x2="14" y2="49" stroke="var(--ink)"/>
+    </g>
+    <polygon points="43,36 45,43 96.5,78.5 97.5,76" fill="var(--ink)" stroke="none" opacity="0.85"/>
+    <!-- Kein data-glow-fill: im Mockup ändert der Puls am Molekül nichts (s1 und s2 sind
+         bildgleich) — das Molekül streut, es glüht nicht. -->
+    <circle class="a-line" data-anchor="node:molecule" cx="100" cy="80" r="4" fill="var(--card)" stroke="var(--ink)"/>
+    <circle class="a-hair" cx="100" cy="80" r="1.5" fill="var(--chrome)" stroke="var(--ink)"/>
+  </g>
+  <!-- Streu-Fächer: eigene Strahlen mit Lücke zum Molekül, damit die Richtung frei bleibt. -->
+  <g data-part="streuung" data-anchor="region:scatter" data-ton="ich">
+    <path class="a-strong a-round" d="M96,73 L86,56" fill="none" stroke="var(--ich)"/>
+    <path class="a-strong a-round" d="M102,74 L108,53" fill="none" stroke="var(--ich)"/>
+    <path class="a-line a-round" d="M93.5,79.5 L71,75" fill="none" stroke="var(--ich)"/>
+    <path class="a-strong a-round" d="M95,85 L78,99" fill="none" stroke="var(--ich)"/>
+    <path class="a-line a-round" d="M99.5,87 L99,110" fill="none" stroke="var(--ich)"/>
+    <circle cx="84.5" cy="53.5" r="1.5" fill="var(--ich)" stroke="none"/>
+    <circle cx="109" cy="50.5" r="1.5" fill="var(--ich)" stroke="none"/>
+    <circle cx="76.5" cy="100.5" r="1.5" fill="var(--ich)" stroke="none"/>
+  </g>
+  <g data-part="durchlaeufer" data-anchor="ray:forward" data-ton="es">
+    <path class="a-strong a-round" d="M105,83 L168,116" fill="none" stroke="var(--es)"/>
+    <circle cx="171" cy="117.5" r="2" fill="var(--es)" stroke="none"/>
+  </g>
+  <path class="a-route" data-link="node:sun&gt;node:molecule" data-ton="ueberich" d="M44,40 L96,77"/>
+  <text data-slot="sonnenlicht" data-anchor-ref="node:sun" x="61.3" y="32.9" data-rotate="35"></text>
+  <text data-slot="blau" data-anchor-ref="region:scatter" data-ton="ich" x="15" y="126"></text>
+  <text data-slot="rot" data-anchor-ref="ray:forward" data-ton="es" data-align="end" x="191" y="132"></text>
+</svg>

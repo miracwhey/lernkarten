@@ -40,6 +40,8 @@ const seite = async (reduced) => {
   await page.emulateMedia({ reducedMotion: reduced ? "reduce" : "no-preference" });
   await page.setContent(HOST);
   await page.addStyleTag({ path: repo + "/renderer.css" });
+  // Wie in den Wirt-Seiten: Library VOR renderer.js — asset-Karten lösen refs sonst nie auf.
+  await page.addScriptTag({ path: repo + "/assets/assets.js" });
   await page.addScriptTag({ path: repo + "/renderer.js" });
   page.on("pageerror", (e) => console.error("PAGEERROR:", e.message));
   return page;

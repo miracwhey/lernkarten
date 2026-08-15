@@ -27,6 +27,89 @@ const AN = (...namen) => ` data-anchor="${namen.filter(Boolean).join(" ")}"`;
 const GLOW = (farbe) => ` data-glow="${farbe}"`;
 const TON = (farbe) => ` data-ton="${farbe}"`;
 
+// ————————————————————— v3: Asset-Library —————————————————————
+// Die SVG-Dateien in assets/ sind die EINZIGE Geometrie-Quelle. Sie kommen als Text
+// über assets/assets.js herein (die Karten-Seiten laufen über file://, dort gibt es
+// kein fetch) und werden hier EINMAL geparst. Es gibt keine zweite Fassung im
+// Renderer: was ein Karten-Typ vom Objekt braucht, holt er sich als Teil.
+//
+// Asset-Einheit = halbe Karten-Einheit. Die Platzierung (hero: scale 2) steht im
+// Manifest, nicht im Karten-JSON — das LLM sagt WAS, nie wo oder wie groß.
+const ASSET_DOKS = new Map();
+const ASSET_KEIN_NS = / xmlns="http:\/\/www\.w3\.org\/2000\/svg"/g;
+const INLINE_F = 0.6;      // role:inline — dieselbe Komposition, 60 % um die Bildmitte
+function assetDoc(ref) {
+  if (ASSET_DOKS.has(ref)) return ASSET_DOKS.get(ref);
+  const src = (window.ASSETS_SRC || {})[ref];
+  // Laut brechen statt still leer rendern: ein fehlendes Asset ist ein Einbau-Fehler
+  // der Seite (Script-Tag) oder ein ref, den der Validator hätte ablehnen müssen.
+  if (!src) throw new Error(`Asset "${ref}" nicht geladen — assets/assets.js muss VOR renderer.js stehen`);
+  const doc = new DOMParser().parseFromString(src, "image/svg+xml");
+  if (doc.querySelector("parsererror")) throw new Error(`Asset "${ref}" ist kein wohlgeformtes SVG`);
+  ASSET_DOKS.set(ref, doc);
+  return doc;
+}
+const assetEintrag = (ref) => (((window.ASSET_MANIFEST || {}).assets) || {})[ref] || null;
+const assetKurz = (ref) => String(ref).split(".").pop();
+const assetEl = (ref, teil) => {
+  const el = assetDoc(ref).querySelector(`[data-part="${teil}"]`);
+  if (!el) throw new Error(`Asset "${ref}" hat kein Teil "${teil}"`);
+  return el;
+};
+// Ein Teil kommt als Markup zurück: Gruppen ohne ihre Hülle (der Karten-Typ setzt die
+// Hülle mit Anker und Platzierung), Einzelformen als sie selbst.
+const assetTeil = (ref, teil) => {
+  const el = assetEl(ref, teil);
+  const s = el.tagName === "g" ? el.innerHTML : el.outerHTML;
+  return s.replace(ASSET_KEIN_NS, "");
+};
+const assetPfad = (ref, teil) => assetEl(ref, teil).getAttribute("d");
+
+/// Hero/Inline-Einbau eines Assets in eine Karten-SVG (Karten-Einheiten 400×300).
+/// Liefert Markup UND die vergebenen Anker — die Namen entstehen konstruktiv, in
+/// derselben Reihenfolge wie in der Registry (validate-lesson.mjs, ohne Rendern).
+function assetEinbau(ref, { A, labels = {}, role = "hero" }) {
+  const m = assetEintrag(ref) || {};
+  const doc = assetDoc(ref);
+  const { scale = 2, tx = 0, ty = 0 } = m.hero || {};
+  const f = role === "inline" ? INLINE_F : 1;
+  // Inline ist dieselbe Komposition, nur kleiner um die Bildmitte gestaucht: keine
+  // zweite Anordnung, die auseinanderlaufen könnte.
+  const MX = 200, MY = 150;
+  const kx = (x) => MX + f * (tx + scale * x - MX);
+  const ky = (y) => MY + f * (ty + scale * y - MY);
+  const hin = `translate(${MX * (1 - f) + f * tx},${MY * (1 - f) + f * ty}) scale(${f * scale})`;
+
+  const anAsset = A(`asset:${assetKurz(ref)}`);
+  (m.anker || []).forEach((n) => A(n));           // Reihenfolge = Manifest-Reihenfolge
+  const geo = [...doc.documentElement.children]
+    .filter((el) => el.tagName !== "text")        // Label-Plätze sind keine Geometrie
+    .map((el) => new XMLSerializer().serializeToString(el).replace(ASSET_KEIN_NS, "")).join("\n        ");
+
+  const texte = (m.labelSlots || []).map((slot) => {
+    const txt = labels[slot.id];
+    if (txt === undefined || txt === null || txt === "") return null;   // leerer Platz bleibt leer
+    const el = doc.querySelector(`[data-slot="${slot.id}"]`);
+    if (!el) return null;
+    const x = kx(+el.getAttribute("x")), y = ky(+el.getAttribute("y"));
+    const dreh = el.dataset.rotate;
+    const ton = el.dataset.ton;
+    const an = A(`label:${slot.id}`);
+    // `seq-hl` setzt die Sequenz-Engine selbst, wenn ein highlight-Schritt das Label
+    // trifft — hier steht nur der Ruhezustand: der Ton des Objekts, an dem es hängt.
+    return `<text class="svglabel halo"${AN(an)} data-label-anchor="${slot.anker}"`
+      + `${ton ? TON(ton) : ""} x="${x}" y="${y}" font-size="12"`
+      + `${el.dataset.align ? ` text-anchor="${el.dataset.align}"` : ""}`
+      + `${dreh ? ` transform="rotate(${dreh} ${x} ${y})"` : ""}`
+      + ` fill="${ton ? C(ton) : C("ink")}">${txt}</text>`;
+  }).filter(Boolean);
+
+  return `<g${AN(anAsset)} data-asset="${ref}" data-asset-scale="${f * scale}" transform="${hin}">
+        ${geo}
+      </g>
+      ${texte.join("\n      ")}`;
+}
+
 const RENDERERS = {
 
   title(card) {
@@ -59,14 +142,19 @@ const RENDERERS = {
     const anLabel = card.body.regions.map((r, i) => A(`label:${ankerSlug(r.label, String(i))}`));
     const SPLIT_X = 225;        // Mittellinie Berg
     const ES_TOP_Y = 268;       // Ich/Es-Grenze
-    const berg = "M225,46 L248,96 L258,132 L268,158 L306,196 L322,258 L300,330 L260,378 L226,392 L180,386 L140,356 L112,298 L106,238 L126,186 L158,156 L186,110 L206,72 Z";
+    // Die Berg-Kontur kommt aus der Library (nature.eisberg) — hier stand sie dreifach
+    // in Gebrauch (Clip, Kontur, Facette) und damit an drei Stellen im Renderer.
+    // Asset-Einheiten sind halbe Karten-Einheiten: `scale(2)` am Element statt einer
+    // zweiten, umgerechneten Zahlenreihe.
+    const berg = assetPfad("nature.eisberg", "berg");
+    const BERG_T = ` transform="scale(2)"`;
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
       <div class="diagram"><svg viewBox="0 0 400 432" role="img" aria-label="Eisberg-Diagramm: Ich größtenteils bewusst, Über-Ich und Es unter der Oberfläche">
         <defs>
           <path id="wavetop" d="${wave1}"/>
           <path id="wavemid" d="${wave2}"/>
-          <clipPath id="bergclip"><path d="${berg}"/></clipPath>
+          <clipPath id="bergclip"><path${BERG_T} d="${berg}"/></clipPath>
         </defs>
         <path${AN(anWater)} d="${wave2} L400,432 L0,432 Z" fill="${C("water3")}"/>
         <path${AN(anWater)} d="M24,300 q10,-7 20,0 q10,7 20,0" stroke="${C("card")}" stroke-width="2" fill="none" opacity="0.3"/>
@@ -77,11 +165,11 @@ const RENDERERS = {
           <rect${AN(anRegion[1])}${GLOW(rUe.color)} x="90" y="182" width="${SPLIT_X - 90}" height="258" fill="${SOFT(rUe.color)}"/>
           <rect x="${SPLIT_X}" y="182" width="120" height="${ES_TOP_Y - 182}" fill="${C("berg-deep")}"/>
           <rect${AN(anRegion[2])}${GLOW(rEs.color)} x="${SPLIT_X}" y="${ES_TOP_Y}" width="120" height="140" fill="${SOFT(rEs.color)}"/>
-          <path d="M225,46 L248,96 L232,112 Z" fill="${C("water1")}" opacity="0.25"/>
+          <g transform="scale(2)">${assetTeil("nature.eisberg", "facette")}</g>
           <line x1="${SPLIT_X}" y1="46" x2="${SPLIT_X}" y2="440" stroke="${C("ink")}" stroke-width="2"/>
           <line x1="${SPLIT_X}" y1="${ES_TOP_Y}" x2="330" y2="${ES_TOP_Y}" stroke="${C("ink")}" stroke-width="2"/>
         </g>
-        <path d="${berg}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
+        <path class="a-line"${BERG_T} d="${berg}" fill="none" stroke="${C("ink")}"/>
         <path${AN(anWater)} d="${wave1} ${wave2rev} Z" fill="${C("water1")}"/>
         <path${AN(anWater)} d="${wave1}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
         <path${AN(anWater)} d="${wave2}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
@@ -100,18 +188,15 @@ const RENDERERS = {
 
   balance(card) {
     // Balken statisch gekippt (linke Seite unten = wiegt schwerer), V-Seile zu echten Schalen.
-    // Seile werden am Schalenrand geclippt statt übermalt — Geometrie sauber, nicht nur Optik.
-    const ropeSegs = (ax, ay, bx, by, mx, my, r) => {
-      const dx = bx - ax, dy = by - ay, fx = ax - mx, fy = ay - my;
-      const a = dx * dx + dy * dy, b = 2 * (fx * dx + fy * dy), c = fx * fx + fy * fy - r * r;
-      const disc = b * b - 4 * a * c;
-      if (disc <= 0) return [[ax, ay, bx, by]];
-      const t1 = Math.max(0, (-b - Math.sqrt(disc)) / (2 * a)), t2 = Math.min(1, (-b + Math.sqrt(disc)) / (2 * a));
-      const segs = [];
-      if (t1 > 0.02) segs.push([ax, ay, ax + dx * t1, ay + dy * t1]);
-      if (t2 < 0.98) segs.push([ax + dx * t2, ay + dy * t2, bx, by]);
-      return segs;
-    };
+    // Die WAAGE selbst (Balken, Seile, Schalen, Drehpunkt) kommt aus der Library
+    // (psyche.waage): sie ist ein feststehendes Objekt, kein Karten-Inhalt. Die Seile
+    // entstanden hier früher zur Laufzeit aus einem Kreis-Schnitt (ropeSegs) — im Asset
+    // stehen sie als gezeichnete Geometrie, was sie immer waren.
+    // FARBIG bleibt Karten-Sache: die Schalen-Scheiben und das Drehpunkt-Feld tragen die
+    // Farbe der jeweiligen Instanz und werden deshalb hier gezeichnet, nicht dort.
+    // Ein Arm existiert im Asset EINMAL; beide Seiten setzen ihn mit ihrem Versatz.
+    const W = (teil) => assetTeil("psyche.waage", teil);
+    const armT = (x, yEnd) => ` transform="translate(${x - 72},${yEnd - 107}) scale(2)"`;
     const A = ankerVergabe();
     const anLinks = A(`node:${ankerSlug(card.left?.label, "links")}`);
     const anRechts = A(`node:${ankerSlug(card.right?.label, "rechts")}`);
@@ -119,23 +204,19 @@ const RENDERERS = {
     const anLabel = [A(`label:${ankerSlug(card.left?.label, "links")}`), A(`label:${ankerSlug(card.right?.label, "rechts")}`),
       A(`label:${ankerSlug(card.pivot?.label, "drehpunkt")}`)];
     const arm = (side, x, yEnd, anNode, anLbl) => `<g${AN(anNode)}>
-      ${[[x - 35, yEnd + 52], [x + 35, yEnd + 52]].flatMap(([bx, by]) =>
-        ropeSegs(x, yEnd, bx, by, x, yEnd + 36, 31.5).map(([x1, y1, x2, y2]) =>
-          `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${C("ink")}" stroke-width="1.6"/>`)).join("")}
+      <g${armT(x, yEnd)}>${W("seile")}</g>
       <circle${GLOW(side.color)} cx="${x}" cy="${yEnd + 36}" r="29" fill="${SOFT(side.color)}" stroke="${C(side.color)}" stroke-width="2.5"/>
       <text class="svglabel"${AN(anLbl)}${TON(side.color)} x="${x}" y="${yEnd + 41}" font-size="${side.label.length > 6 ? 9.5 : 11.5}" letter-spacing="0" fill="${C("ink")}" text-anchor="middle">${side.label}</text>
-      <path d="M${x - 35},${yEnd + 52} A35,15 0 0 0 ${x + 35},${yEnd + 52}" fill="${C("card")}" stroke="${C("ink")}" stroke-width="2"/>
+      <g${armT(x, yEnd)}>${W("schale")}</g>
       <text x="${x}" y="${yEnd + 86}" font-size="10.5" fill="${C("muted")}" text-anchor="middle" font-weight="600">${side.sub}</text></g>`;
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
       <div class="diagram"><svg viewBox="0 50 400 210" role="img" aria-label="Waage: ${card.left.label} wiegt schwerer als ${card.right.label}, ${card.pivot.label} am Drehpunkt">
-        <line${AN(anBeam)} x1="72" y1="107" x2="328" y2="85" stroke="${C("ink")}" stroke-width="4" stroke-linecap="round"/>
+        <g${AN(anBeam)} transform="scale(2)">${W("balken")}</g>
         ${arm(card.left, 72, 107, anLinks, anLabel[0])}
         ${arm(card.right, 328, 85, anRechts, anLabel[1])}
         <g${AN(anPivot)}>
-        <path d="M200,96 L176,152 L224,152 Z" fill="${C("ink")}"/>
-        <line x1="140" y1="152" x2="260" y2="152" stroke="${C("ink")}" stroke-width="3" stroke-linecap="round"/>
-        <circle cx="200" cy="96" r="7" fill="${C("card")}" stroke="${C("ink")}" stroke-width="3"/>
+        <g transform="scale(2)">${W("drehpunkt")}</g>
         <rect${GLOW(card.pivot.color)} x="139" y="176" width="122" height="58" rx="14" fill="${SOFT(card.pivot.color)}" stroke="${C(card.pivot.color)}" stroke-width="2.5"/>
         <text class="svglabel"${AN(anLabel[2])}${TON(card.pivot.color)} x="200" y="202" font-size="16" fill="${C("ink")}" text-anchor="middle">${card.pivot.label}</text>
         <text x="200" y="221" font-size="11" fill="${C("muted")}" text-anchor="middle" font-weight="600">${card.pivot.sub}</text>
@@ -968,6 +1049,22 @@ const RENDERERS = {
     </div>`;
   },
 
+  // Der Gegenstand selbst ist die Aussage (relation "object"). Das Bild kommt aus der
+  // Library, die Erklärungen sitzen an den Plätzen, die das Objekt dafür vorsieht —
+  // die Karte liefert nur den TEXT, nie eine Position (Contract v2 gilt weiter).
+  asset(card) {
+    const A = ankerVergabe();
+    const m = assetEintrag(card.asset.ref) || {};
+    const einbau = assetEinbau(card.asset.ref, { A, labels: card.asset.labels || {}, role: card.asset.role });
+    return `<div class="card">
+      <p class="lehrsatz">${card.text}</p>
+      <div class="diagram"><svg viewBox="0 0 400 300" role="img" aria-label="${m.titel || card.asset.ref}">
+      ${einbau}
+      </svg></div>
+      ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
+    </div>`;
+  },
+
   quiz(card) {
     const opts = card.options.map((o, i) =>
       `<button class="qopt" data-i="${i}" data-c="${o.correct ? 1 : 0}">${o.label}</button>`).join("");
@@ -1072,6 +1169,14 @@ function wireSequence(root, card) {
     return null;
   };
   const pulsWeg = (from, to) => {
+    // 0) Asset — der Weg ist IM Objekt gezeichnet (data-link): das Bild zeigt ihn, das
+    //    Karten-JSON erfindet ihn nicht. Er steht in Asset-Einheiten, der Punkt läuft
+    //    deshalb in derselben Gruppe (Wirt) und in deren Maßstab.
+    const route = svg && (svg.querySelector(`[data-link="${from}>${to}"]`) || svg.querySelector(`[data-link="${to}>${from}"]`));
+    if (route) return {
+      d: route.getAttribute("d"), rev: route.dataset.link !== `${from}>${to}`,
+      wirt: route.parentNode, ton: route.dataset.ton
+    };
     const a = els(from).find((e) => e.dataset.ax), b = els(to).find((e) => e.dataset.ax);
     if (a && b && a.dataset.noteSeries === b.dataset.noteSeries) {
       const x1 = +a.dataset.ax, y1 = +a.dataset.ay, x2 = +b.dataset.ax, y2 = +b.dataset.ay;
@@ -1162,15 +1267,38 @@ function wireSequence(root, card) {
       if (weg) {
         const dot = document.createElementNS(SVGNS, "circle");
         const ton = (els(st.from).find((e) => e.dataset.glow || e.dataset.ton) || {}).dataset;
+        const wirt = weg.wirt || svg;
+        // Im Asset misst der Punkt in Asset-Einheiten: derselbe Radius auf dem Bild
+        // braucht dort die Zahl geteilt durch den Platzierungs-Maßstab.
+        const massstab = parseFloat((wirt.closest && wirt.closest("[data-asset-scale]") || {}).dataset?.assetScale) || 1;
         dot.setAttribute("class", "seq-pulse" + (weg.rev ? " rev" : ""));
-        dot.setAttribute("r", parseFloat(getComputedStyle(root).getPropertyValue("--m-pulse-r")) || 5.5);
-        dot.setAttribute("fill", `var(--${(ton && (ton.glow || ton.ton)) || "ink"})`);
+        dot.setAttribute("r", (parseFloat(getComputedStyle(root).getPropertyValue("--m-pulse-r")) || 5.5) / massstab);
+        dot.setAttribute("fill", `var(--${weg.ton || (ton && (ton.glow || ton.ton)) || "ink"})`);
         dot.style.offsetPath = `path('${weg.d}')`;
-        svg.appendChild(dot);
+        wirt.appendChild(dot);
         dots.push({ n, dot });
       }
       lits.push({ n, els: litElemente(st.to) });
     }
+  });
+
+  // ——— Asset-Labels erscheinen MIT ihrem Gegenstand ———
+  // Ein Label-Platz nennt seinen Anker (data-label-anchor). Sichtbar wird er, sobald
+  // der Gegenstand da ist — und wenn ein Puls diesen Gegenstand zum ZIEL hat, erst mit
+  // dessen Ankunft: „AB HIER FEUERT ES" steht im Bild, wenn der Reiz das Soma erreicht,
+  // nicht schon beim Erscheinen des Neurons (bindendes Mockup, Panel a).
+  // Ein ausdrücklicher reveal auf `label:<platz>` gewinnt (setStep vergibt nur einmal).
+  const pulsZiel = new Map();
+  plan.forEach((st, i) => { if (st.verb === "pulse" && st.to !== undefined && !pulsZiel.has(st.to)) pulsZiel.set(st.to, i + 1); });
+  root.querySelectorAll("[data-label-anchor]").forEach((lab) => {
+    const name = lab.dataset.labelAnchor;
+    let n = pulsZiel.has(name) ? pulsZiel.get(name) : null;
+    if (n === null) for (const ziel of els(name)) {
+      for (let e = ziel; e && e !== root; e = e.parentElement)
+        if (e.dataset.seqStep) { n = Number(e.dataset.seqStep); break; }
+      if (n !== null) break;
+    }
+    if (n !== null) setStep(lab, n);
   });
 
   // Für den Zug trägt der Strich seine VOLLE Länge als dasharray — nur so lässt sich der
@@ -1208,6 +1336,10 @@ function wireSequence(root, card) {
     lits.forEach(({ n, els: ee, hl }) => ee.forEach((e) => {
       const on = n <= s;
       e.classList.toggle("lit", on);
+      // Asset-Flächen glühen als FÜLLUNG auf (bindendes Mockup: Soma und Synapse nehmen
+      // den Soft-Ton an). Der Halo-Ring der Karten-Typen passt hier nicht: er ist in
+      // Karten-Einheiten gedacht und stünde im Asset-Maßstab doppelt so breit da.
+      if (e.dataset.glowFill) e.style.fill = on ? `var(--${e.dataset.glowFill}-soft)` : "";
       if (hl && e.dataset.ton) {
         e.style.fill = on ? `var(--${e.dataset.ton})` : e.dataset.seqFill;
         e.style.stroke = on ? `var(--${e.dataset.ton}-soft)` : e.dataset.seqStroke;

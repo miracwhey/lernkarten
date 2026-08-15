@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grammatik v3 — Design-Gate: Sequenz + Assets</title>
+<link rel="stylesheet" href="../../renderer.css">
+<style>
+  /* ─── Motion-Tokens (wandern nach Abnahme als EINE Skala in renderer.css) ───
+     Eine Duration-Skala, ein Easing, eine Puls-Optik. Karten-Typen konsumieren
+     Tokens, definieren nie eigene Animationen. */
+  :root {
+    --m-beat: 340ms;   /* Label, Highlight, kurzes Aufglühen */
+    --m-move: 760ms;   /* Puls-Wanderung, Kurven-Trace */
+    --m-hold: 260ms;   /* Atempause zwischen Schritten */
+    --m-ease: cubic-bezier(0.3, 0, 0.12, 1);
+  }
+
+  body { padding: 24px 16px 60px; }
+  .gatehead { max-width: 1360px; width: 100%; margin: 0 auto 6px; text-align: center; }
+  .panelrow {
+    display: flex; gap: 28px; justify-content: center; align-items: flex-start;
+    flex-wrap: wrap; max-width: 1400px; margin: 0 auto;
+  }
+  .panel { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+  .panel .phone { height: 720px; min-height: 720px; width: 420px; }
+  .panel h2 {
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; margin: 0;
+  }
+
+  /* Kontrollleiste + Contract-Auszug (reines Gate-Chrome, nicht App-UI) */
+  .controls { display: flex; gap: 8px; align-items: center; }
+  .controls button {
+    font: 600 12px/1 -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line);
+    background: var(--card); color: var(--ink); cursor: pointer;
+  }
+  .controls button:hover { border-color: var(--ink); }
+  .stepview { font-size: 12px; color: var(--muted); min-width: 74px; text-align: center; }
+  .contract {
+    width: 420px; margin: 0; padding: 14px 16px; border-radius: 14px;
+    background: var(--card); border: 1px solid var(--line);
+    font: 11.5px/1.7 ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink);
+    white-space: pre; overflow-x: auto;
+  }
+  .contract .k { color: var(--ich); }
+  .contract .c { color: var(--muted); }
+
+  /* ─── Sequenz-Zustandsklassen. Jeder Schritt hat einen deterministischen
+     Endzustand: .on / .lit sind der Zustand, Transitions sind nur der Weg. ─── */
+  /* Versteckt = opacity 0; sichtbar = KEINE Regel — das Element behält seine
+     eigene Opacity (Flächen unter Kurven sind z. B. bewusst zart). */
+  [data-step] { transition: opacity var(--m-beat) var(--m-ease); }
+  [data-step]:not(.on) { opacity: 0 !important; }
+  .rise[data-step] { transform: translateY(6px); transition: opacity var(--m-beat) var(--m-ease), transform var(--m-beat) var(--m-ease); }
+  .rise[data-step].on { transform: translateY(0); }
+
+  /* Trace: Pfad zeichnet sich. dasharray/-offset setzt JS aus getTotalLength. */
+  .trace { transition: stroke-dashoffset var(--m-move) var(--m-ease); }
+
+  /* Aufglühen bleibt: das Ziel eines Pulses wechselt dauerhaft die Füllung. */
+  .glow-es  { transition: fill var(--m-beat) var(--m-ease); }
+  .glow-es.lit  { fill: var(--es-soft); }
+  .glow-ich { transition: fill var(--m-beat) var(--m-ease); }
+  .glow-ich.lit { fill: var(--ich-soft); }
+
+  /* Highlight-Beat auf Labels: einmalige Betonung, Endzustand = volle Farbe. */
+  .svglabel.hl { transition: fill var(--m-beat) var(--m-ease); }
+  .svglabel.hl.lit { fill: var(--ich); }
+  .svglabel.hl-es.lit { fill: var(--es); }
+
+  /* Puls: EIN Punkt-Design für alle Karten. Läuft seinen offset-path ab und
+     verschwindet — der bleibende Zustand ist das Aufglühen des Ziels. */
+  .pulse-dot {
+    offset-rotate: 0deg;
+    opacity: 0;
+  }
+  .pulse-dot.run {
+    animation: pulserun var(--m-move) var(--m-ease) forwards;
+  }
+  @keyframes pulserun {
+    0%   { offset-distance: 0%;   opacity: 0; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { offset-distance: 100%; opacity: 0; }
+  }
+
+  /* Einfrieren (Shots, Endzustand-Knopf, prefers-reduced-motion): kein Weg, nur Zustand. */
+  .noanim, .noanim * { transition: none !important; animation: none !important; }
+  @media (prefers-reduced-motion: reduce) {
+    [data-step], .trace, .glow-es, .glow-ich { transition: none !important; }
+    .pulse-dot.run { animation: none !important; }
+  }
+
+  /* Asset-Konturen: gleiche Hand wie der Bestand (ink 2px, keine Verläufe). */
+  .asset-line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+  .asset-line--soft { stroke-width: 1.6; }
+</style>
+</head>
+<body>
+<div class="gatehead">
+  <div class="meta"><strong>GRAMMATIK V3 · DESIGN-GATE</strong> — Sequenz-Verben + Asset-Slot · 3 Beispielkarten · Motion aus EINER Token-Skala</div>
+</div>
+
+<div class="panelrow">
+
+  <!-- ── (a) Neuron-Puls: Asset biology.neuron + Sequenz reveal→pulse→pulse→highlight ── -->
+  <section class="panel" id="panel-a">
+    <h2>(a) Asset + Puls-Sequenz</h2>
+    <div class="phone">
+      <div class="topbar">
+        <div class="closebtn">✕</div>
+        <div class="progress"><span class="done"></span></div>
+      </div>
+      <div class="cardarea">
+        <div class="card">
+          <p class="lehrsatz">Erst wenn genug Reize zusammenkommen, feuert das Neuron — dann läuft <span class="w-ich">ein Signal</span> bis zur Synapse und springt auf die nächste Zelle über.</p>
+          <div class="diagram">
+            <svg viewBox="0 0 400 300" role="img" aria-label="Neuron: Reize laufen über Dendriten zum Zellkörper, das Signal über das Axon zur Synapse">
+              <!-- Asset biology.neuron — Anker: node:dendrit · node:soma · node:synapse.
+                   Dendriten als verzweigte Bäumchen, eingehende Reize als Impuls-Punkte
+                   an den Spitzen — das Objekt ist gestaltet, keine Andeutung. -->
+              <g data-step="1" class="neuron">
+                <!-- Dendriten-Baum oben: Stamm verjüngt sich in zwei Gabeln -->
+                <path class="asset-line" d="M104,128 Q84,104 68,88" stroke-width="2.5" />
+                <path class="asset-line asset-line--soft" d="M68,88 Q58,76 54,62" />
+                <path class="asset-line asset-line--soft" d="M68,88 Q52,84 38,80" />
+                <!-- Dendriten-Baum Mitte -->
+                <path class="asset-line" d="M94,150 Q70,150 52,148" stroke-width="2.5" />
+                <path class="asset-line asset-line--soft" d="M52,148 Q40,140 32,130" />
+                <path class="asset-line asset-line--soft" d="M52,148 Q40,158 30,164" />
+                <!-- Dendriten-Baum unten -->
+                <path class="asset-line" d="M104,172 Q84,196 70,210" stroke-width="2.5" />
+                <path class="asset-line asset-line--soft" d="M70,210 Q62,224 60,238" />
+                <path class="asset-line asset-line--soft" d="M70,210 Q54,216 42,218" />
+                <!-- Reiz-Impulse: an den Spitzen sitzt das, was ankommt -->
+                <circle cx="54" cy="62" r="4.5" fill="var(--es)" />
+                <circle cx="32" cy="130" r="4.5" fill="var(--es)" />
+                <circle cx="60" cy="238" r="4.5" fill="var(--es)" />
+                <circle cx="38" cy="80" r="3" fill="var(--es)" opacity="0.45" />
+                <circle cx="30" cy="164" r="3" fill="var(--es)" opacity="0.45" />
+                <!-- Soma mit Kern -->
+                <circle class="asset-line glow-es" data-anchor="soma" cx="126" cy="150" r="30" fill="var(--card)" />
+                <circle class="asset-line asset-line--soft" cx="126" cy="150" r="10" style="fill: var(--chrome)" />
+                <!-- Axonhügel + Axon -->
+                <path class="asset-line" d="M155,144 Q166,147 174,149" stroke-width="2.5" />
+                <path class="asset-line" d="M155,156 Q166,153 174,151" stroke-width="2.5" />
+                <path class="asset-line" d="M174,150 C216,136 244,164 294,151" stroke-width="2.5" />
+                <!-- Synapsen-Endknopf + Spalt + Empfänger-Dendrit -->
+                <circle class="asset-line glow-ich" data-anchor="synapse" cx="308" cy="150" r="13" fill="var(--card)" />
+                <path class="asset-line asset-line--soft" d="M332,126 Q341,150 332,174" />
+                <path class="asset-line" d="M346,114 Q357,150 346,186" stroke-width="2.5" />
+              </g>
+              <!-- Labels: Erlebnis-Sprache, CAPS + Papier-Halo, keine Chips -->
+              <text data-step="1" class="svglabel halo" x="46" y="46" font-size="12">REIZE KOMMEN AN</text>
+              <text data-step="2" class="svglabel halo hl-es hl" x="96" y="212" font-size="12">AB HIER FEUERT ES</text>
+              <text data-step="3" class="svglabel halo hl" x="368" y="106" font-size="12" text-anchor="end">SIGNAL SPRINGT ÜBER</text>
+              <!-- Puls-Punkte: laufen ihren Anker-Pfad ab, Ziel glüht dauerhaft -->
+              <circle class="pulse-dot" data-pulse="2" r="5.5" fill="var(--es)"
+                      style="offset-path: path('M46,74 Q84,96 104,128 L126,150')" />
+              <circle class="pulse-dot" data-pulse="3" r="5.5" fill="var(--ich)"
+                      style="offset-path: path('M156,150 C210,132 240,168 296,152')" />
+            </svg>
+          </div>
+          <p class="caption">Wie ein Klingelknopf: Erst fester Druck löst das Klingeln aus.</p>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button data-act="play">▶ Abspielen</button>
+      <button data-act="prev">‹</button>
+      <span class="stepview"></span>
+      <button data-act="next">›</button>
+      <button data-act="end">⏭ Ende</button>
+    </div>
+    <pre class="contract"><span class="c">// Contract-Auszug — das LLM sagt WAS, nie wo/wie</span>
+<span class="k">asset:</span> { ref: biology.neuron, role: hero }
+<span class="k">sequence:</span>          <span class="c">trigger: auto</span>
+  - reveal    asset:neuron
+  - pulse     node:dendrit → node:soma
+  - pulse     node:soma → node:synapse
+  - highlight label:synapse</pre>
+  </section>
+
+  <!-- ── (b) Reveal auf ECHTER Bestands-Karte (Adenosin) — Geometrie 1:1 renderer.js ── -->
+  <section class="panel" id="panel-b">
+    <h2>(b) Sequenz auf Bestands-Karte</h2>
+    <div class="phone">
+      <div class="topbar">
+        <div class="closebtn">✕</div>
+        <div class="progress"><span class="done"></span></div>
+      </div>
+      <div class="cardarea" id="area-b"></div>
+    </div>
+    <div class="controls">
+      <button data-act="play">▶ Abspielen</button>
+      <button data-act="prev">‹</button>
+      <span class="stepview"></span>
+      <button data-act="next">›</button>
+      <button data-act="end">⏭ Ende</button>
+    </div>
+    <pre class="contract"><span class="c">// Bestands-Karte, unverändert — nur sequence kommt dazu.</span>
+<span class="c">// trace hält am stop-Ereignis: Zäsur kommt vom System, nicht vom LLM.</span>
+<span class="k">sequence:</span>          <span class="c">trigger: auto</span>
+  - trace     series:adenosin   <span class="c">// zeichnet bis zur Stop-Linie</span>
+  - reveal    label:stop
+  - trace     series:adenosin   <span class="c">// Nach-Stop-Ast + Note</span></pre>
+  </section>
+
+  <!-- ── (c) Zweites Asset-Thema: physics.sky-scatter (Nagelprobe: keine Baukasten-Optik) ── -->
+  <section class="panel" id="panel-c">
+    <h2>(c) Zweites Asset-Thema</h2>
+    <div class="phone">
+      <div class="topbar">
+        <div class="closebtn">✕</div>
+        <div class="progress"><span class="done"></span></div>
+      </div>
+      <div class="cardarea">
+        <div class="card">
+          <p class="lehrsatz">Luftmoleküle streuen kurzwelliges <span class="w-ich">blaues Licht</span> in alle Richtungen — was du als Himmel siehst, ist gestreutes Sonnenlicht.</p>
+          <div class="diagram">
+            <svg viewBox="0 0 400 300" role="img" aria-label="Sonnenlicht trifft ein Luftmolekül: Blau streut in alle Richtungen, Rot läuft geradeaus weiter">
+              <!-- Asset physics.sky-scatter — Anker: node:sun · node:molecule · region:scatter · ray:forward -->
+              <g data-step="1">
+                <!-- Sonne: Kreis + Strahlen-Ticks — sie STRAHLT, kein nackter Ball -->
+                <circle class="asset-line" data-anchor="sun" cx="64" cy="62" r="24" style="fill: var(--ueberich-soft)" />
+                <g class="asset-line" stroke-width="2.5">
+                  <line x1="64" y1="24" x2="64" y2="12" /><line x1="64" y1="100" x2="64" y2="112" />
+                  <line x1="26" y1="62" x2="14" y2="62" /><line x1="102" y1="62" x2="114" y2="62" />
+                  <line x1="37" y1="35" x2="28" y2="26" /><line x1="91" y1="89" x2="100" y2="98" />
+                  <line x1="91" y1="35" x2="100" y2="26" /><line x1="37" y1="89" x2="28" y2="98" />
+                </g>
+                <!-- Lichtstrahl als Keil: gebündelt von der Quelle, führt zum Streupunkt -->
+                <polygon points="86,72 90,86 193,157 195,152" fill="var(--ink)" opacity="0.85" />
+                <!-- Luftmolekül: Doppelring statt nackter Punkt -->
+                <circle class="asset-line" data-anchor="molecule" cx="200" cy="160" r="8" style="fill: var(--card)" />
+                <circle class="asset-line asset-line--soft" cx="200" cy="160" r="3" style="fill: var(--chrome)" />
+              </g>
+              <text data-step="1" class="svglabel halo" x="114" y="78" font-size="12" transform="rotate(35 114 78)">SONNENLICHT</text>
+              <!-- Streu-Fächer: region:scatter — Gap zum Molekül, Weiterlauf-Richtung bleibt frei -->
+              <g data-step="3" class="rise" data-anchor="scatter">
+                <path d="M192,146 L172,112" stroke="var(--ich)" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                <path d="M204,148 L216,106" stroke="var(--ich)" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                <path d="M187,159 L142,150" stroke="var(--ich)" stroke-width="2" fill="none" stroke-linecap="round" />
+                <path d="M190,170 L156,198" stroke="var(--ich)" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                <path d="M199,174 L198,220" stroke="var(--ich)" stroke-width="2" fill="none" stroke-linecap="round" />
+                <circle cx="169" cy="107" r="3" fill="var(--ich)" />
+                <circle cx="218" cy="101" r="3" fill="var(--ich)" />
+                <circle cx="153" cy="201" r="3" fill="var(--ich)" />
+              </g>
+              <text data-step="3" class="rise svglabel halo hl" x="30" y="252" font-size="12" fill="var(--ich)">BLAU — IN ALLE RICHTUNGEN</text>
+              <!-- Durchläufer: ray:forward -->
+              <path data-step="4" class="rise" d="M210,166 L336,232" stroke="var(--es)" stroke-width="2.5" fill="none" stroke-linecap="round" />
+              <circle data-step="4" class="rise" cx="342" cy="235" r="4" fill="var(--es)" />
+              <text data-step="4" class="rise svglabel halo" x="382" y="264" font-size="12" fill="var(--es)" text-anchor="end">ROT — LÄUFT DURCH</text>
+              <circle class="pulse-dot" data-pulse="2" r="5.5" fill="var(--ueberich)"
+                      style="offset-path: path('M88,80 L192,154')" />
+            </svg>
+          </div>
+          <p class="caption">Mittags kommt Blau von überall — die Sonne selbst bleibt gelblich-weiß.</p>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button data-act="play">▶ Abspielen</button>
+      <button data-act="prev">‹</button>
+      <span class="stepview"></span>
+      <button data-act="next">›</button>
+      <button data-act="end">⏭ Ende</button>
+    </div>
+    <pre class="contract"><span class="c">// Frisches Asset fürs Thema — Library ist Cache, nicht Grenze</span>
+<span class="k">asset:</span> { ref: physics.sky-scatter, role: hero }
+<span class="k">sequence:</span>          <span class="c">trigger: auto</span>
+  - reveal    asset:sky-scatter
+  - pulse     node:sun → node:molecule
+  - reveal    region:scatter
+  - reveal    ray:forward</pre>
+  </section>
+
+</div>
+
+<script src="../../renderer.js"></script>
+<script>
+// ── (b): echte Bestands-Karte rendern — Geometrie-Quelle bleibt renderer.js ──
+const CARD_B = {
+  "type": "curve", "relation": "trend",
+  "text": "Je länger du wach bist, desto müder wirst du. Kein Zufall: Ein Stoff sammelt sich stündlich im Gehirn und erzeugt <span class=\"w-es\">Schlafdruck</span> — er heißt Adenosin, und nur Schlaf baut ihn ab.",
+  "xlabel": "TAGESZEIT", "ylabel": "SCHLAFDRUCK",
+  "series": [{ "label": "ADENOSIN", "color": "es", "shape": "saturating-rise", "from": "low", "to": "high", "afterStop": "reset", "area": true }],
+  "stop": { "t": 0.8, "label": "DU SCHLÄFST" },
+  "notes": [{ "label": "SCHLAF RÄUMT AUF", "series": 0, "t": 0.92, "side": "above" }],
+  "caption": "Nach dem langen Tag fallen dir um 23 Uhr die Augen zu — der Tank ist voll."
+};
+renderCardInto(document.getElementById("area-b"), CARD_B, { onAdvance: () => {} });
+
+// Sequenz-Ziele der Bestands-Karte nachrüsten (beim echten Bau liefert das die
+// Anker-Registry des Karten-Typs; hier zeigt es nur das Design):
+(function tagCardB() {
+  const svg = document.querySelector("#area-b svg");
+  if (!svg) return;
+  // Design-Punkt des Sequenz-Layers: trace respektiert das stop-Ereignis als
+  // natürliche Zäsur — Schritt 1 zeichnet bis zur Stop-Linie, der Nach-Stop-Ast
+  // kommt erst NACH deren Erklärung (Schritt 3). Keine LLM-Entscheidung nötig.
+  const stopline = svg.querySelector(".c-stopline");
+  const stopX = stopline ? Number(stopline.getAttribute("x1") ?? stopline.getBBox().x) : null;
+  // Die Serien-GEOMETRIE ist klassenlos (.c-series ist das Text-Label): Fläche =
+  // path mit fill, Serien-Strich = dicker Pfad ohne fill. Beim echten Bau liefert
+  // die Anker-Registry diese Zuordnung; hier klassifiziert das Mockup selbst.
+  svg.querySelectorAll("path:not([class]), polyline:not([class]), polygon:not([class])").forEach((p) => {
+    const fill = p.getAttribute("fill");
+    const sw = parseFloat(p.getAttribute("stroke-width") ?? "0");
+    if (p.tagName === "polygon" || (fill && fill !== "none")) { p.dataset.step = "1"; return; }  // Fläche fadet mit Serie
+    if (sw < 3) return;                                              // Deko/Achsen bleiben statisch
+    p.classList.add("trace");
+    p.dataset.step = "1";
+    const L = p.getTotalLength();
+    p.style.strokeDasharray = L;
+    p.style.strokeDashoffset = L;
+    // Pfadlänge bis zur Stop-Vertikalen suchen (x läuft monoton nach rechts)
+    let toStop = L;
+    if (stopX != null) {
+      let lo = 0, hi = L;
+      for (let i = 0; i < 24; i++) {
+        const mid = (lo + hi) / 2;
+        (p.getPointAtLength(mid).x < stopX) ? lo = mid : hi = mid;
+      }
+      toStop = (lo + hi) / 2;
+    }
+    p.dataset.traceStops = JSON.stringify([[1, L - toStop], [3, 0]]);
+  });
+  // Endpunkt-Dot der Serie gehört ans Ende des Nach-Stop-Asts
+  svg.querySelectorAll("circle:not([class])").forEach((c) => { c.dataset.step = "3"; });
+  svg.querySelectorAll(".c-stopline, .c-stop").forEach((el) => { el.dataset.step = "2"; });
+  svg.querySelectorAll(".c-note, .c-notedot, .leader").forEach((el) => { el.dataset.step = "3"; });
+  // Serien-Label + Endpunkt gehören zur Serie
+  svg.querySelectorAll(".svglabel").forEach((el) => {
+    if (!el.dataset.step && !el.closest(".c-note")) el.dataset.step = "1";
+  });
+})();
+
+// ── Sequenz-Engine (Mockup-lokal; nach Abnahme wird daraus die Renderer-Schicht).
+// Prinzip: ein Schritt IST ein Zustand. play() geht die Zustände mit Pausen durch,
+// gotoStep() springt ohne Weg dorthin — deterministisch einfrierbar per Definition.
+const PANELS = [
+  { el: document.getElementById("panel-a"), steps: 4 },
+  { el: document.getElementById("panel-b"), steps: 3 },
+  { el: document.getElementById("panel-c"), steps: 4 },
+];
+const timers = new Map();
+
+function applyStep(panel, s, { animatePulse = false } = {}) {
+  panel.cur = s;
+  const root = panel.el;
+  root.querySelectorAll("[data-step]").forEach((el) => {
+    const on = Number(el.dataset.step) <= s;
+    el.classList.toggle("on", on);
+    if (el.classList.contains("trace") && el.style.strokeDasharray) {
+      // Mehrstufiger Trace (z. B. Zäsur am stop): letzter erreichter Halt zählt
+      const stops = el.dataset.traceStops ? JSON.parse(el.dataset.traceStops) : [[Number(el.dataset.step), 0]];
+      const reached = stops.filter(([n]) => n <= s);
+      el.style.strokeDashoffset = reached.length ? reached[reached.length - 1][1] : el.style.strokeDasharray;
+    }
+  });
+  // Puls-Folgen: gelaufene Pulse hinterlassen ihr Aufglühen (Zustand, nicht Frame)
+  root.querySelectorAll(".pulse-dot").forEach((dot) => {
+    const n = Number(dot.dataset.pulse);
+    dot.classList.remove("run");
+    if (n === s && animatePulse) void dot.getBoundingClientRect(), dot.classList.add("run");
+  });
+  const litMap = { "panel-a": { 2: "soma", 3: "synapse" } };
+  root.querySelectorAll("[data-anchor]").forEach((a) => {
+    const lit = Object.entries(litMap[root.id] ?? {}).some(([n, name]) => Number(n) <= s && a.dataset.anchor === name);
+    a.classList.toggle("lit", lit);
+  });
+  root.querySelectorAll(".svglabel.hl").forEach((el) => {
+    el.classList.toggle("lit", Number(el.dataset.step) <= s);
+  });
+  root.querySelector(".stepview").textContent = `Schritt ${s} / ${panel.steps}`;
+}
+
+function stop(panel) { (timers.get(panel) ?? []).forEach(clearTimeout); timers.set(panel, []); }
+
+function play(panel) {
+  stop(panel);
+  applyStep(panel, 0);
+  const BEAT = 340, MOVE = 760, HOLD = 260;
+  let at = 200, list = [];
+  for (let s = 1; s <= panel.steps; s++) {
+    const dur = panel.el.querySelector(`.pulse-dot[data-pulse="${s}"]`) ? MOVE : BEAT;
+    list.push(setTimeout(() => applyStep(panel, s, { animatePulse: true }), at));
+    at += dur + HOLD;
+  }
+  timers.set(panel, list);
+}
+
+PANELS.forEach((panel) => {
+  panel.cur = 0;
+  const ctl = panel.el.querySelector(".controls");
+  ctl.querySelector('[data-act="play"]').addEventListener("click", () => play(panel));
+  ctl.querySelector('[data-act="end"]').addEventListener("click", () => { stop(panel); panel.el.classList.add("noanim"); applyStep(panel, panel.steps); requestAnimationFrame(() => panel.el.classList.remove("noanim")); });
+  ctl.querySelector('[data-act="next"]').addEventListener("click", () => { stop(panel); applyStep(panel, Math.min(panel.steps, panel.cur + 1), { animatePulse: true }); });
+  ctl.querySelector('[data-act="prev"]').addEventListener("click", () => { stop(panel); applyStep(panel, Math.max(0, panel.cur - 1)); });
+});
+
+// trigger:auto — Karte wird beim Erscheinen lebendig (Leon-Lock 14.08.);
+// reduced-motion springt direkt in den Endzustand.
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+PANELS.forEach((panel, i) => {
+  if (reduced) { panel.el.classList.add("noanim"); applyStep(panel, panel.steps); }
+  else setTimeout(() => play(panel), 300 + i * 400);
+});
+
+// ── Shot-Hook: deterministischer Schritt-Endzustand ohne Animation ──
+window.__gotoStep = (panelIdx, step) => {
+  const panel = PANELS[panelIdx];
+  stop(panel);
+  panel.el.classList.add("noanim");
+  applyStep(panel, step);
+  return `${panel.el.id}@${step}`;
+};
+window.__panels = PANELS.map((p) => ({ id: p.el.id, steps: p.steps }));
+</script>
+</body>
+</html>

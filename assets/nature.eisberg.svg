@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" data-ref="nature.eisberg">
+  <!-- Eisberg — extrahiert aus RENDERERS.layers (Freud-Karte). Die Kontur ist dort
+       DREIFACH in Gebrauch: als clipPath für die Instanz-Flächen, als gezeichnete
+       Kontur und als Bezug der Wasserlinien. Genau deshalb gehört sie in die Library:
+       eine Geometrie-Quelle statt drei Fundstellen im Renderer.
+       Asset-Einheit = halbe Karten-Einheit (Bestands-Koordinaten exakt durch 2). -->
+  <path data-part="berg" d="M112.5,23 L124,48 L129,66 L134,79 L153,98 L161,129 L150,165 L130,189 L113,196 L90,193 L70,178 L56,149 L53,119 L63,93 L79,78 L93,55 L103,36 Z" fill="none" stroke="none"/>
+  <!-- Lichtfacette an der Spitze: dieselbe Kante wie die Kontur, nur als Fläche. -->
+  <path data-part="facette" d="M112.5,23 L124,48 L116,56 Z" fill="var(--water1)" stroke="none" opacity="0.25"/>
+</svg>

@@ -99,3 +99,9 @@ Vision-Modell prüft finale Karten-Shots — **Zusatz, nie Ersatz** der determin
 2. **`trigger: auto` = Animation beim Erscheinen GELOCKT** — Karte wird beim Card-Enter lebendig (Imprint-Gefühl), deterministischer Endzustand nach Ablauf; `prefers-reduced-motion` springt sofort zum Endzustand. Tap bleibt exklusiv Karten-Advance (keine Doppeldeutigkeit erster Tap).
 3. **scrub → v4 GELOCKT, raus aus v3.** Mockup-Karte (c) wird ersetzt durch ein ZWEITES Asset-Thema — die Nagelprobe gegen Über-Standardisierung (zwei Themen, je eigenes frisch generiertes Asset; sieht es nach Baukasten aus → durchgefallen).
 4. **Anker-Namensschema `typ:id` GELOCKT** (`series:adenosin`, `node:soma`, `label:synapse`) — Judge-Prüfaufträge bleiben Klartext, keine Namenskollisionen zwischen Element-Klassen.
+
+## Entschiedene Punkte (Leon, 15.08.2026)
+
+5. **Info-Dichte der Asset-Karten: Stufe c GELOCKT** (Leon-Befund: „auf der Visualisierung ist kein Kontext") — bindendes Mockup `probes/asset-note-mockup/c-hero-notes.png` (Erzeuger `probes/asset-note-mockup.mjs`). Drei Bausteine, alle Contract-ADDITIV (Ausdrucksraum-Lock): (a) hero-Größe als Regelfall der Asset-Karte, (b) Sub-Zeile je Label-Platz (Elaboration, konstruktiv am Label gebunden, eigenes max), (c) freie Anker-Notes (`notes[]` mit Anker-Bindung, Punkt+Leader-Vokabular der curve-Notes, Ton vererbbar). Begriffs-Budget je Asset-Karte: max 2 Sub-Zeilen + 2 Notes. Bau in Schritt 4 zusammen mit Generator-Prompt sequence/asset.
+6. **psyche.person abgenommen** nach Rework (Gehirn-Form statt Ei, Hals/Schulter-Übergang geglättet; Silhouette unangetastet — Leon: „genial geil").
+7. **Panel-c-Label-Abweichung akzeptiert** — „SONNENLICHT" 15 Einheiten vs. Mockup (Mockup-Position war echter Label-auf-Geometrie-Befund; gemessenes Minimum statt Gate-Aufweichung).

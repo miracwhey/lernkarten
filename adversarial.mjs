@@ -12,6 +12,12 @@ import { chromium } from "playwright";
 import { mkdirSync } from "fs";
 import { resolve } from "path";
 import { auditCurveCard } from "./label-audit.mjs";
+import { ASSETS } from "./validate-lesson.mjs";
+
+// Text auf genau `max` Zeichen bringen — mit dem Beispieltext des Platzes, weil der
+// Deckel mit realistischem Label-Text gemessen wurde (Breite ≠ Zeichenzahl).
+const fuellText = (beispiel, max) =>
+  (beispiel + " ").repeat(Math.ceil(max / (beispiel.length + 1)) + 1).slice(0, max).trim().padEnd(max, "N");
 
 const outdir = process.argv[2] || "adv";
 mkdirSync(outdir, { recursive: true });
@@ -65,6 +71,21 @@ const CASES = [
     ],
     notes: [{ label: "OBEN IST ES ENG", series: 0, t: 0.75, side: "above" }]
   }],
+  // ——— Asset-Karten: jeder Label-Platz auf seinem DECKEL ———
+  // Die Deckel stehen im Manifest und sind gemessen (probes/asset-slot-max.mjs); hier
+  // werden sie ausgereizt. Sie werden NICHT abgeschrieben, sondern gelesen — eine
+  // zweite Zahlenliste im Test wäre beim nächsten Nachmessen still veraltet (genau das
+  // ist beim ersten Versuch passiert).
+  ...Object.entries(ASSETS).filter(([, a]) => !a.verbraucher).flatMap(([ref, a]) =>
+    (a.rollen || ["hero"]).map((rolle) => [`asset-${ref.split(".").pop()}-${rolle}-maxlabels`, {
+      type: "asset", relation: "object",
+      text: `Alle Label-Plätze von ${ref} auf ihrem Deckel (${rolle}).`,
+      asset: {
+        ref, role: rolle,
+        labels: Object.fromEntries((a.labelSlots || []).map((s) => [s.id, fuellText(s.beispiel, s.max)]))
+      },
+      caption: "Stresstest der Label-Plätze."
+    }])),
   ["decay-vs-flat", {
     type: "curve", text: "Zerfall trifft flache Linie.",
     xlabel: "STUNDEN", ylabel: "PEGEL",
@@ -208,6 +229,35 @@ const SEQ_CASES = [
       { verb: "highlight", target: "label:untere-serie" }
     ]
   }, null],
+  // Asset-Anker als Sequenz-Ziel: reveal auf das Objekt, Puls auf dem gezeichneten Weg,
+  // highlight auf einem Label-Platz. Jeder Zwischenzustand muss sauber sein.
+  ["seq-asset-anker", {
+    type: "asset", relation: "object",
+    text: "Sequenz-Verben docken an die Anker des Objekts an.",
+    asset: { ref: "biology.neuron", role: "hero", labels: { reize: "REIZE KOMMEN AN", feuert: "AB HIER FEUERT ES", sprung: "SIGNAL SPRINGT ÜBER" } },
+    caption: "Anker aus dem Manifest.",
+    trigger: "auto",
+    sequence: [
+      { verb: "reveal", target: "asset:neuron" },
+      { verb: "pulse", from: "node:dendrit", to: "node:soma" },
+      { verb: "pulse", from: "node:soma", to: "node:synapse" },
+      { verb: "highlight", target: "label:sprung" }
+    ]
+  }, null],
+  // NEGATIV-KONTROLLE: das Label wird VOR seinem Gegenstand gezeigt. Schritt 1 hat dann
+  // eine Beschriftung im leeren Bild — genau der Befund, den die Deckkraft-Messung
+  // sehen muss. Bleibt sie stumm, prüft das Asset-Gate die Zwischenzustände nicht.
+  ["seq-asset-label-vor-objekt", {
+    type: "asset", relation: "object",
+    text: "Beschriftung erscheint vor ihrem Gegenstand.",
+    asset: { ref: "physics.sky-scatter", role: "hero", labels: { blau: "BLAU — IN ALLE RICHTUNGEN" } },
+    caption: "Negativ-Kontrolle.",
+    trigger: "auto",
+    sequence: [
+      { verb: "reveal", target: "label:blau" },
+      { verb: "reveal", target: "region:scatter" }
+    ]
+  }, { schritt: 1, muster: /^LEER/ }],
   // Der Zug leiht sich die Strichelung der Serie für seine Bewegung. Am Ende muss die
   // Gestaltung wieder gelten — sonst stehen „gestrichelt" und „durchgezogen" gleich da.
   ["seq-trace-dash-serie", {

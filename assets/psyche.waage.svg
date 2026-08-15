@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" data-ref="psyche.waage">
+  <!-- Waage — extrahiert aus RENDERERS.balance. Im Renderer entstanden die Seile zur
+       Laufzeit aus einem Kreis-Schnitt (ropeSegs); hier stehen sie als das, was sie
+       sind: gezeichnete Geometrie eines feststehenden Objekts (der Balken ist statisch
+       gekippt). Die FARBIGEN Flächen (Schalen-Scheiben, Drehpunkt-Feld) sind KEIN Teil
+       des Objekts — sie sind der Karten-Inhalt, der in den Schalen liegt, und bleiben
+       im Karten-Typ. Asset-Einheit = halbe Karten-Einheit.
+       Der Arm (seile + schale) existiert EINMAL; der Karten-Typ setzt ihn zweimal mit
+       dem Versatz der jeweiligen Balkenseite. -->
+  <line data-part="balken" class="a-beam a-round" x1="36" y1="53.5" x2="164" y2="42.5" stroke="var(--ink)"/>
+  <g data-part="seile">
+    <line class="a-hair" x1="36" y1="53.5" x2="34.45" y2="55.85" stroke="var(--ink)"/>
+    <line class="a-hair" x1="20.9" y1="75.95" x2="18.5" y2="79.5" stroke="var(--ink)"/>
+    <line class="a-hair" x1="36" y1="53.5" x2="37.55" y2="55.85" stroke="var(--ink)"/>
+    <line class="a-hair" x1="51.1" y1="75.95" x2="53.5" y2="79.5" stroke="var(--ink)"/>
+  </g>
+  <path data-part="schale" class="a-line" d="M18.5,79.5 A17.5,7.5 0 0 0 53.5,79.5" fill="var(--card)" stroke="var(--ink)"/>
+  <g data-part="drehpunkt">
+    <path d="M100,48 L88,76 L112,76 Z" fill="var(--ink)" stroke="none"/>
+    <line class="a-heavy a-round" x1="70" y1="76" x2="130" y2="76" stroke="var(--ink)"/>
+    <circle class="a-heavy" cx="100" cy="48" r="3.5" fill="var(--card)" stroke="var(--ink)"/>
+  </g>
+</svg>

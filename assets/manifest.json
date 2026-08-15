@@ -1,0 +1,212 @@
+{
+  "hinweis": "Kuratierte Asset-Library (Grammatik v3, Abschnitt 3). Das LLM kann keine Assets erfinden: ein ref, der hier fehlt, ist ein Validator-Fehler und landet im Wachstums-Backlog (assets/backlog.jsonl). Jedes Feld unten ist gegen die SVG-Datei geprüft (node asset-check.mjs) — kein Eintrag darf etwas behaupten, was die Datei nicht zeigt.",
+  "einheiten": "viewBox-Norm 0 0 200 200. Eine Asset-Einheit = zwei Karten-Einheiten (hero.scale = 2). Strichstärken kommen ausschliesslich aus der Skala-Klasse (a-hair/a-line/a-strong/a-heavy/a-beam in renderer.css) — nie als stroke-width in der Datei.",
+  "assets": {
+    "biology.neuron": {
+      "datei": "biology.neuron.svg",
+      "titel": "Neuron: Dendriten-Baum, Soma, Axon, Synapse",
+      "viewBox": "0 0 200 200",
+      "teile": [
+        "neuron"
+      ],
+      "anker": [
+        "node:dendrit",
+        "node:soma",
+        "node:synapse"
+      ],
+      "paare": [
+        [
+          "node:dendrit",
+          "node:soma"
+        ],
+        [
+          "node:soma",
+          "node:synapse"
+        ]
+      ],
+      "labelSlots": [
+        {
+          "id": "reize",
+          "anker": "node:dendrit",
+          "max": 34,
+          "beispiel": "REIZE KOMMEN AN"
+        },
+        {
+          "id": "feuert",
+          "anker": "node:soma",
+          "max": 33,
+          "beispiel": "AB HIER FEUERT ES"
+        },
+        {
+          "id": "sprung",
+          "anker": "node:synapse",
+          "max": 19,
+          "beispiel": "SIGNAL SPRINGT ÜBER"
+        }
+      ],
+      "paletteSlots": [
+        "chrome",
+        "es",
+        "ink"
+      ],
+      "hero": {
+        "scale": 2,
+        "tx": 0,
+        "ty": 0
+      },
+      "quelle": "Design-Gate-Mockup v3, Panel (a) — von Leon abgenommen 14.08.",
+      "abnahme": "Design-Gate-Mockup v3, Panel (a) — Leon 14.08.; Optik gegen den abgenommenen Shot gemessen (probes/asset-mockup-diff.mjs)",
+      "rollen": [
+        "hero",
+        "inline"
+      ]
+    },
+    "physics.sky-scatter": {
+      "datei": "physics.sky-scatter.svg",
+      "titel": "Himmels-Streuung: Sonne, Lichtkeil, Luftmolekül, Streufächer",
+      "viewBox": "0 0 200 200",
+      "teile": [
+        "himmel",
+        "streuung",
+        "durchlaeufer"
+      ],
+      "anker": [
+        "node:sun",
+        "node:molecule",
+        "region:scatter",
+        "ray:forward"
+      ],
+      "paare": [
+        [
+          "node:sun",
+          "node:molecule"
+        ]
+      ],
+      "labelSlots": [
+        {
+          "id": "sonnenlicht",
+          "anker": "node:sun",
+          "max": 11,
+          "beispiel": "SONNENLICHT"
+        },
+        {
+          "id": "blau",
+          "anker": "region:scatter",
+          "max": 25,
+          "beispiel": "BLAU — IN ALLE RICHTUNGEN"
+        },
+        {
+          "id": "rot",
+          "anker": "ray:forward",
+          "max": 17,
+          "beispiel": "ROT — LÄUFT DURCH"
+        }
+      ],
+      "paletteSlots": [
+        "card",
+        "chrome",
+        "es",
+        "ich",
+        "ink",
+        "ueberich-soft"
+      ],
+      "hero": {
+        "scale": 2,
+        "tx": 0,
+        "ty": 0
+      },
+      "quelle": "Design-Gate-Mockup v3, Panel (c) — von Leon abgenommen 14.08.",
+      "abnahme": "Design-Gate-Mockup v3, Panel (c) — Leon 14.08.; Optik gegen den abgenommenen Shot gemessen (probes/asset-mockup-diff.mjs)",
+      "rollen": [
+        "hero"
+      ]
+    },
+    "psyche.person": {
+      "datei": "psyche.person.svg",
+      "titel": "Person im Profil mit innerer Zone",
+      "viewBox": "0 0 200 200",
+      "teile": [
+        "person"
+      ],
+      "anker": [
+        "node:koerper",
+        "region:innen"
+      ],
+      "paare": [
+        [
+          "region:innen",
+          "node:koerper"
+        ]
+      ],
+      "labelSlots": [
+        {
+          "id": "innen",
+          "anker": "region:innen",
+          "max": 34,
+          "beispiel": "WAS DARUNTER ARBEITET"
+        },
+        {
+          "id": "aussen",
+          "anker": "node:koerper",
+          "max": 16,
+          "beispiel": "WAS DU ZEIGST"
+        }
+      ],
+      "paletteSlots": [
+        "card",
+        "es-soft",
+        "ink"
+      ],
+      "hero": {
+        "scale": 2,
+        "tx": 0,
+        "ty": 0
+      },
+      "quelle": "Neu gezeichnet 15.08., innere Zone als Gehirn ausgeformt + Hals/Schulter-Übergang geglättet (Leon-Rework-Auftrag 15.08.) — im Renderer gab es diese Silhouette nie (Spec-Annahme geprueft und widerlegt).",
+      "abnahme": "Leon 15.08. — Rework abgenommen (Gehirn-Form statt Ei, Hals/Schulter-Übergang geglättet; probes/asset-preview/psyche.person.png)",
+      "rollen": [
+        "hero",
+        "inline"
+      ]
+    },
+    "nature.eisberg": {
+      "datei": "nature.eisberg.svg",
+      "titel": "Eisberg-Kontur mit Lichtfacette",
+      "viewBox": "0 0 200 200",
+      "teile": [
+        "berg",
+        "facette"
+      ],
+      "anker": [],
+      "paare": [],
+      "labelSlots": [],
+      "paletteSlots": [
+        "water1"
+      ],
+      "verbraucher": "layers",
+      "quelle": "Extrahiert aus RENDERERS.layers (Bestands-Geometrie, exakt halbiert).",
+      "abnahme": "Bestand — aus RENDERERS.layers extrahiert; 51/51 Bestands-Shots byte-identisch"
+    },
+    "psyche.waage": {
+      "datei": "psyche.waage.svg",
+      "titel": "Waage: Balken, Seile, Schalen, Drehpunkt",
+      "viewBox": "0 0 200 200",
+      "teile": [
+        "balken",
+        "seile",
+        "schale",
+        "drehpunkt"
+      ],
+      "anker": [],
+      "paare": [],
+      "labelSlots": [],
+      "paletteSlots": [
+        "card",
+        "ink"
+      ],
+      "verbraucher": "balance",
+      "quelle": "Extrahiert aus RENDERERS.balance (Bestands-Geometrie, exakt halbiert; Seile aus ropeSegs eingefroren).",
+      "abnahme": "Bestand — aus RENDERERS.balance extrahiert; 51/51 Bestands-Shots byte-identisch"
+    }
+  }
+}

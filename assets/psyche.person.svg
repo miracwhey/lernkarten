@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" data-ref="psyche.person">
+  <!-- Person im Profil (Büste) — neu gezeichnet für die Library. Die Spec zählt die
+       Personen-Silhouette zum Startbestand („faktisch schon Assets"); im Renderer gab
+       es sie NIE (geprüft: kein Treffer in renderer.js, keiner in der Git-Historie).
+       Sie ist deshalb gezeichnet, nicht extrahiert.
+       EINE geschlossene Silhouette für Kopf, Hals und Schultern: zwei sich
+       überlappende Flächen hinterlassen an der Halslinie eine Naht, die man auf der
+       Karte sieht. Gestaltetes Objekt statt Andeutung — Stirn, Nasenrücken,
+       Nasenspitze, Ober- und Unterlippe, Kinn, Kieferlinie sind ausgeformt, nicht
+       angedeutet. Die innere Zone ist als Gehirn ausgeformt (Stirn- und Hinterlappen,
+       Kleinhirn-Kerbe, zwei Windungs-Linien) — ein gestaltetes Objekt, kein Ei
+       (Leon-Befund 15.08.); sie füllt die Schädelkalotte. -->
+  <g data-part="person">
+    <path class="a-line a-round" data-anchor="node:koerper" data-glow-fill="es"
+          d="M12,134
+             C14,112 26,100 44,95
+             C51,93 52,87 50,81
+             C46,72 44,62 44,50
+             C44,32 55,20 72,20
+             C88,20 97,29 99,40
+             C100,45 103,49 106,54
+             C107,55 106,57 104,57
+             L98,58
+             C100,60 100,61 98,62
+             C100,63 100,65 97,66
+             C100,68 99,71 95,72
+             C90,75 84,77 80,80
+             C80,84 80,88 80,91
+             C106,96 122,110 124,134 Z"
+          fill="var(--card)" stroke="var(--ink)"/>
+    <path class="a-hair" data-anchor="region:innen"
+          d="M81,53 C86,50 89,43 87,35 C84,27 76,23 67,24 C57,25 50,31 48,39 C46,46 49,52 53,56 C51,58 52,61 55,62 C60,64 65,62 67,58 C71,56 76,55 81,53 Z"
+          fill="var(--es-soft)" stroke="var(--ink)"/>
+    <path class="a-hair a-round" d="M66,42 C61,38 62,31 69,29 C76,27 81,33 78,39 C76,43 70,44 68,40"
+          fill="none" stroke="var(--ink)"/>
+    <path class="a-hair a-round" d="M82,42 C79,45 79,48 82,50"
+          fill="none" stroke="var(--ink)"/>
+    <circle cx="92" cy="46" r="1.6" fill="var(--ink)" stroke="none"/>
+  </g>
+  <!-- Weg von innen nach außen: der Antrieb meldet sich am Körper, nicht im Kopf. -->
+  <path class="a-route" data-link="region:innen&gt;node:koerper" data-ton="es" d="M70,58 C68,72 64,82 60,90 L48,102"/>
+  <!-- Label-Plätze: in BEIDEN Rollen (hero und inline) geprüft — an ihrer Position darf
+       der Text in keiner der beiden aus der Karte laufen. -->
+  <text data-slot="innen" data-anchor-ref="region:innen" data-ton="es" x="10" y="12"></text>
+  <text data-slot="aussen" data-anchor-ref="node:koerper" x="128" y="116"></text>
+</svg>

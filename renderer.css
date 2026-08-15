@@ -159,6 +159,10 @@
      dass ein Gate es sieht. Der Zustand wird über die FARBE getragen, nicht über Fläche. */
   .seq-hl.lit { stroke-width: 3px; animation: seq-beat var(--m-beat) var(--m-ease); }
   @keyframes seq-beat { 0% { transform: scale(1); } 45% { transform: scale(1.13); } 100% { transform: scale(1); } }
+  /* Aufglühen im ASSET: als Füllung, nicht als Ring. Ein Halo in Karten-Einheiten
+     stünde im Asset-Maßstab doppelt so breit da; die Füllung ist außerdem das, was das
+     abgenommene Mockup zeigt (Soma und Synapse nehmen den Soft-Ton an). */
+  [data-glow-fill] { transition: fill var(--m-beat) var(--m-ease); }
   /* Aufglühen des Puls-Ziels: Soft-Ton-Ring hinter der Zielfläche — bleibt. */
   .seq-halo { opacity: 0; stroke-width: 11; stroke-linejoin: round; transition: opacity var(--m-beat) var(--m-ease); }
   .seq-halo.lit { opacity: 0.85; }
@@ -179,6 +183,21 @@
     [data-seq-step], .seq-trace, .seq-dim, .seq-hl, .seq-halo { transition: none !important; }
     .seq-pulse.run, .seq-hl.lit { animation: none !important; }
   }
+
+  /* ——— Asset-Library: EINE Strichstärken-Skala ———
+     Die Zahlen sind die Strichstärken des Bestands (1.6 / 2 / 2.5 / 3 / 4 Karten-
+     Einheiten), geteilt durch den Platzierungs-Maßstab 2 — eine Asset-Einheit ist eine
+     halbe Karten-Einheit. Assets tragen deshalb NIE ein eigenes stroke-width: die
+     Skala steht hier, damit sie für alle Objekte dieselbe ist (asset-check.mjs weist
+     jedes stroke-width in einer Asset-Datei ab). */
+  .a-hair   { stroke-width: 0.8; }
+  .a-line   { stroke-width: 1; }
+  .a-strong { stroke-width: 1.25; }
+  .a-heavy  { stroke-width: 1.5; }
+  .a-beam   { stroke-width: 2; }
+  .a-round  { stroke-linecap: round; }
+  /* Puls-Weg im Objekt: gezeichnete Führung, nie gemalt (kein stroke, keine Fläche). */
+  .a-route  { fill: none; stroke: none; }
 
   .lehrsatz {
     font-family: "Iowan Old Style", "Palatino Nova", Palatino, Georgia, serif;

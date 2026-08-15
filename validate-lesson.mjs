@@ -4,7 +4,7 @@
 // Nutzung: node validate-lesson.mjs <lesson.json> [--depth kompakt|standard|tief]
 //          → Exit 0 + "OK" oder Exit 1 + Fehlerliste.
 // Als Modul: import { RELATION_TO_TYPE, DEPTH_CARDS, normalizeLesson, validateLesson }.
-import { readFileSync } from "fs";
+import { appendFileSync, readFileSync } from "fs";
 
 // Kartenzahl je Tiefe — dieselbe Zusage, die die Kachel im Erstellen-Sheet macht
 // („ca. 7 / 12 / 20 Karten", CreateSheetView.Depth.estimate). EINE Quelle: Prompt,
@@ -35,9 +35,43 @@ export const RELATION_TO_TYPE = {
   "loop": "cycle",            // Kreislauf, der sich selbst füttert
   "multiplication": "fanout", // ein Input wirkt vielfach
   "descent": "flow",          // Schritte, der letzte sinkt unter eine Grenze
-  "depth-layers": "layers"    // Sichtbares oben, Verborgenes unten
+  "depth-layers": "layers",   // Sichtbares oben, Verborgenes unten
+  "object": "asset"           // der Gegenstand selbst ist die Aussage (Asset-Karte)
 };
 const STRUCT_TYPES = new Set(["title", "quiz", "insight"]);
+
+// ————————————————————— v3: Asset-Registry —————————————————————
+// Die kuratierte Library ist assets/manifest.json — dieselbe Datei, die der Renderer
+// über assets/assets.js bekommt. Das LLM kann keine Assets erfinden: ein ref, den die
+// Registry nicht kennt, ist ein Fehler, BEVOR gerendert wird.
+export const ASSET_ROLLEN = ["hero", "inline"];
+function ladeAssets() {
+  try {
+    return JSON.parse(readFileSync(new URL("./assets/manifest.json", import.meta.url), "utf8")).assets || {};
+  } catch (e) {
+    // Kein stiller Leerlauf: ohne Registry ist JEDER ref unbekannt, und der Fehlertext
+    // unten nennt dann die Ursache statt „ref existiert nicht".
+    ASSET_LADEFEHLER = e.message;
+    return {};
+  }
+}
+let ASSET_LADEFEHLER = null;
+export const ASSETS = ladeAssets();
+/// Assets, die ein Karten-JSON referenzieren darf: die intern verbrauchten (Waage,
+/// Eisberg gehören ihren Karten-Typen) stehen dem LLM NICHT zur Verfügung.
+export const ASSET_REFS = Object.entries(ASSETS).filter(([, a]) => !a.verbraucher).map(([ref]) => ref);
+
+/// Wachstums-Backlog: jeder echte Miss wird protokolliert — er ist die Bestellung für
+/// die nächste Asset-Runde (generieren → normalisieren → QA → einlagern), nicht bloß
+/// ein Fehler. Schreibfehler dürfen NIE die Validierung kippen: das Backlog ist ein
+/// Beobachter, kein Türsteher.
+export function logMiss(art, wunsch, kontext = {}) {
+  const ziel = process.env.LERNKARTEN_BACKLOG
+    || new URL("./assets/backlog.jsonl", import.meta.url).pathname;
+  try {
+    appendFileSync(ziel, JSON.stringify({ ts: new Date().toISOString(), art, wunsch, ...kontext }) + "\n");
+  } catch { /* Backlog ist optional (read-only FS im Worker) */ }
+}
 
 // ————————————————————— v3: Anker-Registry —————————————————————
 // Jeder Karten-Typ trägt stabile Anker-Namen im Schema `typ:id`, DETERMINISTISCH aus
@@ -130,6 +164,22 @@ const ANKER_MODELL = {
     (card.steps || []).forEach((s, i) => A(`label:${ankerSlug(s.label, String(i))}`));
     for (let i = 1; i < steps.length; i++) { A(`arrow:${i}`); m.paare.push([steps[i - 1], steps[i]]); }
     A("sink");
+  },
+  // Asset-Karte: die Anker kommen aus dem MANIFEST (Objekt-Anker in Manifest-Reihenfolge,
+  // dann die gefüllten Label-Plätze). Deterministisch aus Karten-JSON + Registry, ohne
+  // Rendern — dieselbe Reihenfolge, die assetEinbau() im Renderer vergibt.
+  asset(card, A, m) {
+    const eintrag = ASSETS[card.asset?.ref];
+    if (!eintrag) return;
+    A(`asset:${String(card.asset.ref).split(".").pop()}`);
+    (eintrag.anker || []).forEach((n) => A(n));
+    (eintrag.labelSlots || []).forEach((slot) => {
+      const txt = card.asset.labels?.[slot.id];
+      if (txt !== undefined && txt !== null && txt !== "") A(`label:${slot.id}`);
+    });
+    // Verbunden ist, was das Objekt als Weg ZEICHNET (data-link im SVG, im Manifest als
+    // paare geführt und von asset-check.mjs gegen die Datei geprüft).
+    (eintrag.paare || []).forEach(([a, b]) => m.paare.push([a, b]));
   },
   layers(card, A) {
     (card.body?.regions || []).forEach((r, i) => A(`region:${ankerSlug(r.label, String(i))}`));
@@ -403,6 +453,52 @@ export function validateLesson(lesson, opts = {}) {
       const r = c.body?.regions;
       if (arr(r, p + ".body.regions", 3, 3)) r.forEach((rg, i) => { str(rg.label, `${p}.body.regions[${i}].label`, 8); color(rg.color, `${p}.body.regions[${i}].color`); });
     },
+    // Asset-Karte v3: das LLM wählt ein Objekt aus der Library und beschriftet dessen
+    // Plätze — mehr nicht. Kein Erfinden von refs, keine Positionen, keine Größen.
+    asset(c, p) {
+      str(c.text, p + ".text", 220); str(c.caption, p + ".caption", 90);
+      const a = c.asset;
+      if (!a || typeof a !== "object") {
+        err(p + ".asset", `fehlt — eine asset-Karte nennt ihr Objekt: {"ref": "<einer von: ${ASSET_REFS.join(", ")}>", "role": "hero"}`);
+        return;
+      }
+      if (a.role !== undefined && !ASSET_ROLLEN.includes(a.role))
+        err(p + ".asset.role", `ungültig "${a.role}" (erlaubt: ${ASSET_ROLLEN.join(", ")}) — ohne Angabe gilt "hero"`);
+      const eintrag = ASSETS[a.ref];
+      // Unbekannter ref: Fehlertext trägt die Korrektur (verfügbare refs UND den Ausweg),
+      // der Miss geht ins Wachstums-Backlog — er ist die Bestellung für die nächste
+      // Asset-Runde, nicht nur ein Fehler.
+      if (!eintrag || eintrag.verbraucher) {
+        logMiss("asset-ref", a.ref, { lektion: lesson?.id, karte: p, typ: c.type, thema: lesson?.title });
+        err(p + ".asset.ref", (ASSET_LADEFEHLER ? `Asset-Registry nicht lesbar (${ASSET_LADEFEHLER}) — ` : "")
+          + `"${a.ref}" gibt es in der Library nicht`
+          + (eintrag?.verbraucher ? ` (das Objekt gehört fest zum Karten-Typ "${eintrag.verbraucher}" und ist nicht frei wählbar)` : "")
+          + `. Verfügbar: ${ASSET_REFS.length ? ASSET_REFS.join(", ") : "(keine)"}. `
+          + `Erfinde kein Asset: formuliere die Karte ohne Asset (anderer Karten-Typ, z. B. relation "trend"/"weighing") `
+          + `oder wähle einen der verfügbaren refs.`);
+        return;
+      }
+      // Welche Rollen ein Objekt trägt, ist GEMESSEN (probes/asset-slot-max.mjs), nicht
+      // angenommen: `inline` staucht die Komposition auf 60 % bei gleicher Schriftgröße —
+      // ein Objekt mit dicht gesetzten Label-Plätzen wird dabei unlesbar. Was nicht
+      // gemessen durchkam, ist hier nicht wählbar.
+      const rollen = eintrag.rollen || ["hero"];
+      if (a.role !== undefined && ASSET_ROLLEN.includes(a.role) && !rollen.includes(a.role))
+        err(p + ".asset.role", `"${a.ref}" trägt die Rolle "${a.role}" nicht (gemessen: ${rollen.join(", ")}) — `
+          + `setze ${p}.asset.role = "${rollen[0]}" oder wähle ein Objekt, das ${a.role} trägt`);
+      const slots = eintrag.labelSlots || [];
+      const namen = slots.map((s) => s.id);
+      if (a.labels !== undefined) {
+        if (typeof a.labels !== "object" || Array.isArray(a.labels)) {
+          err(p + ".asset.labels", `muss ein Objekt {platz: "TEXT"} sein — Plätze dieses Objekts: ${namen.join(", ") || "(keine)"}`);
+        } else for (const [k, v] of Object.entries(a.labels)) {
+          const slot = slots.find((s) => s.id === k);
+          if (!slot) { err(`${p}.asset.labels.${k}`, `"${k}" ist kein Label-Platz von "${a.ref}" (vorhanden: ${namen.join(", ") || "keine"})`); continue; }
+          str(v, `${p}.asset.labels.${k}`, slot.max);
+        }
+      }
+    },
+
     quiz(c, p) {
       str(c.question, p + ".question", 160);
       if (arr(c.options, p + ".options", 3, 3)) {
@@ -439,6 +535,11 @@ export function validateLesson(lesson, opts = {}) {
         else if (RELATION_TO_TYPE[c.relation] !== c.type)
           err(p, `relation "${c.relation}" gehört zu Typ "${RELATION_TO_TYPE[c.relation]}", Karte ist "${c.type}"`);
       }
+      // Ein Objekt aus der Library steht auf der Asset-Karte, nicht als Beilage auf
+      // einem anderen Typ: Assets sind Gegenstände mit Ankern, keine Deko-Sticker.
+      if (c.asset !== undefined && c.type !== "asset")
+        err(p + ".asset", `Karten-Typ "${c.type}" trägt kein Asset — ein Objekt aus der Library bekommt eine eigene Karte `
+          + `(relation "object", type "asset"). Entferne ${p}.asset ODER mache daraus eine eigene asset-Karte.`);
       CARD_CHECKS[c.type](c, p);
       checkSequence(c, p, err);
     });

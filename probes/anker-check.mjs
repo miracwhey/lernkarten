@@ -13,7 +13,8 @@ const repo = resolve(new URL("..", import.meta.url).pathname);
 const dateien = (process.argv.length > 2 ? process.argv.slice(2) : [
   "lessons/atomic-habits.json", "lessons/freud-psyche.json", "lessons/naval-almanack.json",
   "lessons/thinking-fast-slow.json", "lessons/warum-wir-schlafen.json",
-  "probes/apex-crash-lesson.json", "probes/seq-demo-lesson.json", "probes/seq-verben-lesson.json"
+  "probes/apex-crash-lesson.json", "probes/seq-demo-lesson.json", "probes/seq-verben-lesson.json",
+  "probes/asset-demo-lesson.json"
 ]).map((f) => resolve(repo, f)).filter(existsSync);
 
 // Sonderfälle, die im Bestand nicht vorkommen: gleicher Slug zweimal auf EINER Karte
@@ -40,6 +41,9 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 560, height: 1000 } });
 await page.setContent('<div id="area" class="cardarea"></div>');
 await page.addStyleTag({ path: repo + "/renderer.css" });
+// Die Asset-Library kommt VOR dem Renderer: Karten-Typen holen ihre Objekt-Geometrie
+// aus ihr (Waage, Eisberg), Asset-Karten ihre Anker.
+await page.addScriptTag({ path: repo + "/assets/assets.js" });
 await page.addScriptTag({ path: repo + "/renderer.js" });
 page.on("pageerror", (e) => console.error("PAGEERROR:", e.message));
 
