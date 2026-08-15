@@ -1,0 +1,12 @@
+{
+  "type": "curve",
+  "relation": "trend",
+  "text": "In der ersten Nachthälfte bleiben beide Anteile flach am Boden: weder der eine noch der andere nimmt zu, und die beiden Kurven liegen dabei deckungsgleich aufeinander.",
+  "xlabel": "NACHTZEIT",
+  "ylabel": "ANTEIL",
+  "series": [
+    { "color": "es", "shape": "flat", "from": "floor", "to": "floor", "label": "TIEFSCHLAF UNTEN" },
+    { "color": "ich", "shape": "flat", "from": "floor", "to": "floor", "label": "REM-SCHLAF UNTEN" }
+  ],
+  "caption": "Zwei deckungsgleiche Kurven am Boden — beide Namen wollen denselben Platz."
+}

@@ -11,6 +11,11 @@
 //   stub/leerstur  — liefert dieselbe Lektion und patcht NICHT (Weg ii: reject)
 // Beide nutzen dieselbe Bestands-Lektion, damit ausschließlich der Sequenz-Befund den
 // Unterschied macht; die Karte ist sonst überall grün (Contract, Judge, notecheck).
+//
+// Modell-ID für den SYSTEM-Weg (Überlappung, audit-lesson meldet system>0 → Exit 3):
+//   stub/systembug — ersetzt cards[1] durch probes/exit3-system/kollisions-karte.json:
+//                    zwei deckungsgleiche flache Serien am Boden, beide mit Label. Beide
+//                    Labels müssen auf dieselbe freie Seite und überlappen dort (TEXT²).
 // Nutzung: node probes/stub-openrouter.mjs [port] [mitschnitt.jsonl]
 import { createServer } from "http";
 import { appendFileSync, readFileSync } from "fs";
@@ -33,6 +38,15 @@ const mitSequenz = (seq) => {
   return JSON.stringify(l);
 };
 
+// Kollisions-Karte: dieselbe Bestands-Lektion, nur cards[1] ausgetauscht — der einzige
+// Unterschied zum grünen Lauf ist damit genau die Karte, die den System-Befund erzwingt.
+const KOLLISION = readFileSync(new URL("./exit3-system/kollisions-karte.json", import.meta.url), "utf8");
+const mitKollision = () => {
+  const l = JSON.parse(LEKTION);
+  l.cards[1] = JSON.parse(KOLLISION);
+  return JSON.stringify(l);
+};
+
 const antwort = (model, text, extra = {}) => ({
   id: "stub-1", object: "chat.completion", model, provider: "StubProvider",
   choices: [{ index: 0, message: { role: "assistant", content: text }, finish_reason: "stop" }],
@@ -49,7 +63,7 @@ createServer((req, res) => {
     };
     if (req.url.endsWith("/models")) {
       // Preise wie im echten Katalog als Strings je Token.
-      const ids = ["stub/gut", "stub/budget402", "stub/leerfix", "stub/leerstur", "openai/gpt-oss-120b"];
+      const ids = ["stub/gut", "stub/budget402", "stub/leerfix", "stub/leerstur", "stub/systembug", "openai/gpt-oss-120b"];
       return json(200, { data: ids.map((id) => ({ id, pricing: { prompt: "0.000001", completion: "0.000002" }, context_length: 131072 })) });
     }
     if (!req.url.endsWith("/chat/completions")) return json(404, { error: "unbekannt" });
@@ -94,6 +108,11 @@ createServer((req, res) => {
       return json(200, antwort(anfrage.model, JSON.stringify(
         String(anfrage.model).includes("leerfix") ? { "cards[1].sequence": SEQ_HEIL } : {})));
     if (leerModus) return json(200, antwort(anfrage.model, mitSequenz(SEQ_LEER)));
+
+    // System-Weg: die Überlappung steckt in der GEOMETRIE der Karte, nicht in einer
+    // Aussage — es gibt darum auch keine Patch-Runde, die sie beheben könnte. Der Stub
+    // liefert die Karte in jeder Runde unverändert.
+    if (String(anfrage.model).includes("systembug")) return json(200, antwort(anfrage.model, mitKollision()));
 
     return json(200, antwort(anfrage.model, LEKTION));
   });
