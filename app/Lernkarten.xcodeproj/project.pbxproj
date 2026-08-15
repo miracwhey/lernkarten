@@ -12,6 +12,7 @@
 		0C026B2BD5E81500EB17A528 /* naval-almanack.json in Resources */ = {isa = PBXBuildFile; fileRef = 2D305933BD21BB675A990F22 /* naval-almanack.json */; };
 		223D8B347CAF937593884A96 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D4A1972413A760A219FE22B /* Models.swift */; };
 		25FE56403E69E569C7C0BEE5 /* CardCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF82282AB3268E594575BD3D /* CardCanvas.swift */; };
+		2B66A03B861B1AB0585F83CD /* FotoFlowMockup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C0C89EC48BE84BAE6206CA0 /* FotoFlowMockup.swift */; };
 		41E380BC9EACE4750083681E /* ReviewStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35405745E48E6A992580B8EF /* ReviewStore.swift */; };
 		4965746E3D8C29FD3A8796C7 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 80A12BA44BE833248457E26D /* Supabase */; };
 		6BE27A51EF757AC5B76D9F22 /* CreateSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFCD135BBA46E129DD6DDA67 /* CreateSheetView.swift */; };
@@ -22,6 +23,7 @@
 		91FE8C0CBE2654E6212ADEF2 /* renderer.css in Resources */ = {isa = PBXBuildFile; fileRef = 3926387654453140F6732E34 /* renderer.css */; };
 		92AAC74DCED77B0E5AD013F7 /* atomic-habits.json in Resources */ = {isa = PBXBuildFile; fileRef = 08068EE8CCE8899534E92848 /* atomic-habits.json */; };
 		9338E3D4D2697ED4BBBBEAEB /* PracticeSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43F66DEABC4A79EBAC1090BA /* PracticeSessionView.swift */; };
+		9365A0DFC0A4270F9AC98E4D /* wie-nervenzellen-feuern.json in Resources */ = {isa = PBXBuildFile; fileRef = BF41B04F35932A3626F0F27B /* wie-nervenzellen-feuern.json */; };
 		96FF01CB807F120D5DCC8BB4 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AE9C9A915672447F4A20D95 /* RootView.swift */; };
 		9AD36A54A2BA3481E3EB6255 /* SRSEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A7CA7FEEEFB4A306A267F5 /* SRSEngine.swift */; };
 		9AFC40BA2285E1E83EE6AD44 /* BackendWireTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA505B9B690AB42A194305FF /* BackendWireTests.swift */; };
@@ -62,6 +64,7 @@
 		3B92975EA141BD7A01504B18 /* renderer.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = renderer.js; sourceTree = "<group>"; };
 		3CA1462341CC5F1D05443F45 /* LearnSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearnSessionView.swift; sourceTree = "<group>"; };
 		43F66DEABC4A79EBAC1090BA /* PracticeSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeSessionView.swift; sourceTree = "<group>"; };
+		4C0C89EC48BE84BAE6206CA0 /* FotoFlowMockup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FotoFlowMockup.swift; sourceTree = "<group>"; };
 		59B157F27F112B4A02C6EA71 /* JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobStore.swift; sourceTree = "<group>"; };
 		6615B8C6E2E8C6DAE495056F /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		71DC5DFDD05D66211FEE27F4 /* Lernkarten.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Lernkarten.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -73,6 +76,7 @@
 		AF82282AB3268E594575BD3D /* CardCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCanvas.swift; sourceTree = "<group>"; };
 		B0F767785592240F05A1EEA0 /* LernkartenTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LernkartenTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B7A7CA7FEEEFB4A306A267F5 /* SRSEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SRSEngine.swift; sourceTree = "<group>"; };
+		BF41B04F35932A3626F0F27B /* wie-nervenzellen-feuern.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "wie-nervenzellen-feuern.json"; sourceTree = "<group>"; };
 		C0A0ADB6977076D548B9CD42 /* LernkartenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LernkartenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C17FF59B5DF6884CB7CA6BD2 /* card-canvas.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "card-canvas.html"; sourceTree = "<group>"; };
 		C7D10A04C4C52025F397B005 /* warum-wir-schlafen.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "warum-wir-schlafen.json"; sourceTree = "<group>"; };
@@ -112,6 +116,7 @@
 				2D305933BD21BB675A990F22 /* naval-almanack.json */,
 				A14B7E4D4F6A3B907A47E9C6 /* thinking-fast-slow.json */,
 				C7D10A04C4C52025F397B005 /* warum-wir-schlafen.json */,
+				BF41B04F35932A3626F0F27B /* wie-nervenzellen-feuern.json */,
 			);
 			name = lessons;
 			path = ../lessons;
@@ -162,6 +167,7 @@
 			children = (
 				AF82282AB3268E594575BD3D /* CardCanvas.swift */,
 				EFCD135BBA46E129DD6DDA67 /* CreateSheetView.swift */,
+				4C0C89EC48BE84BAE6206CA0 /* FotoFlowMockup.swift */,
 				59B157F27F112B4A02C6EA71 /* JobStore.swift */,
 				3CA1462341CC5F1D05443F45 /* LearnSessionView.swift */,
 				2FAB3C95C6CFC06CF2E5DC3A /* LernkartenApp.swift */,
@@ -290,6 +296,7 @@
 				EECFB664A3333EB8D3AAFF50 /* renderer.js in Resources */,
 				89FBFA1875ED26C8084BFAC9 /* thinking-fast-slow.json in Resources */,
 				09C4F36E9F8B04C2114BBB49 /* warum-wir-schlafen.json in Resources */,
+				9365A0DFC0A4270F9AC98E4D /* wie-nervenzellen-feuern.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -320,6 +327,7 @@
 			files = (
 				25FE56403E69E569C7C0BEE5 /* CardCanvas.swift in Sources */,
 				6BE27A51EF757AC5B76D9F22 /* CreateSheetView.swift in Sources */,
+				2B66A03B861B1AB0585F83CD /* FotoFlowMockup.swift in Sources */,
 				09BAB8CD88431EC4FB67A923 /* JobStore.swift in Sources */,
 				A89AB26EF00BAF3C6CA84667 /* LearnSessionView.swift in Sources */,
 				E86F91863670D25E6AA9759D /* LernkartenApp.swift in Sources */,

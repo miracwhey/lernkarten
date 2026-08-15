@@ -1,0 +1,1213 @@
+[
+ {
+  "model": "openai/gpt-5.6-luna-pro",
+  "rows": [
+   {
+    "label": "IMG_2840",
+    "ms": 8282,
+    "raw": "{\"erkennbar\":true,\"typ\":\"objekt\",\"quelle\":\"Tabakverpackung\",\"thema\":\"Gesundheitsrisiken des Tabakrauchens\",\"sicherheit\":\"hoch\",\"interpretation\":null}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "objekt",
+     "quelle": "Tabakverpackung",
+     "thema": "Gesundheitsrisiken des Tabakrauchens",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "OpenAI",
+    "usage": {
+     "in": 9661,
+     "out": 666
+    }
+   },
+   {
+    "label": "IMG_2841",
+    "ms": 5814,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"Crime and Punishment, Fyodor Dostoyevsky\",\n  \"thema\": \"Schuld, Sühne und moralische Konflikte\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "Crime and Punishment, Fyodor Dostoyevsky",
+     "thema": "Schuld, Sühne und moralische Konflikte",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "OpenAI",
+    "usage": {
+     "in": 9709,
+     "out": 523
+    }
+   },
+   {
+    "label": "IMG_2842",
+    "ms": 8505,
+    "raw": "{\"erkennbar\":true,\"typ\":\"textseite\",\"quelle\":null,\"thema\":\"Moralische Verantwortung und gesellschaftliche Konventionen\",\"sicherheit\":\"mittel\",\"interpretation\":null}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Moralische Verantwortung und gesellschaftliche Konventionen",
+     "sicherheit": "mittel",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "OpenAI",
+    "usage": {
+     "in": 10056,
+     "out": 1166
+    }
+   },
+   {
+    "label": "IMG_2843",
+    "ms": 7656,
+    "raw": "{\"erkennbar\":true,\"typ\":\"textseite\",\"quelle\":null,\"thema\":\"Schuld, Reue und moralische Verantwortung im literarischen Dialog\",\"sicherheit\":\"mittel\",\"interpretation\":null}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Schuld, Reue und moralische Verantwortung im literarischen Dialog",
+     "sicherheit": "mittel",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "OpenAI",
+    "usage": {
+     "in": 9931,
+     "out": 926
+    }
+   },
+   {
+    "label": "IMG_2844",
+    "ms": 4795,
+    "raw": "{\"erkennbar\":true,\"typ\":\"cover\",\"quelle\":\"The 33 Strategies of War, Robert Greene\",\"thema\":\"Strategien und Prinzipien der Kriegsführung im übertragenen Sinn\",\"sicherheit\":\"hoch\",\"interpretation\":null}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "The 33 Strategies of War, Robert Greene",
+     "thema": "Strategien und Prinzipien der Kriegsführung im übertragenen Sinn",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "OpenAI",
+    "usage": {
+     "in": 9592,
+     "out": 397
+    }
+   },
+   {
+    "label": "IMG_2845",
+    "ms": 9767,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": null,\n  \"thema\": \"Einkreisungsstrategie und psychologischer Druck in Konflikten\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Einkreisungsstrategie und psychologischer Druck in Konflikten",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "OpenAI",
+    "usage": {
+     "in": 9922,
+     "out": 960
+    }
+   },
+   {
+    "label": "IMG_2846",
+    "ms": 5992,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": null,\n  \"thema\": \"Strategische Einkreisung und psychologischer Druck im Konflikt\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Strategische Einkreisung und psychologischer Druck im Konflikt",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "OpenAI",
+    "usage": {
+     "in": 9868,
+     "out": 726
+    }
+   },
+   {
+    "label": "IMG_2847",
+    "ms": 4823,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"Die Kunst der Psychologie – Menschen lesen, Annika Durand\",\n  \"thema\": \"Psychologie, Manipulationen erkennen und emotionale Intelligenz trainieren\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "Die Kunst der Psychologie – Menschen lesen, Annika Durand",
+     "thema": "Psychologie, Manipulationen erkennen und emotionale Intelligenz trainieren",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "OpenAI",
+    "usage": {
+     "in": 9834,
+     "out": 673
+    }
+   },
+   {
+    "label": "IMG_2848",
+    "ms": 9537,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": null,\n  \"thema\": \"Psychologische Beeinflussung durch Priming und die Sokrates-Methode\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Psychologische Beeinflussung durch Priming und die Sokrates-Methode",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "OpenAI",
+    "usage": {
+     "in": 9852,
+     "out": 720
+    }
+   },
+   {
+    "label": "serie-a",
+    "ms": 37499,
+    "raw": "{\"erkennbar\":true,\"typ\":\"textseite\",\"quelle\":\"Crime and Punishment, Fyodor Dostoevsky\",\"thema\":\"Schuld, Reue und moralische Verantwortung im zwischenmenschlichen Konflikt\",\"sicherheit\":\"hoch\",\"interpretation\":null}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Crime and Punishment, Fyodor Dostoevsky",
+     "thema": "Schuld, Reue und moralische Verantwortung im zwischenmenschlichen Konflikt",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "OpenAI",
+    "usage": {
+     "in": 23977,
+     "out": 906
+    }
+   },
+   {
+    "label": "serie-b",
+    "ms": 31013,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"The 33 Strategies of War, Robert Greene\",\n  \"thema\": \"Einkesselung und psychologischer Druck in Konflikten\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "The 33 Strategies of War, Robert Greene",
+     "thema": "Einkesselung und psychologischer Druck in Konflikten",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "OpenAI",
+    "usage": {
+     "in": 23832,
+     "out": 776
+    }
+   },
+   {
+    "label": "serie-c",
+    "ms": 12090,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Die Kunst der Psychologie – Menschen lesen –, Annika Durand\",\n  \"thema\": \"Psychologische Manipulation durch Priming und die Sokrates-Methode\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Die Kunst der Psychologie – Menschen lesen –, Annika Durand",
+     "thema": "Psychologische Manipulation durch Priming und die Sokrates-Methode",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "OpenAI",
+    "usage": {
+     "in": 17089,
+     "out": 1053
+    }
+   }
+  ]
+ },
+ {
+  "model": "qwen/qwen3-vl-235b-a22b-instruct",
+  "rows": [
+   {
+    "label": "IMG_2840",
+    "ms": 3090,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"objekt\",\n  \"quelle\": \"Zigarettenpackung mit Warnhinweis\",\n  \"thema\": \"Gesundheitsgefahren des Rauchens auf Deutsch\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "objekt",
+     "quelle": "Zigarettenpackung mit Warnhinweis",
+     "thema": "Gesundheitsgefahren des Rauchens auf Deutsch",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 70
+    }
+   },
+   {
+    "label": "IMG_2841",
+    "ms": 2676,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"Crime and Punishment, Fyodor Dostoyevsky\",\n  \"thema\": \"Klassiker der russischen Literatur: Verbrechen und Strafe\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "Crime and Punishment, Fyodor Dostoyevsky",
+     "thema": "Klassiker der russischen Literatur: Verbrechen und Strafe",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 76
+    }
+   },
+   {
+    "label": "IMG_2842",
+    "ms": 2013,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": null,\n  \"thema\": \"Englischer Roman-Text zur Lektüre und Sprachanalyse\",\n  \"sicherheit\": \"mittel\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Englischer Roman-Text zur Lektüre und Sprachanalyse",
+     "sicherheit": "mittel",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 64
+    }
+   },
+   {
+    "label": "IMG_2843",
+    "ms": 2114,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Crime and Punishment\",\n  \"thema\": \"Literarische Analyse von Fjodor Dostojewskis Roman\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Crime and Punishment",
+     "thema": "Literarische Analyse von Fjodor Dostojewskis Roman",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 69
+    }
+   },
+   {
+    "label": "IMG_2844",
+    "ms": 2623,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"The 33 Strategies of War, Robert Greene\",\n  \"thema\": \"Kriegsstrategien und taktisches Denken\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "The 33 Strategies of War, Robert Greene",
+     "thema": "Kriegsstrategien und taktisches Denken",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Parasail",
+    "usage": {
+     "in": 2219,
+     "out": 70
+    }
+   },
+   {
+    "label": "IMG_2845",
+    "ms": 3402,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"The History of Rome, Livy, 59 B.C.–A.D. 17\",\n  \"thema\": \"Strategische Umzingelung im Geschäft und Krieg\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "The History of Rome, Livy, 59 B.C.–A.D. 17",
+     "thema": "Strategische Umzingelung im Geschäft und Krieg",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Parasail",
+    "usage": {
+     "in": 2219,
+     "out": 82
+    }
+   },
+   {
+    "label": "IMG_2846",
+    "ms": 3793,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Strategy 19\",\n  \"thema\": \"Strategie und psychologische Kriegsführung\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Strategy 19",
+     "thema": "Strategie und psychologische Kriegsführung",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Parasail",
+    "usage": {
+     "in": 2219,
+     "out": 64
+    }
+   },
+   {
+    "label": "IMG_2847",
+    "ms": 4628,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"Die Kunst der Psychologie, Annika Durand\",\n  \"thema\": \"Psychologie und Manipulation im Alltag verstehen\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "Die Kunst der Psychologie, Annika Durand",
+     "thema": "Psychologie und Manipulation im Alltag verstehen",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Parasail",
+    "usage": {
+     "in": 2219,
+     "out": 68
+    }
+   },
+   {
+    "label": "IMG_2848",
+    "ms": 3674,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Annika Durand\",\n  \"thema\": \"Primings und die Sokrates-Methode im Alltag\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Annika Durand",
+     "thema": "Primings und die Sokrates-Methode im Alltag",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Parasail",
+    "usage": {
+     "in": 2219,
+     "out": 65
+    }
+   },
+   {
+    "label": "serie-a",
+    "ms": 6311,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Crime and Punishment, Fyodor Dostoyevsky\",\n  \"thema\": \"Handlung und Charaktere aus dem Roman\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Crime and Punishment, Fyodor Dostoyevsky",
+     "thema": "Handlung und Charaktere aus dem Roman",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Parasail",
+    "usage": {
+     "in": 6119,
+     "out": 71
+    }
+   },
+   {
+    "label": "serie-b",
+    "ms": 4546,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"The 33 Strategies of War, Robert Greene\",\n  \"thema\": \"Kriegsstrategien und psychologische Kriegsführung\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "The 33 Strategies of War, Robert Greene",
+     "thema": "Kriegsstrategien und psychologische Kriegsführung",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 6119,
+     "out": 73
+    }
+   },
+   {
+    "label": "serie-c",
+    "ms": 3805,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Die Kunst der Psychologie - Menschen lesen, Annika Durand\",\n  \"thema\": \"Manipulation erkennen und emotionale Intelligenz trainieren\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Die Kunst der Psychologie - Menschen lesen, Annika Durand",
+     "thema": "Manipulation erkennen und emotionale Intelligenz trainieren",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 4217,
+     "out": 75
+    }
+   }
+  ]
+ },
+ {
+  "model": "qwen/qwen3-vl-32b-instruct",
+  "rows": [
+   {
+    "label": "IMG_2840",
+    "ms": 2649,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"objekt\",\n  \"quelle\": \"Tabakverpackung mit Warnhinweis und Produktinformationen\",\n  \"thema\": \"Gesundheitsrisiken durch Tabakkonsum\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "objekt",
+     "quelle": "Tabakverpackung mit Warnhinweis und Produktinformationen",
+     "thema": "Gesundheitsrisiken durch Tabakkonsum",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 73
+    }
+   },
+   {
+    "label": "IMG_2841",
+    "ms": 2108,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"Fyodor Dostoyevsky, Crime and Punishment\",\n  \"thema\": \"Russische Literatur, Kriminalroman, psychologischer Roman\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "Fyodor Dostoyevsky, Crime and Punishment",
+     "thema": "Russische Literatur, Kriminalroman, psychologischer Roman",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 74
+    }
+   },
+   {
+    "label": "IMG_2842",
+    "ms": 2055,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Crime and Punishment, Fyodor Dostoevsky\",\n  \"thema\": \"Dialog zwischen Charakteren über moralische Entscheidungen und Beziehungen\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Crime and Punishment, Fyodor Dostoevsky",
+     "thema": "Dialog zwischen Charakteren über moralische Entscheidungen und Beziehungen",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 78
+    }
+   },
+   {
+    "label": "IMG_2843",
+    "ms": 1985,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Crime and Punishment, Fyodor Dostoevsky\",\n  \"thema\": \"Gespräch über Ehe, Geld und moralische Entscheidungen im Roman\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Crime and Punishment, Fyodor Dostoevsky",
+     "thema": "Gespräch über Ehe, Geld und moralische Entscheidungen im Roman",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 79
+    }
+   },
+   {
+    "label": "IMG_2844",
+    "ms": 2050,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"The 33 Strategies of War, Robert Greene\",\n  \"thema\": \"Kriegsstrategien und taktisches Denken in Konflikten\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "The 33 Strategies of War, Robert Greene",
+     "thema": "Kriegsstrategien und taktisches Denken in Konflikten",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 75
+    }
+   },
+   {
+    "label": "IMG_2845",
+    "ms": 1998,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"The History of Rome, Livy\",\n  \"thema\": \"Strategien zur Überwindung von Wettbewerbern durch Druck und Kontrolle\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "The History of Rome, Livy",
+     "thema": "Strategien zur Überwindung von Wettbewerbern durch Druck und Kontrolle",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 76
+    }
+   },
+   {
+    "label": "IMG_2846",
+    "ms": 2280,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": null,\n  \"thema\": \"Kriegsführung, psychologische Strategie und Raumwahrnehmung im Kampf\",\n  \"sicherheit\": \"mittel\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Kriegsführung, psychologische Strategie und Raumwahrnehmung im Kampf",
+     "sicherheit": "mittel",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 68
+    }
+   },
+   {
+    "label": "IMG_2847",
+    "ms": 2322,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"Die Kunst der Psychologie - Menschen lesen, Annika Durand\",\n  \"thema\": \"Psychologie, menschliches Verhalten, emotionale Intelligenz\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "Die Kunst der Psychologie - Menschen lesen, Annika Durand",
+     "thema": "Psychologie, menschliches Verhalten, emotionale Intelligenz",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 76
+    }
+   },
+   {
+    "label": "IMG_2848",
+    "ms": 2363,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": null,\n  \"thema\": \"Sokrates-Methode und kritisches Denken durch Fragen\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Sokrates-Methode und kritisches Denken durch Fragen",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 2219,
+     "out": 63
+    }
+   },
+   {
+    "label": "serie-a",
+    "ms": 6839,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Crime and Punishment, Fyodor Dostoyevsky\",\n  \"thema\": \"Russische Literatur, klassischer Roman, Charakterentwicklung und moralische Konflikte\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Crime and Punishment, Fyodor Dostoyevsky",
+     "thema": "Russische Literatur, klassischer Roman, Charakterentwicklung und moralische Konflikte",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 6119,
+     "out": 82
+    }
+   },
+   {
+    "label": "serie-b",
+    "ms": 3231,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"The 33 Strategies of War, Robert Greene\",\n  \"thema\": \"Strategien der Kriegsführung und psychologische Manipulation\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "The 33 Strategies of War, Robert Greene",
+     "thema": "Strategien der Kriegsführung und psychologische Manipulation",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 6119,
+     "out": 73
+    }
+   },
+   {
+    "label": "serie-c",
+    "ms": 3875,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Die Kunst der Psychologie, Annika Durand\",\n  \"thema\": \"Psychologische Methoden wie Priming und Sokrates-Methode\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Die Kunst der Psychologie, Annika Durand",
+     "thema": "Psychologische Methoden wie Priming und Sokrates-Methode",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Alibaba",
+    "usage": {
+     "in": 4217,
+     "out": 73
+    }
+   }
+  ]
+ },
+ {
+  "model": "z-ai/glm-4.6v",
+  "rows": [
+   {
+    "label": "IMG_2840",
+    "ms": 12935,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"objekt\",\n  \"quelle\": \"Zigarettenpackung mit Gesundheitswarnung\",\n  \"thema\": \"Gesundheitswarnung auf Zigarettenpackung: Krebserregende Stoffe im Tabakrauch\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "objekt",
+     "quelle": "Zigarettenpackung mit Gesundheitswarnung",
+     "thema": "Gesundheitswarnung auf Zigarettenpackung: Krebserregende Stoffe im Tabakrauch",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Novita",
+    "usage": {
+     "in": 2755,
+     "out": 297
+    }
+   },
+   {
+    "label": "IMG_2841",
+    "ms": 21641,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"Crime and Punishment, Fyodor Dostoyevsky\",\n  \"thema\": \"Schuld und Sühne, Roman von Fjodor Dostojewski\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "Crime and Punishment, Fyodor Dostoyevsky",
+     "thema": "Schuld und Sühne, Roman von Fjodor Dostojewski",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Novita",
+    "usage": {
+     "in": 2755,
+     "out": 602
+    }
+   },
+   {
+    "label": "IMG_2842",
+    "ms": 28697,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": null,\n  \"thema\": \"Englische Literatur, Romanlektüre\",\n  \"sicherheit\": \"mittel\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Englische Literatur, Romanlektüre",
+     "sicherheit": "mittel",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Novita",
+    "usage": {
+     "in": 2755,
+     "out": 788
+    }
+   },
+   {
+    "label": "IMG_2843",
+    "ms": 52102,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Crime and Punishment, Fyodor Dostoevsky\",\n  \"thema\": \"Roman \\\"Schuld und Sühne\\\" von Fyodor Dostojewski\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Crime and Punishment, Fyodor Dostoevsky",
+     "thema": "Roman \"Schuld und Sühne\" von Fyodor Dostojewski",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Novita",
+    "usage": {
+     "in": 2755,
+     "out": 342
+    }
+   },
+   {
+    "label": "IMG_2844",
+    "ms": 33043,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"The 33 Strategies of War, Robert Greene\",\n  \"thema\": \"Die 33 Strategien des Krieges\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "The 33 Strategies of War, Robert Greene",
+     "thema": "Die 33 Strategien des Krieges",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Novita",
+    "usage": {
+     "in": 2755,
+     "out": 695
+    }
+   },
+   {
+    "label": "IMG_2845",
+    "ms": 33004,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"The History of Rome\",\n  \"thema\": \"Historische Strategie aus der Geschichte Roms\",\n  \"sicherheit\": \"mittel\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "The History of Rome",
+     "thema": "Historische Strategie aus der Geschichte Roms",
+     "sicherheit": "mittel",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Novita",
+    "usage": {
+     "in": 2755,
+     "out": 422
+    }
+   },
+   {
+    "label": "IMG_2846",
+    "ms": 27598,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Keys to Warfare, Miyamoto Musashi\",\n  \"thema\": \"Kriegsführung, psychologische Strategien und historische Beispiele\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Keys to Warfare, Miyamoto Musashi",
+     "thema": "Kriegsführung, psychologische Strategien und historische Beispiele",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Novita",
+    "usage": {
+     "in": 2755,
+     "out": 474
+    }
+   },
+   {
+    "label": "IMG_2847",
+    "ms": 21740,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"DIE KUNST DER PSYCHOLOGIE - MENSCHEN LESEN, Annika Durand\",\n  \"thema\": \"Psychologie des Menschenlesens und emotionale Intelligenz\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "DIE KUNST DER PSYCHOLOGIE - MENSCHEN LESEN, Annika Durand",
+     "thema": "Psychologie des Menschenlesens und emotionale Intelligenz",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Novita",
+    "usage": {
+     "in": 2755,
+     "out": 458
+    }
+   },
+   {
+    "label": "IMG_2848",
+    "ms": 13337,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"ANNIKA DURAND\",\n  \"thema\": \"Psychologische Methoden wie Priming und Sokrates-Methode\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "ANNIKA DURAND",
+     "thema": "Psychologische Methoden wie Priming und Sokrates-Methode",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Novita",
+    "usage": {
+     "in": 2755,
+     "out": 310
+    }
+   },
+   {
+    "label": "serie-a",
+    "ms": 31510,
+    "raw": null,
+    "parsed": null,
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Z.AI",
+    "usage": {
+     "in": 7751,
+     "out": 900
+    }
+   },
+   {
+    "label": "serie-b",
+    "ms": 24260,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"The 33 Strategies of War, Robert Greene\",\n  \"thema\": \"Strategien der Kriegsführung und psychologische Taktiken\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "The 33 Strategies of War, Robert Greene",
+     "thema": "Strategien der Kriegsführung und psychologische Taktiken",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Z.AI",
+    "usage": {
+     "in": 7751,
+     "out": 862
+    }
+   },
+   {
+    "label": "serie-c",
+    "ms": 22542,
+    "raw": null,
+    "parsed": null,
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Z.AI",
+    "usage": {
+     "in": 5298,
+     "out": 900
+    }
+   }
+  ]
+ },
+ {
+  "model": "mistralai/mistral-small-3.2-24b-instruct",
+  "rows": [
+   {
+    "label": "IMG_2840",
+    "ms": 4593,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"objekt\",\n  \"quelle\": \"Zigarettenpackung\",\n  \"thema\": \"Warnhinweis auf Tabakprodukten\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "objekt",
+     "quelle": "Zigarettenpackung",
+     "thema": "Warnhinweis auf Tabakprodukten",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "DeepInfra",
+    "usage": {
+     "in": 2650,
+     "out": 64
+    }
+   },
+   {
+    "label": "IMG_2841",
+    "ms": 4950,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"Crime and Punishment, Fyodor Dostoevsky\",\n  \"thema\": \"Buchcover von Dostoevskys 'Schuld und Sühne'\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "Crime and Punishment, Fyodor Dostoevsky",
+     "thema": "Buchcover von Dostoevskys 'Schuld und Sühne'",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "DeepInfra",
+    "usage": {
+     "in": 2650,
+     "out": 78
+    }
+   },
+   {
+    "label": "IMG_2842",
+    "ms": 3267,
+    "raw": "```json\n{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Crime and Punishment, Fjodor Dostojewski\",\n  \"thema\": \"Dialog zwischen zwei Personen\",\n  \"sicherheit\": \"mittel\",\n  \"interpretation\": null\n}\n```",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Crime and Punishment, Fjodor Dostojewski",
+     "thema": "Dialog zwischen zwei Personen",
+     "sicherheit": "mittel",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "DeepInfra",
+    "usage": {
+     "in": 2650,
+     "out": 68
+    }
+   },
+   {
+    "label": "IMG_2843",
+    "ms": 2615,
+    "raw": "```json\n{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Raskolnikov, Fjodor Dostojewski\",\n  \"thema\": \"Dialog über Schuld und Sühne\",\n  \"sicherheit\": \"mittel\",\n  \"interpretation\": null\n}\n```",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Raskolnikov, Fjodor Dostojewski",
+     "thema": "Dialog über Schuld und Sühne",
+     "sicherheit": "mittel",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "DeepInfra",
+    "usage": {
+     "in": 2650,
+     "out": 70
+    }
+   },
+   {
+    "label": "IMG_2844",
+    "ms": 4098,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"The 33 Strategies of War, Robert Greene\",\n  \"thema\": \"Kriegsstrategien und ihre Anwendung\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "The 33 Strategies of War, Robert Greene",
+     "thema": "Kriegsstrategien und ihre Anwendung",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "DeepInfra",
+    "usage": {
+     "in": 2650,
+     "out": 67
+    }
+   },
+   {
+    "label": "IMG_2845",
+    "ms": 4510,
+    "raw": "```json\n{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"The History of Rome, Livy\",\n  \"thema\": \"Strategien der Belagerung und Einschließung\",\n  \"sicherheit\": \"mittel\",\n  \"interpretation\": null\n}\n```",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "The History of Rome, Livy",
+     "thema": "Strategien der Belagerung und Einschließung",
+     "sicherheit": "mittel",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "DeepInfra",
+    "usage": {
+     "in": 2650,
+     "out": 69
+    }
+   },
+   {
+    "label": "IMG_2846",
+    "ms": 2151,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Strategy 19\",\n  \"thema\": \"Militärische Strategie und Psychologie\",\n  \"sicherheit\": \"mittel\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Strategy 19",
+     "thema": "Militärische Strategie und Psychologie",
+     "sicherheit": "mittel",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "DeepInfra",
+    "usage": {
+     "in": 2650,
+     "out": 61
+    }
+   },
+   {
+    "label": "IMG_2847",
+    "ms": 2453,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"Die Kunst der Psychologie - Menschen lesen, Annika Durand\",\n  \"thema\": \"Psychologie und Manipulation\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "Die Kunst der Psychologie - Menschen lesen, Annika Durand",
+     "thema": "Psychologie und Manipulation",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "DeepInfra",
+    "usage": {
+     "in": 2650,
+     "out": 66
+    }
+   },
+   {
+    "label": "IMG_2848",
+    "ms": 4511,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Annika Durand\",\n  \"thema\": \"Sokratische Methode\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Annika Durand",
+     "thema": "Sokratische Methode",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "DeepInfra",
+    "usage": {
+     "in": 2650,
+     "out": 56
+    }
+   },
+   {
+    "label": "serie-a",
+    "ms": 6286,
+    "raw": "```json\n{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Fjodor Dostojewski, Verbrechen und Strafe\",\n  \"thema\": \"Dialog über Schuld und Sühne\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}\n```",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Fjodor Dostojewski, Verbrechen und Strafe",
+     "thema": "Dialog über Schuld und Sühne",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "DeepInfra",
+    "usage": {
+     "in": 7438,
+     "out": 72
+    }
+   },
+   {
+    "label": "serie-b",
+    "ms": 6836,
+    "raw": "```json\n{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"The 33 Strategies of War, Robert Greene\",\n  \"thema\": \"Strategien der Kriegsführung und Psychologie\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}\n```",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "The 33 Strategies of War, Robert Greene",
+     "thema": "Strategien der Kriegsführung und Psychologie",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "DeepInfra",
+    "usage": {
+     "in": 7438,
+     "out": 72
+    }
+   },
+   {
+    "label": "serie-c",
+    "ms": 6683,
+    "raw": "```json\n{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"Die Kunst der Menschenlesen, Annika Durand\",\n  \"thema\": \"Psychologie der Manipulation und Kommunikation\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}\n```",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "Die Kunst der Menschenlesen, Annika Durand",
+     "thema": "Psychologie der Manipulation und Kommunikation",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Parasail",
+    "usage": {
+     "in": 5086,
+     "out": 71
+    }
+   }
+  ]
+ }
+]

@@ -1,0 +1,207 @@
+[
+ {
+  "model": "nvidia/nemotron-nano-12b-v2-vl:free",
+  "rows": [
+   {
+    "label": "IMG_2840",
+    "ms": 90010,
+    "raw": null,
+    "parsed": null,
+    "parseErr": null,
+    "httpError": "The operation was aborted due to timeout",
+    "provider": null,
+    "usage": null
+   },
+   {
+    "label": "IMG_2841",
+    "ms": 3369,
+    "raw": "```json\n{\n  \"erkennbar\": true,\n  \"typ\": \"cover\",\n  \"quelle\": \"Titel, Autor\",\n  \"thema\": \"Thema fehlt, da Titel/Autor nicht lesbar\",\n  \"sicherheit\": \"niedrig\",\n  \"interpretation\": null\n}\n```\n",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "Titel, Autor",
+     "thema": "Thema fehlt, da Titel/Autor nicht lesbar",
+     "sicherheit": "niedrig",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Nvidia",
+    "usage": {
+     "in": 3631,
+     "out": 70
+    }
+   },
+   {
+    "label": "IMG_2842",
+    "ms": 13984,
+    "raw": "```json\n{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": null,\n  \"thema\": \"Comprehension of dialogue in literary text\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}\n```\n",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Comprehension of dialogue in literary text",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Nvidia",
+    "usage": {
+     "in": 3631,
+     "out": 61
+    }
+   },
+   {
+    "label": "IMG_2843",
+    "ms": 90009,
+    "raw": null,
+    "parsed": null,
+    "parseErr": null,
+    "httpError": "The operation was aborted due to timeout",
+    "provider": null,
+    "usage": null
+   },
+   {
+    "label": "IMG_2844",
+    "ms": 3917,
+    "raw": "{\n\"erkennbar\": true,\n\"typ\": \"cover\",\n\"quelle\": \"The 33 Strategies of War, Robert Greene\",\n\"thema\": \"Geschichtliche Strategien des Krieges\",\n\"sicherheit\": \"hoch\",\n\"interpretation\": null\n}\n",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "cover",
+     "quelle": "The 33 Strategies of War, Robert Greene",
+     "thema": "Geschichtliche Strategien des Krieges",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Nvidia",
+    "usage": {
+     "in": 3631,
+     "out": 60
+    }
+   },
+   {
+    "label": "IMG_2845",
+    "ms": 3207,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": null,\n  \"thema\": \"Psychologische Gegner und ihre Strategien\",\n  \"sicherheit\": \"hoch\",\n  \"interpretation\": null\n}\n",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Psychologische Gegner und ihre Strategien",
+     "sicherheit": "hoch",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Nvidia",
+    "usage": {
+     "in": 3631,
+     "out": 56
+    }
+   },
+   {
+    "label": "IMG_2846",
+    "ms": 4264,
+    "raw": "```json\n{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": null,\n  \"thema\": \"Anne hlstory of war und ihre Auswirkungen\",\n  \"sicherheit\": \"niedrig\",\n  \"interpretation\": null\n}\n```\n",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Anne hlstory of war und ihre Auswirkungen",
+     "sicherheit": "niedrig",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Nvidia",
+    "usage": {
+     "in": 3631,
+     "out": 62
+    }
+   },
+   {
+    "label": "IMG_2847",
+    "ms": 90008,
+    "raw": null,
+    "parsed": null,
+    "parseErr": null,
+    "httpError": "The operation was aborted due to timeout",
+    "provider": null,
+    "usage": null
+   },
+   {
+    "label": "IMG_2848",
+    "ms": 3747,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": null,\n  \"thema\": \"Gedankenexperimente und kritisches Denken\",\n  \"sicherheit\": \"mittel\",\n  \"interpretation\": null\n}\n",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Gedankenexperimente und kritisches Denken",
+     "sicherheit": "mittel",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Nvidia",
+    "usage": {
+     "in": 3631,
+     "out": 59
+    }
+   },
+   {
+    "label": "serie-a",
+    "ms": 90016,
+    "raw": null,
+    "parsed": null,
+    "parseErr": null,
+    "httpError": "The operation was aborted due to timeout",
+    "provider": null,
+    "usage": null
+   },
+   {
+    "label": "serie-b",
+    "ms": 7502,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": null,\n  \"thema\": \"Gewalt in Konfliktsituationen\",\n  \"sicherheit\": \"mittel\",\n  \"interpretation\": null\n}\n",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": null,
+     "thema": "Gewalt in Konfliktsituationen",
+     "sicherheit": "mittel",
+     "interpretation": null
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Nvidia",
+    "usage": {
+     "in": 10390,
+     "out": 57
+    }
+   },
+   {
+    "label": "serie-c",
+    "ms": 4960,
+    "raw": "{\n  \"erkennbar\": true,\n  \"typ\": \"textseite\",\n  \"quelle\": \"null\",\n  \"thema\": \"Psychologie, Manipulation, Mind Control, Emotionale Intelligenz, Trainingsansätze\",\n  \"sicherheit\": \"niedrig\",\n  \"interpretation\": \"null\"\n}\n",
+    "parsed": {
+     "erkennbar": true,
+     "typ": "textseite",
+     "quelle": "null",
+     "thema": "Psychologie, Manipulation, Mind Control, Emotionale Intelligenz, Trainingsansätze",
+     "sicherheit": "niedrig",
+     "interpretation": "null"
+    },
+    "parseErr": null,
+    "httpError": null,
+    "provider": "Nvidia",
+    "usage": {
+     "in": 7055,
+     "out": 73
+    }
+   }
+  ]
+ }
+]

@@ -10,6 +10,7 @@ ref-v1/
 
 # Xcode
 app/build/
+app/build-sim/
 app/DerivedData/
 *.xcuserdatad/
 canvas-webkit-*.png
@@ -28,3 +29,8 @@ bench-runs/
 # Mockup-Shots (reproduzierbar via shot-mockup.mjs)
 probes/label-mockup/shots/
 probes/verify-shots/
+probes/foto-testset/jpg/
+probes/foto-testset/orig/
+app/MockupFotos/
+runs/
+probes/foto-testset/mockup-shots/
