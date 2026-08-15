@@ -43,15 +43,17 @@ enum FotoErkennung {
         return .erkannt
     }
 
-    /// Die Fotos gehen als base64 an die Function — ein Aufruf für den ganzen
-    /// Stapel, weil die Serie EINE Quelle ist (Design-Lock „eine Quelle pro Durchgang").
-    static func erkennen(bilder: [Data]) async throws -> ErkennungsErgebnis {
+    /// Ein Aufruf für den ganzen Stapel, weil die Serie EINE Quelle ist
+    /// (Design-Lock „eine Quelle pro Durchgang") — aber nur mit den Pfaden im
+    /// Eingang, nicht mit den Bildern selbst. Die Fotos sind zu diesem Zeitpunkt
+    /// längst einzeln hochgeladen; der Aufruf ist ein paar hundert Byte groß und
+    /// reißt deshalb nicht mehr ab.
+    static func erkennen(pfade: [String]) async throws -> ErkennungsErgebnis {
         if let fake { return try await fake.antwort() }
         try await Supa.signInIfNeeded()
-        let body = ["images": bilder.map { $0.base64EncodedString() }]
         return try await Supa.client.functions.invoke(
             "erkenne-foto",
-            options: FunctionInvokeOptions(body: body)
+            options: FunctionInvokeOptions(body: ["paths": pfade])
         )
     }
 

@@ -34,6 +34,7 @@
 		A71302FC2AC7DB11FC512BDC /* FotoBestaetigungView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529D9FFF1980E35E3429A258 /* FotoBestaetigungView.swift */; };
 		A89AB26EF00BAF3C6CA84667 /* LearnSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CA1462341CC5F1D05443F45 /* LearnSessionView.swift */; };
 		AF08F0DD64A0AD24CA5020C0 /* FotoFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C59BB62F4ACE41EE0494679 /* FotoFlowUITests.swift */; };
+		B26463F1D9B6E3689C595EFA /* FotoUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33D360838D4F4F2810456B0 /* FotoUpload.swift */; };
 		CDAE5E4FFFF02108E0803FA1 /* SRSEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7382B31C35ABA5CDA24D09EC /* SRSEngineTests.swift */; };
 		D05467AD3E3E5CB157E6C914 /* JobTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD5EC2D518A3B0154A2C70C6 /* JobTests.swift */; };
 		E1E1E7222D9FE59F2F4248D5 /* FotoFluss.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCA65F797DD614DB450C1400 /* FotoFluss.swift */; };
@@ -94,6 +95,7 @@
 		BF41B04F35932A3626F0F27B /* wie-nervenzellen-feuern.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "wie-nervenzellen-feuern.json"; sourceTree = "<group>"; };
 		C0A0ADB6977076D548B9CD42 /* LernkartenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LernkartenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C17FF59B5DF6884CB7CA6BD2 /* card-canvas.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "card-canvas.html"; sourceTree = "<group>"; };
+		C33D360838D4F4F2810456B0 /* FotoUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FotoUpload.swift; sourceTree = "<group>"; };
 		C7D10A04C4C52025F397B005 /* warum-wir-schlafen.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "warum-wir-schlafen.json"; sourceTree = "<group>"; };
 		DCA65F797DD614DB450C1400 /* FotoFluss.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FotoFluss.swift; sourceTree = "<group>"; };
 		DD5EC2D518A3B0154A2C70C6 /* JobTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobTests.swift; sourceTree = "<group>"; };
@@ -192,6 +194,7 @@
 				4C0C89EC48BE84BAE6206CA0 /* FotoFlowMockup.swift */,
 				DCA65F797DD614DB450C1400 /* FotoFluss.swift */,
 				36DDFD41797E767ADADB6547 /* FotoOCR.swift */,
+				C33D360838D4F4F2810456B0 /* FotoUpload.swift */,
 				59B157F27F112B4A02C6EA71 /* JobStore.swift */,
 				3CA1462341CC5F1D05443F45 /* LearnSessionView.swift */,
 				2FAB3C95C6CFC06CF2E5DC3A /* LernkartenApp.swift */,
@@ -360,6 +363,7 @@
 				2B66A03B861B1AB0585F83CD /* FotoFlowMockup.swift in Sources */,
 				E1E1E7222D9FE59F2F4248D5 /* FotoFluss.swift in Sources */,
 				E25ABDC1DABA7FB9E7446354 /* FotoOCR.swift in Sources */,
+				B26463F1D9B6E3689C595EFA /* FotoUpload.swift in Sources */,
 				09BAB8CD88431EC4FB67A923 /* JobStore.swift in Sources */,
 				A89AB26EF00BAF3C6CA84667 /* LearnSessionView.swift in Sources */,
 				E86F91863670D25E6AA9759D /* LernkartenApp.swift in Sources */,

@@ -1,12 +1,23 @@
-// Foto-Erkennung: die App schickt 1-5 Fotos, wir fragen Qwen über OpenRouter und geben
-// das Erkennungs-Contract-JSON zurück. Synchron — der Nutzer wartet live vor dem Schirm.
-// Fehlerklassen bleiben getrennt: Infra (Netz, Timeout, OpenRouter-HTTP) wird als 502
-// gemeldet und NIE als erkennbar:false; nur ein Modell, das nicht liefert, degradiert.
+// Foto-Erkennung: die App lädt 1-5 Fotos einzeln in den Eingangs-Bucket und ruft
+// uns danach nur noch mit den Pfaden — der Aufruf ist damit ein paar hundert Byte
+// statt mehrerer Megabyte. Grund ist gemessen: 4 Fotos als base64 im Body waren
+// 2,66 MB und rissen über Mobilfunk mitten im Upload ab, ohne dass der Request je
+// hier ankam. Die Bilder holen wir rechenzentrums-intern und löschen sie sofort
+// wieder — der Eingang ist ein Durchlauf, kein Archiv.
+//
+// Fehlerklassen bleiben getrennt: Infra (Storage, Netz, Timeout, OpenRouter-HTTP)
+// wird als 502 gemeldet und NIE als erkennbar:false; nur ein Modell, das nicht
+// liefert, degradiert ehrlich.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import { encodeBase64 } from "jsr:@std/encoding/base64";
 
 const MODELL = "qwen/qwen3-vl-32b-instruct";
 const TIMEOUT_MS = 60000;
+const STORAGE_TIMEOUT_MS = 15000;
+const AUTH_TIMEOUT_MS = 10000;
 const MAX_BILDER = 5;
+const BUCKET = "foto-eingang";
 
 // Prompts wortgleich aus probes/foto-testset/bench-erkennung.mjs — gebencht und
 // gelockt (Qwen3-VL-32B, Lauf 15.08.). Wortlaut nicht verändern.
@@ -124,40 +135,127 @@ function parseAntwort(raw: string | null) {
   };
 }
 
+// Die Bilder liegen im Eingang. Wir laden mit der service_role, also an RLS
+// vorbei — deshalb ist die Ordner-Prüfung oben Pflicht und nicht Zierde.
+// Promise.all hält die Reihenfolge: bei einer Serie steht das Cover vorn, und
+// genau darauf stützt das Modell die gemeinsame Quelle.
+async function ladeBilder(
+  admin: ReturnType<typeof createClient>,
+  pfade: string[],
+): Promise<string[]> {
+  return await Promise.all(pfade.map(async (pfad) => {
+    const t = Date.now();
+    const { data, error } = await mitFrist(
+      admin.storage.from(BUCKET).download(pfad),
+      STORAGE_TIMEOUT_MS,
+      `Storage-Download ${pfad}`,
+    );
+    if (error || !data) {
+      throw new InfraFehler(`Foto nicht ladbar (${pfad}): ${error?.message ?? "leere Antwort"}`);
+    }
+    const bytes = new Uint8Array(await data.arrayBuffer());
+    console.log(`geladen ${pfad} ${bytes.length}B in ${Date.now() - t}ms`);
+    return encodeBase64(bytes);
+  }));
+}
+
+// Ein Aufruf ohne eigene Frist kann die ganze Function bis zum Wall-Clock-Limit
+// blockieren — dann stirbt sie stumm und der Aufrufer wartet ins Leere. Jede
+// Wartestelle bekommt deshalb ihre eigene Frist mit benennbarem Fehler.
+function mitFrist<T>(arbeit: Promise<T>, ms: number, was: string): Promise<T> {
+  return Promise.race([
+    arbeit,
+    new Promise<T>((_, ab) =>
+      setTimeout(() => ab(new InfraFehler(`${was}: keine Antwort nach ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
+// Der Eingang wird immer geleert — auch wenn die Erkennung scheitert. Ein
+// misslungenes Aufräumen darf die Antwort nie kippen, es wird nur protokolliert.
+// Gelöscht wird über die Storage-API, nicht per SQL: ein DELETE auf
+// storage.objects entfernt die Zeile, lässt den Blob aber liegen.
+async function aufraeumen(
+  admin: ReturnType<typeof createClient>,
+  pfade: string[],
+): Promise<void> {
+  try {
+    const { error } = await admin.storage.from(BUCKET).remove(pfade);
+    if (error) console.error("Aufräumen fehlgeschlagen:", error.message);
+  } catch (e) {
+    console.error("Aufräumen fehlgeschlagen:", e);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Nur POST" }, 405);
 
   const key = Deno.env.get("OPENROUTER_API_KEY");
   if (!key) return json({ error: "OPENROUTER_API_KEY nicht gesetzt" }, 500);
 
-  let body: { images?: unknown };
+  const url = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !serviceKey) return json({ error: "Supabase-Umgebung unvollständig" }, 500);
+
+  let body: { paths?: unknown };
   try {
     body = await req.json();
   } catch {
     return json({ error: "Body ist kein JSON" }, 400);
   }
 
-  const bilder = body?.images;
-  if (!Array.isArray(bilder)) return json({ error: "images fehlt oder ist kein Array" }, 400);
-  if (bilder.length === 0) return json({ error: "images ist leer" }, 400);
-  if (bilder.length > MAX_BILDER) {
+  const pfade = body?.paths;
+  if (!Array.isArray(pfade)) return json({ error: "paths fehlt oder ist kein Array" }, 400);
+  if (pfade.length === 0) return json({ error: "paths ist leer" }, 400);
+  if (pfade.length > MAX_BILDER) {
     return json({ error: `hoechstens ${MAX_BILDER} Bilder pro Anfrage` }, 400);
   }
-  if (!bilder.every((b) => typeof b === "string" && b.length > 0)) {
-    return json({ error: "images enthaelt leere oder nicht-String-Eintraege" }, 400);
+  if (!pfade.every((p) => typeof p === "string" && p.length > 0)) {
+    return json({ error: "paths enthaelt leere oder nicht-String-Eintraege" }, 400);
   }
-  if (bilder.some((b) => (b as string).startsWith("data:"))) {
-    return json({ error: "images erwartet reines base64 ohne data:-Praefix" }, 400);
+
+  // Wer ruft? Die service_role unten sieht jeden Ordner, also muss hier gebunden
+  // werden, wessen Fotos gelesen werden dürfen — sonst wäre ein fremder Pfad im
+  // Body genug, um fremde Aufnahmen zu lesen.
+  const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!jwt) return json({ error: "Kein Token" }, 401);
+
+  const tStart = Date.now();
+  const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
+  let uid: string | undefined;
+  try {
+    const { data: nutzer, error: authFehler } = await mitFrist(
+      admin.auth.getUser(jwt),
+      AUTH_TIMEOUT_MS,
+      "Token-Prüfung",
+    );
+    if (authFehler) return json({ error: "Token ungueltig" }, 401);
+    uid = nutzer?.user?.id;
+  } catch (e) {
+    return json({ error: e instanceof Error ? e.message : "Token-Pruefung fehlgeschlagen" }, 502);
+  }
+  if (!uid) return json({ error: "Token ungueltig" }, 401);
+  console.log(`auth ok nach ${Date.now() - tStart}ms, ${pfade.length} Pfade`);
+
+  const praefix = `${uid}/`;
+  if (!(pfade as string[]).every((p) => p.startsWith(praefix) && !p.includes(".."))) {
+    return json({ error: "paths liegen nicht im eigenen Eingang" }, 403);
   }
 
   const t0 = Date.now();
   try {
-    let ergebnis = parseAntwort(await frageModell(bilder as string[], key));
+    const bilder = await ladeBilder(admin, pfade as string[]);
+    const tModell = Date.now();
+    console.log(`modell start: ${bilder.length} Bilder, ${bilder.reduce((s, b) => s + b.length, 0)} b64-Zeichen`);
+    let ergebnis = parseAntwort(await frageModell(bilder, key));
     // Genau ein Retry — Vision-Modelle brechen gelegentlich mitten im JSON ab.
-    if (!ergebnis) ergebnis = parseAntwort(await frageModell(bilder as string[], key));
+    if (!ergebnis) ergebnis = parseAntwort(await frageModell(bilder, key));
+    console.log(`modell fertig nach ${Date.now() - tModell}ms`);
     return json({ ...(ergebnis ?? UNKLAR), ms: Date.now() - t0 }, 200);
   } catch (e) {
     if (e instanceof InfraFehler) return json({ error: e.message }, 502);
     throw e;
+  } finally {
+    await aufraeumen(admin, pfade as string[]);
   }
 });

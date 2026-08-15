@@ -6,13 +6,17 @@ import UIKit
 /// AVFoundation-Session und der Simulator-Ersatz. Der Bildschirm dazu steht in
 /// FotoAufnahmeView, das Layout kommt 1:1 aus FotoFlowMockup (bindende Spec).
 
-/// Ein geschossenes Foto. `jpeg` ist die verkleinerte Fassung, die als base64 an
-/// die Erkennung geht; `ocr` füllt der Vision-Lauf im Hintergrund nach.
+/// Ein geschossenes Foto. `jpeg` ist die verkleinerte Fassung, die in den Eingang
+/// hochgeladen wird; `ocr` füllt der Vision-Lauf im Hintergrund nach, `upload` der
+/// Netz-Lauf. Beide starten beim Auslösen und laufen, während weiterfotografiert wird.
 struct AufgenommenesFoto: Identifiable, Equatable {
     let id = UUID()
     let bild: UIImage
     let jpeg: Data
     var ocr: String?
+    var upload: FotoUploadZustand = .laeuft
+
+    var pfad: String? { upload.pfad }
 }
 
 /// Verkleinern vor jeder Weiterverarbeitung: ein iPhone-Foto hat 12 MP und wäre

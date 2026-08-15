@@ -167,10 +167,47 @@ final class FotoTests: XCTestCase {
         }
         print("WIRE Bild-KB: \(bilder.map { $0.count / 1024 }) gesamt \(bilder.reduce(0) { $0 + $1.count } / 1024)")
 
-        let e = try await FotoErkennung.erkennen(bilder: bilder)
+        // Der echte Weg: jedes Foto einzeln in den Eingang, danach die Erkennung
+        // nur mit den Pfaden. Genau hier riss der alte Ein-Paket-Upload ab.
+        try await Supa.signInIfNeeded()
+        let uid = try await Supa.client.auth.session.user.id
+        let durchgang = UUID()
+        var pfade: [String] = []
+        for (i, jpeg) in bilder.enumerated() {
+            let start = Date()
+            let zustand = await FotoUpload.hochladen(jpeg, uid: uid, durchgang: durchgang, index: i + 1)
+            print("WIRE Upload \(i + 1): \(zustand) in \(String(format: "%.1f", -start.timeIntervalSinceNow))s")
+            pfade.append(try XCTUnwrap(zustand.pfad, "Upload \(i + 1) gescheitert: \(zustand)"))
+        }
+
+        let e = try await FotoErkennung.erkennen(pfade: pfade)
         print("WIRE Ergebnis: \(e)")
         XCTAssert(e.erkennbar, "Serie B ist erkennbar")
         XCTAssertEqual(FotoErkennung.zustand(e), .erkannt)
+    }
+
+    /// Die Storage-Policy vergleicht den ersten Ordner mit `auth.uid()`, und
+    /// Postgres schreibt UUIDs klein. Swifts `uuidString` ist groß — ohne
+    /// Kleinschreibung lehnt die Policy jeden Upload ab, ohne dass am Pfad etwas
+    /// falsch AUSSIEHT.
+    func testEingangsPfadIstKleingeschrieben() {
+        let uid = UUID(uuidString: "AA11BB22-CC33-4D44-8E55-FF6677889900")!
+        let pfad = FotoUpload.pfad(uid: uid, durchgang: UUID(), index: 2)
+        XCTAssertTrue(pfad.hasPrefix("aa11bb22-cc33-4d44-8e55-ff6677889900/"),
+                      "Der Nutzer-Ordner muss kleingeschrieben sein, sonst greift die Policy nicht")
+        XCTAssertTrue(pfad.hasSuffix("/2.jpg"))
+        XCTAssertEqual(pfad.split(separator: "/").count, 3, "uid/durchgang/index.jpg")
+        XCTAssertEqual(pfad, pfad.lowercased())
+    }
+
+    /// Ein hochgeladenes Foto trägt seinen Pfad, ein gescheitertes nicht — daran
+    /// entscheidet der Fluss, ob er die Erkennung überhaupt rufen darf.
+    func testUploadZustandTraegtDenPfad() {
+        XCTAssertEqual(FotoUploadZustand.fertig("a/b/1.jpg").pfad, "a/b/1.jpg")
+        XCTAssertNil(FotoUploadZustand.laeuft.pfad)
+        XCTAssertNil(FotoUploadZustand.fehler("Verbindung abgerissen (-1005)").pfad)
+        XCTAssertTrue(FotoUploadZustand.fehler("x").gescheitert)
+        XCTAssertFalse(FotoUploadZustand.laeuft.gescheitert)
     }
 
     // ── Alteinträge ohne die neue Spalte ──

@@ -76,7 +76,38 @@ final class FotoFlowUITests: XCTestCase {
         XCTAssertEqual(zaehler.label, "2", "Der Stapel überlebt den Rückweg")
     }
 
+    /// Reißt der Upload endgültig ab, sagt die App WAS abgerissen ist und ruft die
+    /// Erkennung gar nicht erst — mit halbem Stapel würde die Serie ihre Quelle
+    /// verlieren. Das ist Leons Fehlerfall vom 15.08., nur erzwungen.
+    func testAbgerissenerUploadNenntDenGrundUndErkenntNicht() throws {
+        let app = starten(erkennung: "erkannt", upload: "fehler")
+        kameraOeffnen(app)
+        schiessen(app, 2)
+
+        app.buttons["foto-fertig"].tap()
+
+        let hinweis = app.staticTexts["foto-fehler"]
+        XCTAssert(hinweis.waitForExistence(timeout: 15), "Der Abbruch muss sichtbar werden")
+        XCTAssert(hinweis.label.contains("hochladen"), "Der Hinweis nennt die Stufe: \(hinweis.label)")
+        XCTAssert(hinweis.label.contains("-1005"), "Und die technische Klasse: \(hinweis.label)")
+        XCTAssertFalse(app.staticTexts["foto-titel"].exists,
+                       "Ohne vollständigen Stapel darf keine Erkennung erscheinen")
+        XCTAssert(app.images["foto-upload-fehler"].firstMatch.exists
+                    || app.otherElements["foto-upload-fehler"].firstMatch.exists,
+                  "Das betroffene Foto ist im Stapel markiert")
+    }
+
     // ── Shots der echten Screens ──
+
+    func testShotUploadFehler() throws {
+        let app = starten(erkennung: "erkannt", upload: "fehler")
+        kameraOeffnen(app)
+        schiessen(app, 2)
+        app.buttons["foto-fertig"].tap()
+        XCTAssert(app.staticTexts["foto-fehler"].waitForExistence(timeout: 15))
+        sleep(1)
+        shot("upload-fehler")
+    }
 
     func testShotAufnahme() throws {
         let app = starten(erkennung: nil)
@@ -117,9 +148,13 @@ final class FotoFlowUITests: XCTestCase {
 
     // ── Werkzeug ──
 
-    private func starten(erkennung: String?) -> XCUIApplication {
+    /// Der Upload wird IMMER gefälscht. Ohne das lädt jeder UI-Testlauf echte
+    /// Fotos in den Eingang — sie kämen dort nie wieder weg, weil die gefälschte
+    /// Erkennung die Function gar nicht erst ruft, die sonst aufräumt.
+    private func starten(erkennung: String?, upload: String = "ok") -> XCUIApplication {
         let app = XCUIApplication()
-        var args = ["-srs-local-only", "-jobs-local-only", "-foto-fake-kamera"]
+        var args = ["-srs-local-only", "-jobs-local-only", "-foto-fake-kamera",
+                    "-foto-fake-upload", upload]
         if let erkennung { args += ["-foto-fake-erkennung", erkennung] }
         app.launchArguments = args
         app.launch()

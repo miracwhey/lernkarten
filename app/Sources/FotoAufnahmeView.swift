@@ -92,7 +92,9 @@ struct FotoAufnahmeView: View {
                 ProgressView()
                     .controlSize(.small)
                     .tint(Theme.paper)
-                Text("Ich schaue mir deine Fotos an")
+                // Solange noch Bilder rausgehen, sagt der Hinweis genau das — sonst
+                // behauptet er ein Anschauen, das noch gar nicht begonnen hat.
+                Text(modell.uploadsLaufen ? "Deine Fotos gehen noch raus" : "Ich schaue mir deine Fotos an")
                     .microCaps()
                     .foregroundStyle(Theme.paper)
             }
@@ -105,15 +107,17 @@ struct FotoAufnahmeView: View {
     }
 
     /// Ein 502 der Function ist ein technischer Fehler — nie der Zustand „unsicher".
+    /// Der Grund steht im Klartext dabei: am Gerät gibt es keine Konsole, in die
+    /// man schauen könnte, also ist dieser Kasten die einzige Fehlerquelle.
     private var fehlerkarte: some View {
         HStack(spacing: 10) {
-            Text("Technischer Fehler — versuch es gleich noch einmal")
+            Text(modell.fehlertext ?? "Technischer Fehler — versuch es gleich noch einmal")
                 .font(.system(size: 13.5))
                 .foregroundStyle(Theme.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("foto-fehler")
             Spacer(minLength: 0)
-            Button { Task { await modell.erkennen() } } label: {
+            Button { Task { await modell.nochmal() } } label: {
                 Text("Nochmal")
                     .font(.system(size: 13.5, weight: .semibold))
                     .foregroundStyle(Theme.ink)
@@ -142,6 +146,20 @@ struct FotoAufnahmeView: View {
                         .frame(width: 44, height: 58)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.line))
+                        // Der Normalfall bleibt still — das Mockup zeigt hier nackte
+                        // Vorschauen. Nur ein endgültig gescheiterter Upload meldet
+                        // sich, damit kein Foto unbemerkt aus dem Stapel fällt.
+                        .overlay(alignment: .topTrailing) {
+                            if foto.upload.gescheitert {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Theme.bad)
+                                    .padding(2)
+                                    .background(Theme.paper, in: Circle())
+                                    .offset(x: 4, y: -4)
+                                    .accessibilityIdentifier("foto-upload-fehler")
+                            }
+                        }
                 }
                 Text("\(modell.fotos.count)")
                     .font(.system(size: 13, weight: .semibold))
