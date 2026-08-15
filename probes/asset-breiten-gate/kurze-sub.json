@@ -1,0 +1,138 @@
+{
+  "id": "den-feind-einkreisen",
+  "title": "Den Feind einkreisen",
+  "source": "Nach: Robert Greene, The 33 Strategies of War",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "STRATEGIE 19 · ROBERT GREENE",
+      "title": "Den Feind einkreisen",
+      "sub": "Wie du Handlungsspielräume schließt, ohne frontal anzugreifen",
+      "stats": "7 Karten · 4 Minuten"
+    },
+    {
+      "relation": "contrast",
+      "text": "Du nimmst nicht das Zentrum zuerst: Du schließt Flanken und Rückzugswege — das ist <b>Einkreisung</b>.",
+      "left": {
+        "title": "FRONTALANGRIFF",
+        "color": "es",
+        "items": [
+          {
+            "label": "Zentrum treffen",
+            "sub": "Ein Schlag soll entscheiden"
+          },
+          {
+            "label": "Kräfte bündeln",
+            "sub": "Der Gegner sieht dich kommen"
+          }
+        ]
+      },
+      "right": {
+        "title": "WEGE SCHLIESSEN",
+        "color": "ich",
+        "items": [
+          {
+            "label": "Flanken beschneiden",
+            "sub": "Zugänge werden enger"
+          },
+          {
+            "label": "Schritt für Schritt",
+            "sub": "Der Spielraum nimmt ab"
+          }
+        ]
+      },
+      "caption": "Statt den Laden anzugreifen, sperrst du Lieferanten und Transportwege.",
+      "type": "compare"
+    },
+    {
+      "relation": "intersection",
+      "text": "Du erzeugst den Ring, indem du mehrere kleine Abhängigkeiten zugleich verengst — nicht durch eine einzelne Maßnahme.",
+      "a": {
+        "label": "ABHÄNGIGKEITEN",
+        "color": "es"
+      },
+      "b": {
+        "label": "AUSWEGE",
+        "color": "ich"
+      },
+      "overlap": {
+        "label": [
+          "RING",
+          "SCHLIESST"
+        ],
+        "color": "ueberich"
+      },
+      "caption": "Lieferanten, Bahnwege, Fassfabriken und Pipelines bilden gemeinsam Druck.",
+      "type": "venn"
+    },
+    {
+      "relation": "trend",
+      "text": "Du schließt langsam und lässt einen Ausweg sichtbar, damit dein Gegner nicht früh mit voller Kraft ausbricht.",
+      "xlabel": "SCHRITTE",
+      "ylabel": "OFFENE WEGE",
+      "series": [
+        {
+          "label": "Echte Wege",
+          "color": "es",
+          "shape": "decay-halflife",
+          "from": "high",
+          "to": "low"
+        },
+        {
+          "label": "Sichtbarer Ausweg",
+          "color": "ich",
+          "shape": "flat",
+          "from": "mid",
+          "to": "mid"
+        }
+      ],
+      "caption": "Ein Transportweg wird enger — ein anderer scheint noch offen.",
+      "type": "curve"
+    },
+    {
+      "relation": "object",
+      "text": "Du handelst nach dem Ausweg, den du noch wahrnimmst — nicht nur nach dem, was objektiv offensteht. Das ist <b>psychologische Einkreisung</b>.",
+      "asset": {
+        "ref": "psyche.person",
+        "role": "hero",
+        "labels": {
+          "innen": "WAS DU NOCH SIEHST",
+          "aussen": "WAS OFFEN BLEIBT"
+        },
+        "subs": {
+          "innen": "ALTERNATIVE WIRKT REAL",
+          "aussen": "KAUM GESEHEN"
+        }
+      },
+      "caption": "Ein Ausweg existiert — doch du hältst ihn nicht mehr für realistisch.",
+      "type": "asset"
+    },
+    {
+      "type": "quiz",
+      "question": "Du willst einen starken Konkurrenten schwächen. Welche Abfolge passt zur Strategie?",
+      "options": [
+        {
+          "label": "Sofort das Zentrum frontal angreifen",
+          "correct": false
+        },
+        {
+          "label": "Zugänge verengen, Ausweg sichtbar lassen",
+          "correct": true
+        },
+        {
+          "label": "Alle Wege schließen, bis er verzweifelt",
+          "correct": false
+        }
+      ],
+      "explain": "Die <strong>Einkreisung</strong> schließt Flanken und Abhängigkeiten schrittweise. Ein scheinbarer Ausweg lenkt vom direkten Ausbruch ab; völlige Enge kann Widerstand verstärken.",
+      "wrong": "Die intuitive Falle: Sofortiger Angriff oder völlige Enge wirken entschlossen, geben dem Gegner aber Anlass zum Ausbruch oder maximalen Widerstand."
+    },
+    {
+      "type": "insight",
+      "quote": "Die psychologische Einkreisung beruht auf demselben Prinzip wie die physische.",
+      "cite": "Greene, Strategy 19",
+      "explain": "<b>Was außen Wege verengt, kann innen als fehlende Alternative erscheinen.</b>"
+    }
+  ],
+  "depth": "kompakt"
+}

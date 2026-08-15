@@ -133,6 +133,7 @@ Die Grenze bedeutet „unter der Oberfläche / außerhalb der Kontrolle" — nur
 - **`labels`** beschriften die Plätze, die das Objekt mitbringt. Du bestimmst den TEXT, nie die Position. Ein Platz, den du wegläßt, bleibt leer — das ist erlaubt und oft besser.
 - **`subs`** ist die zweite Zeile unter einem Label: die Elaboration, die aus dem Begriff ein Bild macht („WAS DU ZEIGST" → „WORTE, GESTIK, TATEN"). Eine Sub-Zeile ohne ihr Label gibt es nicht. Nicht jeder Platz trägt eine (steht unten, gemessen).
 - **`notes`** sind freie Anmerkungen an einem Gegenstand des Objekts: `anker` sagt, WORAN sie hängen, das System setzt Punkt, Text und ggf. Zeigefinger. Nutze sie für etwas, das das Bild allein nicht sagt — nie, um ein Label zu wiederholen. `ton` färbt die Anmerkung in der Farb-Semantik (z. B. `es` für den Trieb, der sich meldet).
+- **Die Plätze sind schmal, und geprüft wird die BREITE — nicht die Zeichenzahl.** Der Deckel je Platz unten ist ein Richtwert; breite Versalien (W, M, G, O, N) brauchen fast doppelt so viel Platz wie I oder L, ein Text auf dem Deckel kann also trotzdem zu breit sein. Kurze, gewöhnliche Wörter — keine langen Wort-Ungetüme.
 - **Keine Koordinaten, keine Größen, keine Zeilenumbrüche.** Zu lange Texte bricht das System selbst um.
 
 #### Verfügbare Objekte

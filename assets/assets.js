@@ -35,6 +35,16 @@ window.ASSET_MANIFEST = {
           "subMax": {
             "hero": 0,
             "inline": 0
+          },
+          "breiteMax": {
+            "hero": {
+              "label": 353.98,
+              "sub": 0
+            },
+            "inline": {
+              "label": 292.38,
+              "sub": 0
+            }
           }
         },
         {
@@ -45,6 +55,16 @@ window.ASSET_MANIFEST = {
           "subMax": {
             "hero": 1,
             "inline": 1
+          },
+          "breiteMax": {
+            "hero": {
+              "label": 304,
+              "sub": 304
+            },
+            "inline": {
+              "label": 262.4,
+              "sub": 262.38
+            }
           }
         },
         {
@@ -55,6 +75,16 @@ window.ASSET_MANIFEST = {
           "subMax": {
             "hero": 1,
             "inline": 1
+          },
+          "breiteMax": {
+            "hero": {
+              "label": 280.11,
+              "sub": 18.84
+            },
+            "inline": {
+              "label": 166.65,
+              "sub": 9.41
+            }
           }
         }
       ],
@@ -105,6 +135,12 @@ window.ASSET_MANIFEST = {
           "beispiel": "SONNENLICHT",
           "subMax": {
             "hero": 6
+          },
+          "breiteMax": {
+            "hero": {
+              "label": 100.56,
+              "sub": 57.41
+            }
           }
         },
         {
@@ -114,6 +150,12 @@ window.ASSET_MANIFEST = {
           "beispiel": "BLAU — IN ALLE RICHTUNGEN",
           "subMax": {
             "hero": 28
+          },
+          "breiteMax": {
+            "hero": {
+              "label": 207.44,
+              "sub": 207.44
+            }
           }
         },
         {
@@ -123,6 +165,12 @@ window.ASSET_MANIFEST = {
           "beispiel": "ROT — LÄUFT DURCH",
           "subMax": {
             "hero": 34
+          },
+          "breiteMax": {
+            "hero": {
+              "label": 147.49,
+              "sub": 381.97
+            }
           }
         }
       ],
@@ -173,6 +221,16 @@ window.ASSET_MANIFEST = {
           "subMax": {
             "hero": 34,
             "inline": 6
+          },
+          "breiteMax": {
+            "hero": {
+              "label": 379.97,
+              "sub": 379.99
+            },
+            "inline": {
+              "label": 307.99,
+              "sub": 55.94
+            }
           }
         },
         {
@@ -184,6 +242,16 @@ window.ASSET_MANIFEST = {
           "subMax": {
             "hero": 20,
             "inline": 7
+          },
+          "breiteMax": {
+            "hero": {
+              "label": 143.99,
+              "sub": 143.99
+            },
+            "inline": {
+              "label": 166.38,
+              "sub": 166.36
+            }
           }
         }
       ],

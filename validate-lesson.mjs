@@ -61,6 +61,52 @@ export const ASSETS = ladeAssets();
 /// Eisberg gehören ihren Karten-Typen) stehen dem LLM NICHT zur Verfügung.
 export const ASSET_REFS = Object.entries(ASSETS).filter(([, a]) => !a.verbraucher).map(([ref]) => ref);
 
+// ————————————————————— v3: Breiten-Maß der Label-Plätze —————————————————————
+// Ein Zeichen-Deckel misst die falsche Größe. Die Label-Plätze eines Assets stehen STATISCH
+// (Position und Ausrichtung stehen als `data-slot` in der SVG-Datei, es gibt keinen Solver,
+// der ausweichen könnte) — ob ein Text dort hineinpasst, entscheidet seine BREITE. Gemessen:
+// „NICHT WAHRGENOMMEN" hielt den Deckel (18 ≤ 20) und lief trotzdem rechts aus der Karte,
+// „WÜNSCHE · ÄNGSTE · ALTE MUSTER" (30 Zeichen) passt bequem. Breite Versalien sprengen den
+// Platz bei legaler Zeichenzahl; einen engeren Deckel zu setzen wäre die falsche Antwort, er
+// verböte auch die schmalen langen Texte. Der Deckel bleibt als Richtwert, die Breite kommt dazu.
+//
+// assets/textmasse.json trägt die Vorschübe der echten Wirtsschrift (erzeugt und geprüft von
+// probes/asset-slot-max.mjs). Damit steht die Breite HIER fest, ohne Browser — und genau
+// deshalb ist ein zu breiter Text eine Contract-Verletzung, die in die Patch-Runde geht,
+// statt später im Audit als CLIP die Kette mit einem System-Fehler abzubrechen.
+let TEXTMASSE_LADEFEHLER = null;
+function ladeTextmasse() {
+  try {
+    return JSON.parse(readFileSync(new URL("./assets/textmasse.json", import.meta.url), "utf8")).masse || null;
+  } catch (e) {
+    TEXTMASSE_LADEFEHLER = e.message;
+    return null;
+  }
+}
+export const TEXTMASSE = ladeTextmasse();
+
+/// Breite eines Textes in Karten-Einheiten: Summe der Zeichen-Vorschübe plus das Kerning
+/// der Nachbarpaare. Alle Werte der Tabelle sind nach OBEN gerundet, das Ergebnis liegt
+/// deshalb nie unter dem, was der Browser zeichnet — das Gate urteilt nie lockerer als das
+/// Audit, das dieselbe Box misst. Was die Tabelle nicht kennt, macht es strenger: ein
+/// unbekanntes Zeichen zählt als breitester je gemessener Glyph, ein unbekanntes Paar mit
+/// dem am stärksten spreizenden Kerning.
+export function textBreite(text, ebene) {
+  const m = TEXTMASSE?.[ebene];
+  if (!m) return null;
+  const cs = [...String(text)];
+  let summe = 0;
+  for (let i = 0; i < cs.length; i++) {
+    const v = m.vorschub[cs[i]];
+    summe += v === undefined ? m.fremd : v;
+    if (i + 1 < cs.length) {
+      const beide = m.vorschub[cs[i]] !== undefined && m.vorschub[cs[i + 1]] !== undefined;
+      summe += beide ? (m.kern[cs[i] + cs[i + 1]] ?? 0) : m.maxKernPlus;
+    }
+  }
+  return summe;
+}
+
 /// Wachstums-Backlog: jeder echte Miss wird protokolliert — er ist die Bestellung für
 /// die nächste Asset-Runde (generieren → normalisieren → QA → einlagern), nicht bloß
 /// ein Fehler. Schreibfehler dürfen NIE die Validierung kippen: das Backlog ist ein
@@ -323,6 +369,34 @@ export function validateLesson(lesson, opts = {}) {
     if (plain.length > max) err(path, `zu lang (${plain.length} > ${max}): "${plain.slice(0, 40)}…"`);
   };
   const color = (v, path) => { if (!COLORS.has(v)) err(path, `ungültige Farbe "${v}" (erlaubt: es, ich, ueberich)`); };
+  /// Breite eines Platz-Textes gegen das gemessene Maß des Platzes. Sie ERGÄNZT den
+  /// Zeichen-Deckel: der Deckel begrenzt die Menge, die Breite den Platz. `weg` ist der
+  /// zweite Ausweg neben dem Kürzen — die Meldung trägt beide, damit die Patch-Runde ohne
+  /// Rückfrage korrigieren kann.
+  const breite = (v, path, slot, ref, rolle, ebene, weg) => {
+    const grenze = slot.breiteMax?.[rolle]?.[ebene];
+    const plain = String(v).replace(/<[^>]+>/g, "");
+    const w = textBreite(plain, ebene);
+    // Fehlt das Maß, wird NICHT still durchgewinkt: ein Gate, das seine eigene Grundlage
+    // nicht hat, deckt nichts ab. Die Meldung sagt, dass hier das Werkzeug fehlt und nicht
+    // der Text — sonst kürzt die Patch-Runde an einem Text, der in Ordnung ist.
+    if (grenze === undefined || w === null)
+      return err(path, `Breiten-Maß fehlt (`
+        + (w === null ? `Schriftmaße nicht lesbar${TEXTMASSE_LADEFEHLER ? `: ${TEXTMASSE_LADEFEHLER}` : ""}`
+          : `kein gemessenes breiteMax für Platz „${slot.id}" von „${ref}" als „${rolle}"`)
+        + `) — das ist ein Werkzeug-Fehler, kein Text-Fehler: `
+        + `node probes/asset-slot-max.mjs --schreiben && node build-assets.mjs`);
+    if (w <= grenze) return;
+    // „Kürze auf ca. N Zeichen" statt „kürze": N ist aus DIESEM Text gerechnet (seine
+    // mittlere Zeichenbreite), nicht aus dem Deckel — ein Text aus breiten Versalien
+    // bekommt eine kleinere Zahl als einer aus schmalen.
+    const passt = Math.max(1, Math.floor(plain.length * grenze / w));
+    err(path, `zu breit für den Platz „${slot.id}" von „${ref}" als „${rolle}" `
+      + `(gemessen ${w.toFixed(1)} von ${grenze} Einheiten): "${plain.slice(0, 40)}${plain.length > 40 ? "…" : ""}". `
+      + `Der Platz steht fest und ist schmal; es zählt die BREITE, nicht die Zeichenzahl — `
+      + `breite Versalien (W, M, G, O, N) brauchen fast doppelt so viel Platz wie I oder L. `
+      + `Kürze auf ca. ${passt} Zeichen dieser Breite ODER ${weg}.`);
+  };
   const arr = (v, path, min, max) => {
     if (!Array.isArray(v)) { err(path, `braucht ${min}–${max} Einträge (fehlt oder ist kein Array)`); return false; }
     if (v.length < min || v.length > max) {
@@ -496,13 +570,25 @@ export function validateLesson(lesson, opts = {}) {
           + `setze ${p}.asset.role = "${rollen[0]}" oder wähle ein Objekt, das ${a.role} trägt`);
       const slots = eintrag.labelSlots || [];
       const namen = slots.map((s) => s.id);
+      // Die Breite eines Platzes hängt an der ROLLE (inline staucht die Komposition auf
+      // 60 %, die Schrift bleibt gleich groß). Trägt das Objekt die verlangte Rolle nicht,
+      // steht der Fehler schon oben — dann wird nicht zusätzlich gemessen, sonst nennte die
+      // Meldung eine Grenze, die es für diese Rolle gar nicht gibt.
+      const rolle = a.role ?? "hero";
+      const rolleOk = rollen.includes(rolle);
       if (a.labels !== undefined) {
         if (typeof a.labels !== "object" || Array.isArray(a.labels)) {
           err(p + ".asset.labels", `muss ein Objekt {platz: "TEXT"} sein — Plätze dieses Objekts: ${namen.join(", ") || "(keine)"}`);
         } else for (const [k, v] of Object.entries(a.labels)) {
           const slot = slots.find((s) => s.id === k);
           if (!slot) { err(`${p}.asset.labels.${k}`, `"${k}" ist kein Label-Platz von "${a.ref}" (vorhanden: ${namen.join(", ") || "keine"})`); continue; }
-          str(v, `${p}.asset.labels.${k}`, slot.max);
+          const pfad = `${p}.asset.labels.${k}`;
+          // Nur messen, wenn der Deckel nicht schon angeschlagen hat: zwei Meldungen zu
+          // einem Feld schickten die Patch-Runde in zwei Richtungen.
+          const vorher = errs.length;
+          str(v, pfad, slot.max);
+          if (errs.length === vorher && rolleOk)
+            breite(v, pfad, slot, a.ref, rolle, "label", `lass ${pfad} weg (ein leerer Platz ist erlaubt)`);
         }
       }
       // Sub-Zeile: die Elaboration eines Label-Platzes. Sie hängt konstruktiv an ihrem
@@ -523,7 +609,6 @@ export function validateLesson(lesson, opts = {}) {
           // Der Deckel hängt an der ROLLE: inline staucht die Komposition auf 60 %, die
           // Schrift bleibt gleich groß — derselbe Platz trägt dort weniger. Ein Minimum
           // über beide Rollen wäre kein Deckel, sondern eine Verengung.
-          const rolle = a.role ?? "hero";
           const deckel = slot.subMax?.[rolle];
           if (!(deckel > 0)) {
             const woAnders = Object.entries(slot.subMax || {}).filter(([, n]) => n > 0).map(([r, n]) => `${r}: ${n}`);
@@ -532,7 +617,11 @@ export function validateLesson(lesson, opts = {}) {
               + ` ODER entferne ${p}.asset.subs.${k} (null löscht das Feld).`);
             continue;
           }
-          str(v, `${p}.asset.subs.${k}`, deckel);
+          const pfad = `${p}.asset.subs.${k}`;
+          const vorher = errs.length;
+          str(v, pfad, deckel);
+          if (errs.length === vorher && rolleOk)
+            breite(v, pfad, slot, a.ref, rolle, "sub", `entferne ${pfad} (null löscht das Feld)`);
         }
       }
       // Freie Anker-Notes: die Karte sagt WORAN die Anmerkung hängt, nie WO sie steht.
