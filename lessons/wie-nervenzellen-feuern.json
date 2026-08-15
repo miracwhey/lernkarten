@@ -1,0 +1,344 @@
+{
+  "id": "wie-nervenzellen-feuern",
+  "title": "Wie Nervenzellen feuern",
+  "source": "Nach: Fakten-Dossier, Wie Nervenzellen feuern",
+  "cards": [
+    {
+      "type": "title",
+      "eyebrow": "NEUROWISSENSCHAFT · GRUNDLAGEN",
+      "title": "Wie Nervenzellen feuern",
+      "sub": "Vom ersten Reiz bis zum Signal an der nächsten Zelle",
+      "stats": "13 Karten · 8 Minuten"
+    },
+    {
+      "relation": "object",
+      "text": "Du nimmst einen Reiz auf: Er wird gesammelt, löst ein Signal aus und läuft am Axon bis zur nächsten Zelle. Dieses Signal heißt <b>Aktionspotenzial</b>.",
+      "asset": {
+        "ref": "biology.neuron",
+        "role": "hero",
+        "labels": {
+          "reize": "REIZE KOMMEN AN",
+          "feuert": "AB HIER FEUERT ES",
+          "sprung": "SIGNAL SPRINGT ÜBER"
+        }
+      },
+      "sequence": [
+        {
+          "verb": "reveal",
+          "target": "node:dendrit"
+        },
+        {
+          "verb": "pulse",
+          "from": "node:dendrit",
+          "to": "node:soma"
+        },
+        {
+          "verb": "highlight",
+          "target": "node:soma"
+        },
+        {
+          "verb": "pulse",
+          "from": "node:soma",
+          "to": "node:synapse"
+        }
+      ],
+      "caption": "Beim Tippen meldet eine Nervenzelle den Reiz von deiner Haut weiter.",
+      "type": "asset"
+    },
+    {
+      "relation": "trend",
+      "text": "Du löst ein <b>Aktionspotenzial</b> erst aus, wenn die Depolarisation am Axoninitialsegment ungefähr −55 mV erreicht.",
+      "xlabel": "REIZSTÄRKE",
+      "ylabel": "SPANNUNG",
+      "series": [
+        {
+          "label": "Was du spürst",
+          "color": "ich",
+          "shape": "saturating-rise",
+          "from": "low",
+          "to": "high"
+        }
+      ],
+      "stop": {
+        "label": "SCHWELLE −55 MV",
+        "t": 0.65
+      },
+      "notes": [
+        {
+          "label": "Jetzt geht es los",
+          "series": 0,
+          "t": 0.7,
+          "side": "above"
+        }
+      ],
+      "caption": "Ein lauter Knall kann die Schwelle erreichen — ein leises Geräusch vielleicht nicht.",
+      "type": "curve"
+    },
+    {
+      "relation": "contrast",
+      "text": "Du machst das einzelne Aktionspotenzial nicht größer: Unter der Schwelle bleibt es aus, darüber läuft es vollständig ab. Mehr Reiz kann aber die Frequenz erhöhen.",
+      "left": {
+        "title": "UNTER SCHWELLE",
+        "color": "es",
+        "items": [
+          {
+            "label": "Kein Signal",
+            "sub": "es läuft nichts ab"
+          },
+          {
+            "label": "Reiz bleibt lokal",
+            "sub": "keine volle Antwort"
+          }
+        ]
+      },
+      "right": {
+        "title": "ÜBER SCHWELLE",
+        "color": "ich",
+        "items": [
+          {
+            "label": "Volles Signal",
+            "sub": "Alles oder nichts"
+          },
+          {
+            "label": "Mehr Reiz",
+            "sub": "mehr Signale pro Zeit"
+          }
+        ]
+      },
+      "caption": "Ein stärkerer Druck macht nicht ein größeres Signal, sondern kann öfter feuern lassen.",
+      "type": "compare"
+    },
+    {
+      "relation": "loop",
+      "text": "Erreichst du die Schwelle, öffnen sich spannungsabhängige Natriumkanäle. Natrium strömt hinein und öffnet weitere Kanäle: eine <b>positive Rückkopplung</b>.",
+      "steps": [
+        {
+          "label": "SCHWELLE",
+          "sub": "wird erreicht",
+          "color": "es"
+        },
+        {
+          "label": "TORE ÖFFNEN",
+          "sub": "Na⁺ strömt hinein",
+          "color": "ich"
+        },
+        {
+          "label": "WIRD POSITIV",
+          "sub": "innen wird positiver",
+          "color": "ich"
+        },
+        {
+          "label": "MEHR TORE",
+          "sub": "wird schneller",
+          "color": "ueberich"
+        }
+      ],
+      "caption": "Wie eine Tür, die weitere Türen öffnet: Der Spannungsanstieg beschleunigt sich.",
+      "type": "cycle"
+    },
+    {
+      "relation": "contrast",
+      "text": "Nach dem steilen Aufstrich wird die Membran wieder negativer: Natriumkanäle werden inaktiviert, während sich Kaliumkanäle verzögert öffnen. Das heißt <b>Repolarisation</b>.",
+      "left": {
+        "title": "NATRIUM",
+        "color": "es",
+        "items": [
+          {
+            "label": "Kanäle inaktiv",
+            "sub": "kein weiterer Einstrom"
+          },
+          {
+            "label": "Aufstrich endet",
+            "sub": "das Signal kippt"
+          }
+        ]
+      },
+      "right": {
+        "title": "KALIUM",
+        "color": "ich",
+        "items": [
+          {
+            "label": "Kanäle öffnen",
+            "sub": "etwas verzögert"
+          },
+          {
+            "label": "K⁺ strömt hinaus",
+            "sub": "innen wird negativer"
+          }
+        ]
+      },
+      "caption": "Nach einem kurzen Hoch fährt die Spannung wieder herunter — wie ein Schalter.",
+      "type": "compare"
+    },
+    {
+      "relation": "descent",
+      "text": "Du kannst direkt danach kein neues Signal auslösen: Inaktivierte Natriumkanäle blockieren es. Später geht es nur mit einem stärkeren Reiz, weil die Kaliumleitfähigkeit noch erhöht ist.",
+      "steps": [
+        {
+          "label": "NA-TORE ZU",
+          "sub": "noch nicht bereit",
+          "color": "es"
+        },
+        {
+          "label": "K⁺-STROM",
+          "sub": "macht innen negativer",
+          "color": "es"
+        },
+        {
+          "label": "NEUER REIZ",
+          "sub": "kommt nur schwer durch",
+          "color": "ich",
+          "submerged": true
+        }
+      ],
+      "sink": {
+        "label": "REFRAKTÄR"
+      },
+      "caption": "Nach einem Sprint brauchst du kurz Erholung — ein zweiter Start gelingt nicht sofort.",
+      "type": "flow"
+    },
+    {
+      "relation": "contrast",
+      "text": "Du leitest ein Signal mit Myelin schneller weiter: Unter der Isolierung breitet es sich passiv aus und wird an den Ranvier‑Schnürringe neu erzeugt.",
+      "left": {
+        "title": "OHNE MYELIN",
+        "color": "es",
+        "items": [
+          {
+            "label": "0,5–2 M/S",
+            "sub": "langsamer unterwegs"
+          },
+          {
+            "label": "Viele Abschnitte",
+            "sub": "jeder Abschnitt arbeitet"
+          }
+        ]
+      },
+      "right": {
+        "title": "MIT MYELIN",
+        "color": "ich",
+        "items": [
+          {
+            "label": "BIS 120 M/S",
+            "sub": "deutlich schneller"
+          },
+          {
+            "label": "Knoten zu Knoten",
+            "sub": "dort wird es erneuert"
+          }
+        ]
+      },
+      "caption": "Ein isoliertes Kabel verliert weniger Ladung — das Signal kommt schneller an.",
+      "type": "compare"
+    },
+    {
+      "relation": "loop",
+      "text": "Trifft das Aktionspotenzial am Endknöpfchen ein, öffnen sich Ca²⁺-Kanäle. Ca²⁺ löst Transmitterausschüttung aus; der Transmitter bindet an Rezeptoren der nächsten Zelle.",
+      "steps": [
+        {
+          "label": "SIGNAL DA",
+          "sub": "am Endknöpfchen",
+          "color": "ich"
+        },
+        {
+          "label": "CA²⁺ EIN",
+          "sub": "Kanäle öffnen sich",
+          "color": "ueberich"
+        },
+        {
+          "label": "BOTE FREI",
+          "sub": "Vesikel verschmelzen",
+          "color": "ich"
+        },
+        {
+          "label": "REZEPTOR AN",
+          "sub": "Zelle reagiert",
+          "color": "ueberich"
+        }
+      ],
+      "caption": "Am Kontakt zwischen Zellen wird aus einem elektrischen Signal ein chemischer Bote.",
+      "type": "cycle"
+    },
+    {
+      "relation": "weighing",
+      "text": "Du feuerst am Axoninitialsegment nur, wenn sich erregende Signale summieren und die Schwelle trotz hemmender Signale erreichen.",
+      "left": {
+        "label": "ERREGUNG",
+        "sub": "EPSPs addieren",
+        "color": "ich"
+      },
+      "right": {
+        "label": "HEMMUNG",
+        "sub": "IPSPs bremsen",
+        "color": "es"
+      },
+      "pivot": {
+        "label": "FEUERN",
+        "sub": "Schwelle da",
+        "color": "ueberich"
+      },
+      "type": "balance"
+    },
+    {
+      "relation": "contrast",
+      "text": "Die Natrium-Kalium-Pumpe erhält die Ionengradienten: Pro ATP transportiert sie <b>3 Na⁺ nach außen</b> und <b>2 K⁺ nach innen</b>.",
+      "left": {
+        "title": "NACH AUSSEN",
+        "color": "es",
+        "items": [
+          {
+            "label": "3 Na⁺",
+            "sub": "werden hinausbefördert"
+          },
+          {
+            "label": "Gradient bleibt",
+            "sub": "mit ATP-Verbrauch"
+          }
+        ]
+      },
+      "right": {
+        "title": "NACH INNEN",
+        "color": "ich",
+        "items": [
+          {
+            "label": "2 K⁺",
+            "sub": "werden hineingebracht"
+          },
+          {
+            "label": "Ungleich verteilt",
+            "sub": "die Spannung bleibt möglich"
+          }
+        ]
+      },
+      "caption": "Eine Pumpe sortiert Ionen ständig zurück — wie ein Aufräumdienst nach dem Signal.",
+      "type": "compare"
+    },
+    {
+      "type": "quiz",
+      "question": "Du reizt dieselbe Nervenzelle immer stärker. Was ändert sich typischerweise?",
+      "options": [
+        {
+          "label": "Das einzelne Aktionspotenzial wird größer.",
+          "correct": false
+        },
+        {
+          "label": "Mehr Aktionspotenziale pro Zeit",
+          "correct": true
+        },
+        {
+          "label": "Unterhalb der Schwelle feuert sie",
+          "correct": false
+        }
+      ],
+      "explain": "<strong>Richtig:</strong> Ein einzelnes Aktionspotenzial folgt dem Alles-oder-nichts-Prinzip. Ein stärkerer Reiz kann vor allem die Frequenz erhöhen.",
+      "wrong": "Die falsche Intuition ist: mehr Reiz müsse ein größeres einzelnes Signal erzeugen."
+    },
+    {
+      "type": "insight",
+      "quote": "Neuronen, die gemeinsam feuern, verschalten sich gemeinsam.",
+      "cite": "Neurowissenschaftlicher Merksatz",
+      "explain": "Der Merksatz beschreibt, wie gemeinsames Feuern erfahrungsabhängig zur <b>synaptischen Verstärkung</b> beitragen kann."
+    }
+  ],
+  "depth": "standard"
+}
