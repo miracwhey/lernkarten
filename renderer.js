@@ -2,6 +2,141 @@ const C = (key) => `var(--${key})`;
 const SOFT = (key) => `var(--${key}-soft)`;
 const MEASURE_CTX = document.createElement("canvas").getContext("2d");
 
+// ————————————————— Geometrie-Werkbank (EINE Quelle für alle Karten-Typen) —————————————————
+// Boxen, Kollisionen, Abstände, Textmaße. Bis v3-Schritt 3 lagen diese Werkzeuge lokal
+// in RENDERERS.curve; seit die Asset-Karte ebenfalls Text an Geometrie bindet, stehen
+// sie hier. Eine zweite Fassung derselben Mathematik wäre eine zweite Wahrheit — Kurve,
+// Asset und label-audit müssen über DIESELBEN Rechtecke streiten, sonst misst das Gate
+// etwas anderes, als der Renderer gezeichnet hat.
+
+// Gewicht mitmessen: Notes rendern leichter als Serien-Labels, sonst misst der
+// Solver eine andere Breite als der Browser zeichnet.
+const measure = (txt, size, weight = 700) => {
+  MEASURE_CTX.font = `${weight} ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+  return MEASURE_CTX.measureText(txt).width + txt.length * size * 0.08;
+};
+const RAD = Math.PI / 180;
+// Textkörper in Zahlen, an der ECHTEN Schrift gemessen (probes: getBBox gegen
+// font-size): die Box ist 1.21·Größe hoch und ihre Mitte liegt 0.385·Größe über der
+// Grundlinie. Ein geschätztes Kasten-Maß ließe Renderer und Audit über verschieden
+// große Rechtecke streiten — dieselbe Zahl auf beiden Seiten macht die Prüfung erst
+// aussagekräftig. Etwas größer als die reale Box ist sie bewusst (Sicherheitssaum).
+const BOX_H = 1.21, BASE_OFF = 0.385;
+const boxH = (size) => size * BOX_H + 1;
+// Ein Sticky-Label liegt auf der Tangente seines Strichs — seine Box ist GEDREHT.
+// Achsparallel gerechnet wäre sie an einer 25°-Kurve ein Vielfaches zu groß und
+// schlüge Lagen aus, die der Text nie berührt. Die ganze Schicht rechnet deshalb
+// mit orientierten Rechtecken; deg=0 ist der Sonderfall (Note, Achse, Ereignis).
+const rect = (cx, cy, w, h, deg = 0) => ({ cx, cy, w, h, deg });
+const toLocal = (r, x, y) => {
+  const a = r.deg * RAD, c = Math.cos(a), s = Math.sin(a), dx = x - r.cx, dy = y - r.cy;
+  return [dx * c + dy * s, dy * c - dx * s];
+};
+const toWorld = (r, lx, ly) => {
+  const a = r.deg * RAD, c = Math.cos(a), s = Math.sin(a);
+  return [r.cx + lx * c - ly * s, r.cy + lx * s + ly * c];
+};
+const cornersOf = (r) => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => toWorld(r, u * r.w / 2, v * r.h / 2));
+const grow = (r, px, py = px) => rect(r.cx, r.cy, r.w + 2 * px, r.h + 2 * py, r.deg);
+const inRect = (r, x, y) => { const [u, v] = toLocal(r, x, y); return Math.abs(u) <= r.w / 2 && Math.abs(v) <= r.h / 2; };
+// Abstand einer Label-BOX zu einem Punkt. Bewusst von der Box aus gemessen, nicht
+// vom Mittelpunkt: ein breites Label kann mit der Mitte weit von einer Kurve liegen
+// und mit dem Rand direkt daran — das Auge (und das Audit) sehen den Rand.
+const distRect = (r, x, y) => {
+  const [u, v] = toLocal(r, x, y);
+  return Math.hypot(Math.max(Math.abs(u) - r.w / 2, 0), Math.max(Math.abs(v) - r.h / 2, 0));
+};
+// Überlappung zweier orientierter Rechtecke: Trennachsen-Test über beide Achsenpaare.
+const hitRect = (A, B) => {
+  const ca = cornersOf(A), cb = cornersOf(B);
+  for (const R of [A, B]) {
+    const a = R.deg * RAD;
+    for (const [ax, ay] of [[Math.cos(a), Math.sin(a)], [-Math.sin(a), Math.cos(a)]]) {
+      let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+      for (const [x, y] of ca) { const p = x * ax + y * ay; if (p < a0) a0 = p; if (p > a1) a1 = p; }
+      for (const [x, y] of cb) { const p = x * ax + y * ay; if (p < b0) b0 = p; if (p > b1) b1 = p; }
+      if (a1 < b0 || b1 < a0) return false;
+    }
+  }
+  return true;
+};
+// Abstand zwischen zwei BESCHRIFTUNGEN, gerichtet: LÄNGS der Leserichtung braucht es
+// mehr als den Wortabstand der Schrift, sonst lesen sich zwei Texte als ein Satz
+// („Gefühlter Druck DRUCK MASKIERT"). QUER dazu genügt wenig — zwei Zeilen übereinander
+// liest niemand als eine; die gestapelte Apex-Note lebt genau davon. Gewachsen wird im
+// gedrehten Rahmen des Labels, „längs" ist also seine Grundlinie.
+const LUFT_X = 7, LUFT_Y = 2;
+const hitPix = (r, pix) => pix.some(([x, y]) => inRect(r, x, y));
+const distPix = (r, pix) => { let best = Infinity; for (const [x, y] of pix) { const d = distRect(r, x, y); if (d < best) best = d; } return best; };
+// Belegung einer EINZELNEN Karte: die Boxen, die schon stehen. Je Karte eine eigene
+// Liste — eine geteilte ließe die zweite Karte auf die Lagen der ersten ausweichen.
+const belegung = () => {
+  const placed = [];                                 // orientierte Boxen aller schon gesetzten Objekte
+  const put = (r) => { placed.push(r); return r; };
+  const hitPlaced = (r, px = 4, py = px) => { const q = grow(r, px, py); return placed.some((o) => hitRect(q, o)); };
+  // Schadensmaß für Notlagen. EIN Geometrie-Treffer wiegt schwerer als jede Zahl von
+  // Reservierungs-Überschneidungen: Text auf einer Linie ist ein sichtbarer Defekt,
+  // ein Anschnitt an einer (großzügig bemessenen) Reservierung ist keiner.
+  const schadenVon = (r, pix) => {
+    const q = grow(r, 2);
+    const treffer = pix.filter(([x, y]) => inRect(q, x, y)).length;
+    return (treffer ? 1000 + treffer : 0) + 40 * placed.filter((o) => hitRect(q, o)).length;
+  };
+  return { placed, put, hitPlaced, schadenVon };
+};
+// `attrs` trägt die Zugehörigkeit ins DOM — Audits messen die Bindung damit am
+// gezeichneten Objekt, ohne die Geometrie ein zweites Mal zu berechnen. Die Farbe steht
+// INLINE: die Klassenregeln (.c-series/.c-note) tragen einen Grundton und schlügen ein
+// fill-Attribut.
+const textSvg = (r, size, txt, cls, fill, attrs = "") => {
+  const dreh = r.deg ? ` rotate(${r.deg.toFixed(1)})` : "";
+  return `<text class="svglabel ${cls}" transform="translate(${r.cx.toFixed(1)} ${r.cy.toFixed(1)})${dreh}"
+        y="${(size * BASE_OFF).toFixed(2)}" font-size="${size}" text-anchor="middle" style="fill:${fill}" ${attrs}>${txt}</text>`;
+};
+const leaderSvg = (g, anker, extra = "") => g
+  ? `<line class="leader"${AN(anker)}${extra} x1="${g.x1.toFixed(1)}" y1="${g.y1.toFixed(1)}" x2="${g.x2.toFixed(1)}" y2="${g.y2.toFixed(1)}"/>`
+  : "";
+
+// ——— Leader: die letzte Degradation einer Text-Bindung ———
+// Ein Leader ist hart gedeckelt: ein langer Strich quer durchs Bild verbindet zwar
+// formal, wird aber als eigene Geometrie gelesen statt als Zeigefinger. LEADER_AB ist
+// der Abstand, ab dem ein Text ohne Strich nicht mehr erkennbar zum Anker gehört.
+const LEADER_MAX = 40, LEADER_AB = 12;
+// Austrittspunkt AUF der Verbindung Mitte→Anker (Slab-Schnitt mit der Box). Ein an der
+// Box-Kante entlang gerechneter Startpunkt läge bei breiten Labels genau unter dem
+// Anker — der Strich stünde senkrecht und läse sich wie eine zweite Ereignis-Linie.
+// Kollinear gerechnet erbt er die geprüfte Diagonale.
+const leaderGeom = (r, anchor) => {
+  const dx = anchor[0] - r.cx, dy = anchor[1] - r.cy;
+  const tx = dx ? (r.w / 2 + 1) / Math.abs(dx) : Infinity;
+  const ty = dy ? (r.h / 2 + 1) / Math.abs(dy) : Infinity;
+  const k = Math.min(tx, ty, 1);
+  const ex = r.cx + dx * k, ey = r.cy + dy * k;
+  // Kurz halten: der Strich endet vor dem Punkt-Marker, statt ihn zu treffen.
+  const d = Math.hypot(anchor[0] - ex, anchor[1] - ey) || 1;
+  return { x1: ex, y1: ey, x2: anchor[0] - (anchor[0] - ex) / d * 5, y2: anchor[1] - (anchor[1] - ey) / d * 5 };
+};
+const leaderLen = (g) => Math.hypot(g.x2 - g.x1, g.y2 - g.y1);
+// Ein Leader darf nur DIAGONAL laufen: senkrecht stünde er wie eine zweite
+// Ereignis-Linie neben der gestrichelten Stop-Linie, waagerecht wie ein Achsen-Strich.
+// Kriterium ist der Winkel des GEZEICHNETEN Strichs — Komponenten in Pixeln zu prüfen
+// ließe eine Lage wie 104×16 px durchgehen, die als 9°-Strich praktisch waagerecht liegt.
+const diagonal = (g) => {
+  const a = Math.atan2(Math.abs(g.y2 - g.y1), Math.abs(g.x2 - g.x1)) / RAD;
+  return a >= 18 && a <= 72;
+};
+// Nichts dazwischen: der Zeigefinger kreuzt keine Geometrie. Am Ankerpunkt selbst wird
+// nicht geprüft — dort liegt der Gegenstand, auf den er zeigt.
+const leaderFree = (g, pix) => {
+  const n = Math.max(1, Math.ceil(leaderLen(g) / 4));
+  for (let k = 0; k <= n; k++) {
+    const x = g.x1 + (g.x2 - g.x1) * (k / n), y = g.y1 + (g.y2 - g.y1) * (k / n);
+    if (Math.hypot(x - g.x2, y - g.y2) < 9) continue;
+    if (pix.some(([px, py]) => Math.hypot(px - x, py - y) < 3)) return false;
+  }
+  return true;
+};
+
 // ————————————————————— v3: Anker (Sequenz-Layer) —————————————————————
 // Anker-Namen entstehen KONSTRUKTIV beim Erzeugen der Elemente, nie durch
 // nachträgliches Klassifizieren: die Serien-Geometrie ist eine klassenlose polyline,
@@ -49,6 +184,25 @@ function assetDoc(ref) {
   ASSET_DOKS.set(ref, doc);
   return doc;
 }
+// Abgetastet wird an einer ANGEHÄNGTEN Fassung des Objekts: `getTotalLength()` liefert
+// bei `circle` nur im Dokument einen Wert (bei `path` auch ohne). Ungemessen fielen genau
+// die runden Teile aus Hindernis- UND Anker-Abtastung — der Solver setzte Text auf einen
+// Kreis, den er nicht sah. Ein Wirt je Seite, ein Klon je Objekt, beide unsichtbar.
+let MESS_WIRT = null;
+const ASSET_MESS = new Map();
+function assetMess(ref) {
+  if (ASSET_MESS.has(ref)) return ASSET_MESS.get(ref);
+  if (!MESS_WIRT) {
+    MESS_WIRT = document.createElement("div");
+    MESS_WIRT.setAttribute("aria-hidden", "true");
+    MESS_WIRT.style.cssText = "position:absolute;left:-99999px;top:0;width:1px;height:1px;overflow:hidden";
+    document.body.appendChild(MESS_WIRT);
+  }
+  const el = assetDoc(ref).documentElement.cloneNode(true);
+  MESS_WIRT.appendChild(el);
+  ASSET_MESS.set(ref, el);
+  return el;
+}
 const assetEintrag = (ref) => (((window.ASSET_MANIFEST || {}).assets) || {})[ref] || null;
 const assetKurz = (ref) => String(ref).split(".").pop();
 const assetEl = (ref, teil) => {
@@ -65,10 +219,27 @@ const assetTeil = (ref, teil) => {
 };
 const assetPfad = (ref, teil) => assetEl(ref, teil).getAttribute("d");
 
+// Was am Objekt als GEOMETRIE gilt. Wortgleich mit der Auswahl, die label-audit.mjs als
+// Hindernis misst (dort mit `[data-asset] `-Präfix): zwei verschiedene Mengen ließen
+// Renderer und Gate über verschiedene Bilder streiten. `.a-route` bleibt außen vor —
+// der Puls-Weg wird nie gemalt, er wäre ein Hindernis, das niemand sieht.
+const ASSET_GEO_SEL = "path:not(.a-route), line, polygon, circle";
+const ASSET_TASTSCHRITT = 1.5;                    // Karten-Einheiten zwischen zwei Tastpunkten
+// Textbox aus Grundlinien-Punkt, Ausrichtung und Drehung. `o` ist der Drehursprung:
+// eine Sub-Zeile dreht um den Punkt IHRES Labels, sonst liefe sie bei schrägen Plätzen
+// unter dem Label weg statt parallel darunter zu bleiben.
+const textBox = (x, y, w, size, align, deg, ox = x, oy = y) => {
+  const ux = x + (align === "middle" ? 0 : align === "end" ? -w / 2 : w / 2);
+  const uy = y - size * BASE_OFF;
+  if (!deg) return rect(ux, uy, w, boxH(size), 0);
+  const a = deg * RAD, c = Math.cos(a), s = Math.sin(a), dx = ux - ox, dy = uy - oy;
+  return rect(ox + dx * c - dy * s, oy + dx * s + dy * c, w, boxH(size), deg);
+};
+
 /// Hero/Inline-Einbau eines Assets in eine Karten-SVG (Karten-Einheiten 400×300).
 /// Liefert Markup UND die vergebenen Anker — die Namen entstehen konstruktiv, in
 /// derselben Reihenfolge wie in der Registry (validate-lesson.mjs, ohne Rendern).
-function assetEinbau(ref, { A, labels = {}, role = "hero" }) {
+function assetEinbau(ref, { A, labels = {}, subs = {}, notes = [], role = "hero" }) {
   const m = assetEintrag(ref) || {};
   const doc = assetDoc(ref);
   const { scale = 2, tx = 0, ty = 0 } = m.hero || {};
@@ -79,6 +250,7 @@ function assetEinbau(ref, { A, labels = {}, role = "hero" }) {
   const kx = (x) => MX + f * (tx + scale * x - MX);
   const ky = (y) => MY + f * (ty + scale * y - MY);
   const hin = `translate(${MX * (1 - f) + f * tx},${MY * (1 - f) + f * ty}) scale(${f * scale})`;
+  const { put, hitPlaced, schadenVon } = belegung();
 
   const anAsset = A(`asset:${assetKurz(ref)}`);
   (m.anker || []).forEach((n) => A(n));           // Reihenfolge = Manifest-Reihenfolge
@@ -86,28 +258,192 @@ function assetEinbau(ref, { A, labels = {}, role = "hero" }) {
     .filter((el) => el.tagName !== "text")        // Label-Plätze sind keine Geometrie
     .map((el) => new XMLSerializer().serializeToString(el).replace(ASSET_KEIN_NS, "")).join("\n        ");
 
-  const texte = (m.labelSlots || []).map((slot) => {
+  // Die gezeichnete Geometrie in KARTEN-Einheiten. Abgetastet wird die DATEI — dieselbe
+  // Quelle, die oben ins Markup geht. Eine zweite, im Renderer nachgebaute Kontur wäre
+  // eine zweite Wahrheit; hier läuft alles über getPointAtLength auf dem Original.
+  const abtasten = (el) => {
+    const out = [];
+    let len = 0;
+    try { len = el.getTotalLength(); } catch { return out; }
+    const n = Math.max(1, Math.ceil((len * f * scale) / ASSET_TASTSCHRITT));
+    for (let k = 0; k <= n; k++) {
+      const p = el.getPointAtLength(len * (k / n));
+      out.push([kx(p.x), ky(p.y)]);
+    }
+    return out;
+  };
+  const mess = assetMess(ref);
+  const geoEls = [...mess.querySelectorAll(ASSET_GEO_SEL)];
+  const hindernis = geoEls.flatMap(abtasten);
+
+  // ——— Label-Plätze + ihre Sub-Zeilen ———
+  // Die Sub-Zeile ist KONSTRUKTIV an ihr Label gebunden: gleicher x, gleiche Ausrichtung,
+  // gleiche Drehung, eine Zeile tiefer. Sie sucht sich keine Lage — sie hängt an einer.
+  const SUB_SIZE = 10.5;
+  // Grundlinien-Abstand aus dem abgenommenen Mockup (probes/asset-note-mockup/c-hero-notes.png).
+  // Die Box-Höhe der Werkbank (13.7) als Abstand zu nehmen wäre die naheliegende
+  // Herleitung — gemessen schiebt sie die Sub-Zeile des oberen Platzes aber in die
+  // Schädelkontur: die Box trägt einen Sicherheitssaum, den echte Versalien nicht füllen.
+  const SUB_DY = 11;
+  const labelBoxen = {};
+  const texte = [];
+  for (const slot of (m.labelSlots || [])) {
     const txt = labels[slot.id];
-    if (txt === undefined || txt === null || txt === "") return null;   // leerer Platz bleibt leer
+    if (txt === undefined || txt === null || txt === "") continue;      // leerer Platz bleibt leer
     const el = doc.querySelector(`[data-slot="${slot.id}"]`);
-    if (!el) return null;
+    if (!el) continue;
     const x = kx(+el.getAttribute("x")), y = ky(+el.getAttribute("y"));
     const dreh = el.dataset.rotate;
     const ton = el.dataset.ton;
+    const align = el.dataset.align;
     const an = A(`label:${slot.id}`);
     // `seq-hl` setzt die Sequenz-Engine selbst, wenn ein highlight-Schritt das Label
     // trifft — hier steht nur der Ruhezustand: der Ton des Objekts, an dem es hängt.
-    return `<text class="svglabel halo"${AN(an)} data-label-anchor="${slot.anker}"`
+    texte.push(`<text class="svglabel halo"${AN(an)} data-label-anchor="${slot.anker}"`
       + `${ton ? TON(ton) : ""} x="${x}" y="${y}" font-size="12"`
-      + `${el.dataset.align ? ` text-anchor="${el.dataset.align}"` : ""}`
+      + `${align ? ` text-anchor="${align}"` : ""}`
       + `${dreh ? ` transform="rotate(${dreh} ${x} ${y})"` : ""}`
-      + ` fill="${ton ? C(ton) : C("ink")}">${txt}</text>`;
+      + ` fill="${ton ? C(ton) : C("ink")}">${txt}</text>`);
+    labelBoxen[slot.id] = put(textBox(x, y, measure(txt, 12), 12, align, +(dreh || 0)));
+    const sub = subs[slot.id];
+    if (sub === undefined || sub === null || sub === "") continue;
+    const anSub = A(`sub:${slot.id}`);
+    const sy = y + SUB_DY;
+    // Muted und leichter als das Label: die Elaboration ist die zweite Ebene, nicht ein
+    // zweites Label. Die Farbe kommt aus .c-note (CSS schlägt Präsentations-Attribute).
+    texte.push(`<text class="svglabel c-note halo"${AN(anSub)} data-label-anchor="${slot.anker}"`
+      + ` x="${x}" y="${sy}" font-size="${SUB_SIZE}"`
+      + `${align ? ` text-anchor="${align}"` : ""}`
+      + `${dreh ? ` transform="rotate(${dreh} ${x} ${y})"` : ""}`
+      + `>${sub}</text>`);
+    put(textBox(x, sy, measure(sub, SUB_SIZE, 600), SUB_SIZE, align, +(dreh || 0), x, y));
+  }
+
+  // ——— Freie Anker-Notes ———
+  // Vokabular der curve-Note: Punkt AM Gegenstand, Text unmittelbar daneben, Leader nur
+  // als Degradation. Gesucht wird ausschließlich entlang der Geometrie des EIGENEN
+  // Ankers — die Bindung ist damit konstruktiv wahr und kein Gewicht in einem Score.
+  // Flächen sind dabei kein Hindernis, nur ihre Kontur: eine Note zu einer Region darf
+  // deshalb IN der Fläche stehen, solange sie keine Linie trifft.
+  const NOTE_SIZE = 10.5, ZEILE = boxH(NOTE_SIZE);
+  // Karten-Einheit zurück in Asset-Einheit — nur für Flächen-Tests (isPointInFill misst
+  // im Koordinatensystem der Datei).
+  const ix = (x) => (x - MX * (1 - f) - f * tx) / (f * scale);
+  const iy = (y) => (y - MY * (1 - f) - f * ty) / (f * scale);
+  const flaechenVon = (name) => [...mess.querySelectorAll(`[data-anchor~="${name}"]`)]
+    .flatMap((el) => (el.matches(ASSET_GEO_SEL) ? [el] : [...el.querySelectorAll(ASSET_GEO_SEL)]))
+    .filter((el) => { const fi = el.getAttribute("fill"); return fi && fi !== "none" && el.isPointInFill; });
+  const punkteVon = (name) => {
+    if (name === `asset:${assetKurz(ref)}`) return hindernis;
+    if (name.startsWith("label:")) {
+      const b = labelBoxen[name.slice(6)];
+      return b ? cornersOf(b).concat([[b.cx, b.cy]]) : [];
+    }
+    return [...mess.querySelectorAll(`[data-anchor~="${name}"]`)]
+      .flatMap((el) => (el.matches(ASSET_GEO_SEL) ? [el] : [...el.querySelectorAll(ASSET_GEO_SEL)]))
+      .flatMap(abtasten);
+  };
+  // Umbruch ist eine LAYOUT-Entscheidung und gehört deshalb dem Renderer: das Karten-JSON
+  // liefert einen Satz, nicht zwei Zeilen. Gebrochen wird an der Wortgrenze, die beide
+  // Zeilen am gleichmäßigsten macht — deterministisch, ohne Rest.
+  const varianten = (txt) => {
+    const w = String(txt).split(" ");
+    if (w.length < 2) return [[txt]];
+    let best = null;
+    for (let i = 1; i < w.length; i++) {
+      const a = w.slice(0, i).join(" "), b = w.slice(i).join(" ");
+      const d = Math.abs(measure(a, NOTE_SIZE, 600) - measure(b, NOTE_SIZE, 600));
+      if (!best || d < best.d) best = { d, zeilen: [a, b] };
+    }
+    return [[txt], best.zeilen];
+  };
+  const inBild = (r) => cornersOf(r).every(([x, y]) => x >= 4 && x <= 396 && y >= 8 && y <= 292);
+  const RICHTUNG = [[0, 1], [0, -1], [1, 0], [-1, 0], [0.71, 0.71], [0.71, -0.71], [-0.71, 0.71], [-0.71, -0.71]];
+  const ABSTAND = [8, 12, 17, 23, 30, 38];
+  const notenMarkup = notes.map((n, ni) => {
+    const anNote = A(`note:${ankerSlug(n.text, String(ni))}`);
+    const eigen = punkteVon(n.anker);
+    if (!eigen.length) return "";                 // unbekannter Anker — der Validator lehnt ihn ab
+    // Zuordenbarkeit: die Note muss dem eigenen Gegenstand näher sein als jedem anderen.
+    const fremdPunkte = (m.anker || []).filter((a) => a !== n.anker).map(punkteVon).filter((p) => p.length);
+    const naechster = (r, pts) => { let b = null, bd = Infinity; for (const p of pts) { const d = distRect(r, p[0], p[1]); if (d < bd) { bd = d; b = p; } } return { p: b, d: bd }; };
+    // Startpunkte ausdünnen: die Kandidaten-Lagen entstehen um die Kontur herum, der
+    // Punkt-Marker sucht sich danach die nächste Stelle der VOLLEN Abtastung.
+    const schritt = Math.max(1, Math.ceil(eigen.length / 24));
+    const saat = eigen.filter((_, i) => i % schritt === 0);
+    const kandidaten = [];
+    for (const zeilen of varianten(n.text)) {
+      const breiten = zeilen.map((z) => measure(z, NOTE_SIZE, 600));
+      const w = Math.max(...breiten), h = zeilen.length * ZEILE;
+      for (const p of saat) for (const [dx, dy] of RICHTUNG) for (const ab of ABSTAND) {
+        const r = rect(p[0] + dx * (ab + (Math.abs(dx) * w + Math.abs(dy) * h) / 2),
+                       p[1] + dy * (ab + (Math.abs(dx) * w + Math.abs(dy) * h) / 2), w, h);
+        const nah = naechster(r, eigen);
+        const braucht = nah.d > LEADER_AB;
+        const g = leaderGeom(r, nah.p);
+        kandidaten.push({ r, zeilen, breiten, dot: nah.p,
+          score: nah.d + (braucht ? 24 : 0) + (zeilen.length > 1 ? 6 : 0), braucht, g, nah });
+      }
+    }
+    kandidaten.sort((a, b) => a.score - b.score);
+    const frei = (c) => inBild(c.r) && !hitPlaced(c.r, LUFT_X, LUFT_Y) && !hitPix(grow(c.r, 2), hindernis)
+      && (!c.braucht || (leaderLen(c.g) <= LEADER_MAX && diagonal(c.g) && leaderFree(c.g, hindernis)));
+    const eindeutig = (c) => fremdPunkte.every((pts) => naechster(c.r, pts).d >= c.nah.d - 1.5);
+    // Ist der Anker eine FLÄCHE, gehört die Anmerkung hinein: dort ist die Zugehörigkeit
+    // nicht erschlossen, sondern gezeigt. Deshalb ist die Fläche die erste Wahl und nicht
+    // nur die geduldete — draußen daneben stünde derselbe Text wie eine Bildunterschrift.
+    const flaechen = flaechenVon(n.anker);
+    const inFlaeche = (c) => flaechen.length > 0
+      && cornersOf(c.r).every(([x, y]) => flaechen.some((el) => el.isPointInFill(new DOMPoint(ix(x), iy(y)))));
+    let wahl = null;
+    // IN der Fläche ist die Bindung durch Enthaltensein schon bewiesen — dort entscheidet
+    // nicht mehr die Nähe zur Kontur, sondern die LUFT: an den Rand geklebt läse sich der
+    // Text als Beschriftung dieser Kante statt als Anmerkung zur Fläche. Draußen gilt
+    // weiter das Gegenteil (nah an der Linie, an der die Note hängt).
+    const inF = kandidaten.filter((c) => frei(c) && eindeutig(c) && inFlaeche(c));
+    if (inF.length) {
+      let best = null, bl = -Infinity;
+      for (const c of inF) { const l = distPix(c.r, hindernis) - (c.zeilen.length > 1 ? 3 : 0); if (l > bl) { bl = l; best = c; } }
+      wahl = best;
+    }
+    if (!wahl) for (const streng of [true, false]) {
+      for (const c of kandidaten) if (frei(c) && (!streng || eindeutig(c))) { wahl = c; break; }
+      if (wahl) break;
+    }
+    if (!wahl) {
+      // Notnagel: nirgends frei — die Lage mit dem geringsten Schaden. Der Leader-Deckel
+      // bleibt auch hier, ein zu langer Strich wäre schlimmer als gar keiner.
+      let schlecht = null;
+      for (const c of kandidaten) {
+        if (!inBild(c.r)) continue;
+        const bad = schadenVon(c.r, hindernis) + c.score * 0.05;
+        if (!schlecht || bad < schlecht.bad) schlecht = { c, bad };
+      }
+      wahl = schlecht ? schlecht.c : kandidaten[0];
+    }
+    const leader = wahl.braucht && leaderLen(wahl.g) <= LEADER_MAX && diagonal(wahl.g) ? wahl.g : null;
+    put(wahl.r);
+    const ton = n.ton;
+    const fill = ton ? C(ton) : C("muted");
+    const attrs = AN(anNote) + ` data-label-anchor="${n.anker}"`
+      + (ton ? TON(ton) : "") + (leader ? ' data-leader="1"' : "")
+      + ` data-ax="${wahl.dot[0].toFixed(1)}" data-ay="${wahl.dot[1].toFixed(1)}"`;
+    // Punkt und Leader nennen denselben Gegenstand wie der Text: sonst stünde der Marker
+    // schon im Bild, während sein Objekt noch fehlt (gemessen im Ausgangszustand der
+    // Demo — ein roter Punkt auf leerer Karte).
+    const bindung = ` data-label-anchor="${n.anker}"`;
+    const dot = `<circle class="c-notedot"${AN(anNote)}${bindung}${ton ? GLOW(ton) : ""}`
+      + ` cx="${wahl.dot[0].toFixed(1)}" cy="${wahl.dot[1].toFixed(1)}" r="3" fill="${fill}"/>`;
+    const zeilen = wahl.zeilen.map((z, i) => textSvg(
+      rect(wahl.r.cx, wahl.r.cy - wahl.r.h / 2 + ZEILE * (i + 0.5), wahl.breiten[i], ZEILE),
+      NOTE_SIZE, z, "c-note halo", fill, attrs)).join("\n      ");
+    return dot + leaderSvg(leader, anNote, bindung) + "\n      " + zeilen;
   }).filter(Boolean);
 
   return `<g${AN(anAsset)} data-asset="${ref}" data-asset-scale="${f * scale}" transform="${hin}">
         ${geo}
       </g>
-      ${texte.join("\n      ")}`;
+      ${texte.join("\n      ")}${notenMarkup.length ? "\n      " + notenMarkup.join("\n      ") : ""}`;
 }
 
 const RENDERERS = {
@@ -369,70 +705,13 @@ const RENDERERS = {
     // Gesucht wird nur INNERHALB der erlaubten Familie — nicht im ganzen Plot mit der
     // Bedeutung als Aufschlag im Platz-Score. Ein besserer freier Platz kann die
     // Zuordnung damit nicht mehr überstimmen: sie ist konstruktiv wahr, nicht gewichtet.
-    // Gewicht mitmessen: Notes rendern leichter als Serien-Labels, sonst misst der
-    // Solver eine andere Breite als der Browser zeichnet.
-    const measure = (txt, size, weight = 700) => {
-      MEASURE_CTX.font = `${weight} ${size}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-      return MEASURE_CTX.measureText(txt).width + txt.length * size * 0.08;
-    };
-    const RAD = Math.PI / 180;
-    // Textkörper in Zahlen, an der ECHTEN Schrift gemessen (probes: getBBox gegen
-    // font-size): die Box ist 1.21·Größe hoch und ihre Mitte liegt 0.385·Größe über der
-    // Grundlinie. Ein geschätztes Kasten-Maß ließe Renderer und Audit über verschieden
-    // große Rechtecke streiten — dieselbe Zahl auf beiden Seiten macht die Prüfung erst
-    // aussagekräftig. Etwas größer als die reale Box ist sie bewusst (Sicherheitssaum).
-    const BOX_H = 1.21, BASE_OFF = 0.385;
-    const boxH = (size) => size * BOX_H + 1;
-    // Ein Sticky-Label liegt auf der Tangente seines Strichs — seine Box ist GEDREHT.
-    // Achsparallel gerechnet wäre sie an einer 25°-Kurve ein Vielfaches zu groß und
-    // schlüge Lagen aus, die der Text nie berührt. Die ganze Schicht rechnet deshalb
-    // mit orientierten Rechtecken; deg=0 ist der Sonderfall (Note, Achse, Ereignis).
-    const rect = (cx, cy, w, h, deg = 0) => ({ cx, cy, w, h, deg });
-    const toLocal = (r, x, y) => {
-      const a = r.deg * RAD, c = Math.cos(a), s = Math.sin(a), dx = x - r.cx, dy = y - r.cy;
-      return [dx * c + dy * s, dy * c - dx * s];
-    };
-    const toWorld = (r, lx, ly) => {
-      const a = r.deg * RAD, c = Math.cos(a), s = Math.sin(a);
-      return [r.cx + lx * c - ly * s, r.cy + lx * s + ly * c];
-    };
-    const cornersOf = (r) => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => toWorld(r, u * r.w / 2, v * r.h / 2));
-    const grow = (r, px, py = px) => rect(r.cx, r.cy, r.w + 2 * px, r.h + 2 * py, r.deg);
-    const inRect = (r, x, y) => { const [u, v] = toLocal(r, x, y); return Math.abs(u) <= r.w / 2 && Math.abs(v) <= r.h / 2; };
-    // Abstand einer Label-BOX zu einem Punkt. Bewusst von der Box aus gemessen, nicht
-    // vom Mittelpunkt: ein breites Label kann mit der Mitte weit von einer Kurve liegen
-    // und mit dem Rand direkt daran — das Auge (und das Audit) sehen den Rand.
-    const distRect = (r, x, y) => {
-      const [u, v] = toLocal(r, x, y);
-      return Math.hypot(Math.max(Math.abs(u) - r.w / 2, 0), Math.max(Math.abs(v) - r.h / 2, 0));
-    };
-    // Überlappung zweier orientierter Rechtecke: Trennachsen-Test über beide Achsenpaare.
-    const hitRect = (A, B) => {
-      const ca = cornersOf(A), cb = cornersOf(B);
-      for (const R of [A, B]) {
-        const a = R.deg * RAD;
-        for (const [ax, ay] of [[Math.cos(a), Math.sin(a)], [-Math.sin(a), Math.cos(a)]]) {
-          let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
-          for (const [x, y] of ca) { const p = x * ax + y * ay; if (p < a0) a0 = p; if (p > a1) a1 = p; }
-          for (const [x, y] of cb) { const p = x * ax + y * ay; if (p < b0) b0 = p; if (p > b1) b1 = p; }
-          if (a1 < b0 || b1 < a0) return false;
-        }
-      }
-      return true;
-    };
-    const placed = [];   // orientierte Boxen aller schon gesetzten Objekte
-    const put = (r) => { placed.push(r); return r; };
+    // Boxen, Kollisionen, Textmaße kommen aus der Geometrie-Werkbank (Modul-Ebene) —
+    // dieselben Werkzeuge benutzt die Asset-Karte für ihre Notes.
+    const { placed, put, hitPlaced, schadenVon } = belegung();
     // `bottom` ist die Unterkante, die ein Label nicht unterschreiten darf. Notes
     // bekommen eine höhere Grenze als 252: sie dürfen nie in die Zeile der
     // x-Achsen-Beschriftung rutschen und dort wie deren Fortsetzung wirken.
     const inView = (r, bottom = 252) => cornersOf(r).every(([x, y]) => x >= 4 && x <= 396 && y >= 12 && y <= bottom);
-    const hitPlaced = (r, px = 4, py = px) => { const q = grow(r, px, py); return placed.some((o) => hitRect(q, o)); };
-    // Abstand zwischen zwei BESCHRIFTUNGEN, gerichtet: LÄNGS der Leserichtung braucht es
-    // mehr als den Wortabstand der Schrift, sonst lesen sich zwei Texte als ein Satz
-    // („Gefühlter Druck DRUCK MASKIERT"). QUER dazu genügt wenig — zwei Zeilen
-    // übereinander liest niemand als eine; die gestapelte Apex-Note lebt genau davon.
-    // Gewachsen wird im gedrehten Rahmen des Labels, „längs" ist also seine Grundlinie.
-    const LUFT_X = 7, LUFT_Y = 2;
     // Pfade pixeldicht abtasten — auch lange Einzelsegmente (Collapse-Schwanz) werden
     // Hindernis. Je Serie getrennt: die Zuordnung Label→Kurve misst am eigenen Verlauf.
     // Der Schritt ist FEINER als der des Audits (dort 2–3 px): grober abgetastet könnte
@@ -475,16 +754,6 @@ const RENDERERS = {
       }
       return out;
     };
-    const hitPix = (r, pix) => pix.some(([x, y]) => inRect(r, x, y));
-    // Schadensmaß für Notlagen. EIN Kurventreffer wiegt schwerer als jede Zahl von
-    // Reservierungs-Überschneidungen: Text auf einer Linie ist ein sichtbarer Defekt,
-    // ein Anschnitt an der (großzügig bemessenen) Endpunkt-Reservierung ist keiner.
-    const schadenVon = (r, pix) => {
-      const q = grow(r, 2);
-      const treffer = pix.filter(([x, y]) => inRect(q, x, y)).length;
-      return (treffer ? 1000 + treffer : 0) + 40 * placed.filter((o) => hitRect(q, o)).length;
-    };
-    const distPix = (r, pix) => { let best = Infinity; for (const [x, y] of pix) { const d = distRect(r, x, y); if (d < best) best = d; } return best; };
     // Zuordenbarkeit: ein Label, das näher an einer FREMDEN Kurve klebt als an der
     // eigenen, beschriftet optisch die falsche Linie.
     const fremdDist = (own, r) => {
@@ -713,43 +982,9 @@ const RENDERERS = {
     };
 
     // ——— Note: Punkt-Marker auf der Kurve + Label unmittelbar daneben ———
-    // Der Marker bindet, das Label steht daneben. Ein Leader ist die letzte Degradation
-    // und hart gedeckelt: ein 150-px-Strich quer durchs Bild verbindet zwar formal,
-    // wird aber als eigene Geometrie gelesen statt als Zeigefinger.
-    const NOTE_SIZE = 9.5, NOTE_BOTTOM = 238, LEADER_MAX = 40, LEADER_AB = 12;
-    // Austrittspunkt AUF der Verbindung Mitte→Anker (Slab-Schnitt mit der Box). Ein an
-    // der Box-Kante entlang gerechneter Startpunkt läge bei breiten Labels genau unter
-    // dem Anker — der Strich stünde senkrecht und läse sich wie eine zweite
-    // Ereignis-Linie. Kollinear gerechnet erbt er die geprüfte Diagonale.
-    const leaderGeom = (r, anchor) => {
-      const dx = anchor[0] - r.cx, dy = anchor[1] - r.cy;
-      const tx = dx ? (r.w / 2 + 1) / Math.abs(dx) : Infinity;
-      const ty = dy ? (r.h / 2 + 1) / Math.abs(dy) : Infinity;
-      const k = Math.min(tx, ty, 1);
-      const ex = r.cx + dx * k, ey = r.cy + dy * k;
-      // Kurz halten: der Strich endet vor dem Punkt-Marker, statt ihn zu treffen.
-      const d = Math.hypot(anchor[0] - ex, anchor[1] - ey) || 1;
-      return { x1: ex, y1: ey, x2: anchor[0] - (anchor[0] - ex) / d * 5, y2: anchor[1] - (anchor[1] - ey) / d * 5 };
-    };
-    const leaderLen = (g) => Math.hypot(g.x2 - g.x1, g.y2 - g.y1);
-    // Ein Leader darf nur DIAGONAL laufen: senkrecht stünde er wie eine zweite
-    // Ereignis-Linie neben der gestrichelten Stop-Linie, waagerecht wie ein
-    // Achsen-Strich. Kriterium ist der Winkel des GEZEICHNETEN Strichs — Komponenten
-    // in Pixeln zu prüfen ließe eine Lage wie 104×16 px durchgehen, die als 9°-Strich
-    // praktisch waagerecht liegt.
-    const diagonal = (g) => {
-      const a = Math.atan2(Math.abs(g.y2 - g.y1), Math.abs(g.x2 - g.x1)) / RAD;
-      return a >= 18 && a <= 72;
-    };
-    const leaderFree = (g, pix) => {
-      const n = Math.max(1, Math.ceil(leaderLen(g) / 4));
-      for (let k = 0; k <= n; k++) {
-        const x = g.x1 + (g.x2 - g.x1) * (k / n), y = g.y1 + (g.y2 - g.y1) * (k / n);
-        if (Math.hypot(x - g.x2, y - g.y2) < 9) continue;
-        if (pix.some(([px, py]) => Math.hypot(px - x, py - y) < 3)) return false;
-      }
-      return true;
-    };
+    // Der Marker bindet, das Label steht daneben; Leader-Mechanik und ihr Deckel kommen
+    // aus der Geometrie-Werkbank (dieselbe benutzt die Asset-Note).
+    const NOTE_SIZE = 9.5, NOTE_BOTTOM = 238;
     const notePlace = (anchor, txt, sideWish, si) => {
       const pix = hindernisPix();
       const wish = sideWish === "below" ? 1 : sideWish === "above" ? -1 : 0;
@@ -851,19 +1086,6 @@ const RENDERERS = {
       setStopTop(Math.max(stopTop, r.cy + h / 2 + 4));
       return { r: put(r), size, leader: null, gestapelt: true };
     };
-
-    // `attrs` trägt die Serien-Zugehörigkeit ins DOM — Audits messen die Zuordnung
-    // damit am gezeichneten Objekt, ohne die Geometrie ein zweites Mal zu berechnen.
-    // Die Farbe steht INLINE: die Klassenregeln (.c-series/.c-note) tragen einen
-    // Grundton und schlügen ein fill-Attribut.
-    const textSvg = (r, size, txt, cls, fill, attrs = "") => {
-      const dreh = r.deg ? ` rotate(${r.deg.toFixed(1)})` : "";
-      return `<text class="svglabel ${cls}" transform="translate(${r.cx.toFixed(1)} ${r.cy.toFixed(1)})${dreh}"
-        y="${(size * BASE_OFF).toFixed(2)}" font-size="${size}" text-anchor="middle" style="fill:${fill}" ${attrs}>${txt}</text>`;
-    };
-    const leaderSvg = (g, anker) => g
-      ? `<line class="leader"${AN(anker)} x1="${g.x1.toFixed(1)}" y1="${g.y1.toFixed(1)}" x2="${g.x2.toFixed(1)}" y2="${g.y2.toFixed(1)}"/>`
-      : "";
 
     // 3) Zeichnen: Pfade (Stop-Folge-Segment gestrichelt bei collapse), dann Labels.
     const series = samples.map((sm, si) => {
@@ -1055,7 +1277,8 @@ const RENDERERS = {
   asset(card) {
     const A = ankerVergabe();
     const m = assetEintrag(card.asset.ref) || {};
-    const einbau = assetEinbau(card.asset.ref, { A, labels: card.asset.labels || {}, role: card.asset.role });
+    const einbau = assetEinbau(card.asset.ref, { A, labels: card.asset.labels || {},
+      subs: card.asset.subs || {}, notes: card.notes || [], role: card.asset.role });
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
       <div class="diagram"><svg viewBox="0 0 400 300" role="img" aria-label="${m.titel || card.asset.ref}">

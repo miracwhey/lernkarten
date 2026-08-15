@@ -175,8 +175,16 @@ const ANKER_MODELL = {
     (eintrag.anker || []).forEach((n) => A(n));
     (eintrag.labelSlots || []).forEach((slot) => {
       const txt = card.asset.labels?.[slot.id];
-      if (txt !== undefined && txt !== null && txt !== "") A(`label:${slot.id}`);
+      if (txt === undefined || txt === null || txt === "") return;
+      A(`label:${slot.id}`);
+      // Die Sub-Zeile hängt an ihrem Label und wird deshalb direkt danach vergeben —
+      // dieselbe Folge, in der assetEinbau() sie im Renderer erzeugt.
+      const sub = card.asset.subs?.[slot.id];
+      if (sub !== undefined && sub !== null && sub !== "") A(`sub:${slot.id}`);
     });
+    // Freie Anker-Notes zuletzt: sie sind das einzige Element der Karte, dessen Name aus
+    // dem Text kommt statt aus dem Objekt.
+    (card.notes || []).forEach((n, i) => A(`note:${ankerSlug(n?.text, String(i))}`));
     // Verbunden ist, was das Objekt als Weg ZEICHNET (data-link im SVG, im Manifest als
     // paare geführt und von asset-check.mjs gegen die Datei geprüft).
     (eintrag.paare || []).forEach(([a, b]) => m.paare.push([a, b]));
@@ -496,6 +504,59 @@ export function validateLesson(lesson, opts = {}) {
           if (!slot) { err(`${p}.asset.labels.${k}`, `"${k}" ist kein Label-Platz von "${a.ref}" (vorhanden: ${namen.join(", ") || "keine"})`); continue; }
           str(v, `${p}.asset.labels.${k}`, slot.max);
         }
+      }
+      // Sub-Zeile: die Elaboration eines Label-Platzes. Sie hängt konstruktiv an ihrem
+      // Label — ohne Label gäbe es nichts, worunter sie stehen könnte. Ihr Deckel ist
+      // GEMESSEN (probes/asset-slot-max.mjs) und steht je Platz im Manifest.
+      if (a.subs !== undefined) {
+        if (typeof a.subs !== "object" || Array.isArray(a.subs)) {
+          err(p + ".asset.subs", `muss ein Objekt {platz: "TEXT"} sein — Plätze dieses Objekts: ${namen.join(", ") || "(keine)"}`);
+        } else for (const [k, v] of Object.entries(a.subs)) {
+          const slot = slots.find((s) => s.id === k);
+          if (!slot) { err(`${p}.asset.subs.${k}`, `"${k}" ist kein Label-Platz von "${a.ref}" (vorhanden: ${namen.join(", ") || "keine"})`); continue; }
+          const oben = a.labels?.[k];
+          if (oben === undefined || oben === null || oben === "") {
+            err(`${p}.asset.subs.${k}`, `Sub-Zeile ohne Label — sie steht unter ${p}.asset.labels.${k}, das leer ist. `
+              + `Setze ${p}.asset.labels.${k} (max ${slot.max} Zeichen) ODER entferne ${p}.asset.subs.${k} (null löscht das Feld).`);
+            continue;
+          }
+          // Der Deckel hängt an der ROLLE: inline staucht die Komposition auf 60 %, die
+          // Schrift bleibt gleich groß — derselbe Platz trägt dort weniger. Ein Minimum
+          // über beide Rollen wäre kein Deckel, sondern eine Verengung.
+          const rolle = a.role ?? "hero";
+          const deckel = slot.subMax?.[rolle];
+          if (!(deckel > 0)) {
+            const woAnders = Object.entries(slot.subMax || {}).filter(([, n]) => n > 0).map(([r, n]) => `${r}: ${n}`);
+            err(`${p}.asset.subs.${k}`, `Platz "${k}" von "${a.ref}" trägt als "${rolle}" keine Sub-Zeile (gemessener Deckel 0)`
+              + (woAnders.length ? ` — als ${woAnders.join(", ")} Zeichen. Setze ${p}.asset.role entsprechend` : "")
+              + ` ODER entferne ${p}.asset.subs.${k} (null löscht das Feld).`);
+            continue;
+          }
+          str(v, `${p}.asset.subs.${k}`, deckel);
+        }
+      }
+      // Freie Anker-Notes: die Karte sagt WORAN die Anmerkung hängt, nie WO sie steht.
+      // Gültig ist jeder Gegenstand des Objekts und jedes gesetzte Label — nicht aber
+      // eine andere Note oder Sub-Zeile: die Anmerkung erklärt das BILD, nicht sich selbst.
+      if (c.notes !== undefined && arr(c.notes, p + ".notes", 1, 2)) {
+        const gegenstaende = ankerFuerKarte(c).filter((n) => !n.startsWith("note:") && !n.startsWith("sub:"));
+        c.notes.forEach((n, i) => {
+          const np = `${p}.notes[${i}]`;
+          // Auch der Note-Deckel ist gemessen, nicht geschätzt: er sagt, wie viel Text
+          // neben DIESEM Objekt noch kollisionsfrei unterkommt.
+          if (!(eintrag.noteMax > 0)) {
+            err(np, `"${a.ref}" trägt keine Notes (kein gemessener Deckel im Manifest) — entferne ${p}.notes (null löscht das Feld)`);
+            return;
+          }
+          str(n.text, np + ".text", eintrag.noteMax);
+          if (n.label !== undefined) err(np + ".label", `heißt auf einer asset-Karte "text" — benenne ${np}.label in ${np}.text um`);
+          if (n.x !== undefined || n.y !== undefined || n.side !== undefined)
+            err(np, `Contract v2: keine Positionen — die Note nennt nur ihren Anker (${np}.anker), das System setzt sie`);
+          if (!gegenstaende.includes(n.anker))
+            err(np + ".anker", `Anker "${n.anker}" gibt es auf dieser Karte nicht — verankere die Anmerkung an einem `
+              + `Gegenstand des Objekts: ${gegenstaende.join(", ")}`);
+          if (n.ton !== undefined) color(n.ton, np + ".ton");
+        });
       }
     },
 

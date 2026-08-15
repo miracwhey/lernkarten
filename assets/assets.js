@@ -31,19 +31,31 @@ window.ASSET_MANIFEST = {
           "id": "reize",
           "anker": "node:dendrit",
           "max": 34,
-          "beispiel": "REIZE KOMMEN AN"
+          "beispiel": "REIZE KOMMEN AN",
+          "subMax": {
+            "hero": 0,
+            "inline": 0
+          }
         },
         {
           "id": "feuert",
           "anker": "node:soma",
           "max": 33,
-          "beispiel": "AB HIER FEUERT ES"
+          "beispiel": "AB HIER FEUERT ES",
+          "subMax": {
+            "hero": 1,
+            "inline": 1
+          }
         },
         {
           "id": "sprung",
           "anker": "node:synapse",
           "max": 19,
-          "beispiel": "SIGNAL SPRINGT ÜBER"
+          "beispiel": "SIGNAL SPRINGT ÜBER",
+          "subMax": {
+            "hero": 1,
+            "inline": 1
+          }
         }
       ],
       "paletteSlots": [
@@ -61,7 +73,8 @@ window.ASSET_MANIFEST = {
       "rollen": [
         "hero",
         "inline"
-      ]
+      ],
+      "noteMax": 48
     },
     "physics.sky-scatter": {
       "datei": "physics.sky-scatter.svg",
@@ -89,19 +102,28 @@ window.ASSET_MANIFEST = {
           "id": "sonnenlicht",
           "anker": "node:sun",
           "max": 11,
-          "beispiel": "SONNENLICHT"
+          "beispiel": "SONNENLICHT",
+          "subMax": {
+            "hero": 6
+          }
         },
         {
           "id": "blau",
           "anker": "region:scatter",
           "max": 25,
-          "beispiel": "BLAU — IN ALLE RICHTUNGEN"
+          "beispiel": "BLAU — IN ALLE RICHTUNGEN",
+          "subMax": {
+            "hero": 28
+          }
         },
         {
           "id": "rot",
           "anker": "ray:forward",
           "max": 17,
-          "beispiel": "ROT — LÄUFT DURCH"
+          "beispiel": "ROT — LÄUFT DURCH",
+          "subMax": {
+            "hero": 34
+          }
         }
       ],
       "paletteSlots": [
@@ -121,7 +143,8 @@ window.ASSET_MANIFEST = {
       "abnahme": "Design-Gate-Mockup v3, Panel (c) — Leon 14.08.; Optik gegen den abgenommenen Shot gemessen (probes/asset-mockup-diff.mjs)",
       "rollen": [
         "hero"
-      ]
+      ],
+      "noteMax": 42
     },
     "psyche.person": {
       "datei": "psyche.person.svg",
@@ -145,13 +168,23 @@ window.ASSET_MANIFEST = {
           "id": "innen",
           "anker": "region:innen",
           "max": 34,
-          "beispiel": "WAS DARUNTER ARBEITET"
+          "beispiel": "WAS DARUNTER ARBEITET",
+          "subBeispiel": "WÜNSCHE · ÄNGSTE · ALTE MUSTER",
+          "subMax": {
+            "hero": 34,
+            "inline": 6
+          }
         },
         {
           "id": "aussen",
           "anker": "node:koerper",
           "max": 16,
-          "beispiel": "WAS DU ZEIGST"
+          "beispiel": "WAS DU ZEIGST",
+          "subBeispiel": "WORTE, GESTIK, TATEN",
+          "subMax": {
+            "hero": 20,
+            "inline": 7
+          }
         }
       ],
       "paletteSlots": [
@@ -169,7 +202,8 @@ window.ASSET_MANIFEST = {
       "rollen": [
         "hero",
         "inline"
-      ]
+      ],
+      "noteMax": 48
     },
     "nature.eisberg": {
       "datei": "nature.eisberg.svg",

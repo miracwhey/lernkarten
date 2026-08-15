@@ -222,11 +222,16 @@ export const auditCurveCard = ({ card, limits, seqStep }) => {
       const raus = sample(el, 4).find(([x, y]) => x < vb.x || y < vb.y || x > vb.x + vb.width || y > vb.y + vb.height);
       if (raus) out.push(`GEOM  Serie ${el.dataset.series} ragt aus der viewBox (${raus[0].toFixed(0)},${raus[1].toFixed(0)})`);
     }
-    for (const el of sichtbare("circle")) {
-      const cx = +el.getAttribute("cx"), cy = +el.getAttribute("cy"), r = +el.getAttribute("r");
-      if (cx - r < vb.x || cy - r < vb.y || cx + r > vb.x + vb.width || cy + r > vb.y + vb.height)
-        out.push(`GEOM  Punkt (${cx.toFixed(0)},${cy.toFixed(0)}) ragt aus der viewBox`);
-    }
+  }
+  // Punkt-Marker stehen in KARTEN-Koordinaten: auf Kurven-Karten die Endpunkt-Kugeln,
+  // auf Asset-Karten der Note-Punkt. Ohne Kurven lief diese Prüfung bisher gar nicht —
+  // ein Note-Punkt am Kartenrand wäre unbemerkt abgeschnitten. Asset-TEILE bleiben außen
+  // vor: sie tragen den Maßstab ihrer Gruppe und werden unten mit CTM gemessen.
+  for (const el of sichtbare(kurven.length ? "circle" : "circle.c-notedot")) {
+    if (el.closest("[data-asset]")) continue;
+    const cx = +el.getAttribute("cx"), cy = +el.getAttribute("cy"), r = +el.getAttribute("r");
+    if (cx - r < vb.x || cy - r < vb.y || cx + r > vb.x + vb.width || cy + r > vb.y + vb.height)
+      out.push(`GEOM  Punkt (${cx.toFixed(0)},${cy.toFixed(0)}) ragt aus der viewBox`);
   }
 
   // ——— Asset-Geometrie: das Objekt muss in der viewBox liegen ———

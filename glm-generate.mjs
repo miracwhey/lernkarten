@@ -77,7 +77,7 @@ const stats = {
   // Ausgang der ERSTEN Modell-Antwort — das eigentliche Können ohne Reparatur-Runden.
   contractErsterWurf: null,
   runden: { vollRetries: 0, patchRunden: 0, ergaenzungsRunden: 0, generatorPatches: 0 },
-  spellVerdacht: [], judge: [], detektorReRun: null, notecheck: [],
+  spellVerdacht: [], judge: [], detektorReRun: null, notecheck: [], audit: [],
   usage: { gen: { in: 0, out: 0, calls: 0, providers: [] }, judge: { in: 0, out: 0, calls: 0, providers: [] } },
 };
 // Stufe, die abgelehnt hat (nicht die Fehlerart) + Klartext-Grund. Ohne den Marker
@@ -142,7 +142,36 @@ console.log("Nutze Modell:", model);
 TAG = fromFile ? (fromModel ? slug(fromModel) + "-refix" : "glm") : slug(model);
 stats.model = model;
 
-const system = readFileSync(`${DIR}/generator-prompt.md`, "utf8");
+// Der Systemprompt nennt die Asset-Library — aber NIE als abgeschriebene Tabelle: die
+// veraltete beim ersten neuen Objekt still, und das Modell bekäme refs angeboten, die der
+// Validator ablehnt. Die Liste wird deshalb beim Start aus dem Manifest gebaut und an
+// einen Anker gesetzt. Fehlt der Anker, bricht der Lauf laut ab statt still ohne Library
+// zu generieren (dann stünde im Prompt nichts über Objekte und jeder ref wäre geraten).
+const ASSET_ANKER = "<!-- ASSET-REGISTRY -->";
+function assetRegistryBlock() {
+  const m = JSON.parse(readFileSync(`${DIR}/assets/manifest.json`, "utf8"));
+  const frei = Object.entries(m.assets).filter(([, a]) => !a.verbraucher);
+  if (!frei.length) return "(Die Library ist derzeit leer — formuliere jede Karte ohne Asset.)";
+  return frei.map(([ref, a]) => {
+    const rollen = a.rollen || ["hero"];
+    const slots = (a.labelSlots || []).map((s) => {
+      const subs = Object.entries(s.subMax || {}).filter(([r, n]) => n > 0 && rollen.includes(r))
+        .map(([r, n]) => `${r} ≤ ${n}`).join(", ");
+      return `    - \`${s.id}\` (am ${s.anker}) — Label ≤ ${s.max} Zeichen`
+        + (subs ? `, Sub-Zeile ${subs}` : ", keine Sub-Zeile (gemessen)")
+        + `; Beispiel: „${s.beispiel}"`;
+    }).join("\n");
+    return `- **${ref}** — ${a.titel}\n  - Rollen: ${rollen.join(", ")}`
+      + `\n  - Anker für notes/sequence: ${(a.anker || []).join(", ") || "(keine)"}`
+      + (a.paare?.length ? `\n  - verbunden (nur hier ist \`pulse\` möglich): ${a.paare.map(([x, y]) => `${x} → ${y}`).join(" · ")}` : "")
+      + (a.noteMax > 0 ? `\n  - notes: Text ≤ ${a.noteMax} Zeichen` : "\n  - trägt keine notes (gemessen)")
+      + (slots ? `\n  - Label-Plätze:\n${slots}` : "");
+  }).join("\n");
+}
+const systemRoh = readFileSync(`${DIR}/generator-prompt.md`, "utf8");
+if (!systemRoh.includes(ASSET_ANKER))
+  throw new Error(`generator-prompt.md hat den Anker ${ASSET_ANKER} nicht — ohne ihn kennt das Modell die Asset-Library nicht`);
+const system = systemRoh.replace(ASSET_ANKER, assetRegistryBlock());
 const TOPIC = topicArg ?? `„Why We Sleep" von Matthew Walker (2017) — warum wir schlafen, Schlafdruck, Koffein, was Schlafmangel anrichtet.`;
 // Der Soll-Bereich steht NUR hier im Auftrag (nicht im Systemprompt) — eine Quelle,
 // dieselbe Zahl, die der Validator gleich prüft.
@@ -522,6 +551,24 @@ const judgeFlags = [
   // notecheck misst nur an Note-Positionen, hier kommen Lehrsatz, Caption und
   // Achsen-Beschriftung gegen die deklarierte Kurven-/Waagen-Geometrie.
   ...geometryFlags(lesson),
+  // Begriffs-Budget: die einzige Regel der Asset-Karte, die kein deterministisches Gate
+  // messen KANN — ob ein Wort im Bild ein Wort des Lesers ist, entscheidet Sprachgefühl,
+  // nicht Geometrie. Deshalb je Asset-Karte EIN erzwungener Prüfauftrag (Check-Zeile
+  // pro Karte, gemessene Lektion: ohne Zwangs-Auftrag übersieht ein LLM-Prüfer genau das).
+  // Bewusst KEIN Contract-Verbot: ein Limit im Validator verböte auch die gute dichte
+  // Karte — geprüft wird die Wirkung, nicht die Zahl.
+  ...lesson.cards.map((c, i) => [c, i]).filter(([c]) => c.type === "asset").map(([c, i]) => {
+    const labels = Object.values(c.asset?.labels ?? {});
+    const subs = Object.values(c.asset?.subs ?? {});
+    const notes = (c.notes ?? []).map((n) => n.text);
+    return { kind: "begriffs-budget", path: `cards[${i}].asset`,
+      detail: `Diese Objekt-Karte trägt ${labels.length} Label, ${subs.length} Sub-Zeile(n) und ${notes.length} Note(s): `
+        + [...labels, ...subs, ...notes].map((t) => `„${t}"`).join(", ")
+        + `. Prüfe ZWEIERLEI: (a) Wort-Sinn — existiert jeder Begriff als deutsches Wort und verdreht keinen bestehenden Fachbegriff? `
+        + `(b) Begriffs-Budget — sagt jeder Text etwas EIGENES aus der Sicht des Lesers, oder wiederholt einer nur einen anderen `
+        + `bzw. steht dort Fachsprache ohne Erklärung? Höchstens 2 Sub-Zeilen und 2 Notes je Karte sind die Leitlinie. `
+        + `Ein überflüssiger oder fachsprachlicher Text ist ein finding mit fix (leerer String löscht ihn nicht — nenne den besseren Text).` };
+  }),
 ];
 // Judge-Runde protokollieren: Zahl der Aufträge, Befunde und deren verdict-Verteilung.
 const judgeRunde = (checks, findings) => stats.judge.push({
@@ -648,11 +695,51 @@ if (hardClaims.length) {
   }
 }
 
-// Render-Audit: Geometrie-Beweis. Ein Fail hier ist ein System-Bug, kein Retry-Fall.
-try {
-  console.log(execFileSync("node", [`${DIR}/audit-lesson.mjs`, file, `${OUT}/${TAG}-v2-shots`], { encoding: "utf8" }).trim());
-} catch (e) {
-  console.log((e.stdout || e.message).trim());
-  console.log("↑ SYSTEM-BUG im Solver/Renderer — nicht dem Modell anlasten.");
-  process.exit(3);
+// Render-Audit: Geometrie-Beweis. Die Befunde tragen zwei Schuldfragen, und erst HIER
+// wird entschieden, welche gilt:
+//   system > 0 — Überlappung, Clipping, Bindung: kein Karten-JSON heilt das. Exit 3.
+//   nur LEER   — eine Beschriftung steht in einem Schritt, in dem ihr Gegenstand noch
+//                nicht gezeichnet ist. Seit der Generator `sequence` selbst schreibt,
+//                ist das SEINE Aussage: Patch-Runde wie bei der Judge-Fix-Lücke, und
+//                erst ein Befund, der die Nachbesserung überlebt, wird abgelehnt.
+// Die Reihenfolge zählt: das Gate liest die DATEI, nicht `lesson` — nach jedem Patch
+// muss sie geschrieben sein, bevor erneut gemessen wird.
+function runAudit() {
+  let out;
+  try {
+    out = execFileSync("node", [`${DIR}/audit-lesson.mjs`, file, `${OUT}/${TAG}-v2-shots`], { encoding: "utf8" }).trim();
+    console.log(out);
+    return [];
+  } catch (e) {
+    out = (e.stdout || e.message).trim();
+    console.log(out);
+    const z = /ZÄHLUNG befunde=(\d+) leer=(\d+) system=(\d+)/.exec(out);
+    // Ohne Maschinen-Zeile ist der Lauf nicht klassifizierbar (Absturz, alte Fassung,
+    // Playwright-Fehler) — dann gilt weiter die strenge Lesart: System-Bug.
+    if (!z || +z[3] > 0) {
+      console.log("↑ SYSTEM-BUG im Solver/Renderer — nicht dem Modell anlasten.");
+      process.exit(3);
+    }
+    stats.audit.push({ befunde: +z[1], leer: +z[2], system: +z[3] });
+    return out.split("\n").filter((l) => l.startsWith("HART-LEER ")).map((l) => l.slice(10));
+  }
+}
+let leerBefunde = runAudit();
+if (leerBefunde.length) {
+  console.log(`${leerBefunde.length} LEER-Befund(e) — Beschriftung ohne ihren Gegenstand → Generator-Patch-Runde…`);
+  try {
+    const errs = await generatorPatchRound(leerBefunde);
+    if (errs.length) {
+      console.log("Pipeline lehnt ab — Contract-Fehler nach Sequenz-Patch:\n" + errs.map((e) => "- " + e).join("\n"));
+      reject("audit", `Contract-Fehler nach Sequenz-Patch (${errs.length})`); process.exit(1);
+    }
+    writeFileSync(file, JSON.stringify(lesson, null, 2));
+    leerBefunde = runAudit();
+  } catch (e) { console.log("Patch-Runde nicht möglich (API):", e.message); }
+  if (leerBefunde.length) {
+    console.log("Pipeline lehnt ab — Beschriftung ohne Gegenstand überlebt die Patch-Runde.");
+    writeFileSync(`${OUT}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
+    reject("audit", `${leerBefunde.length} LEER-Befund(e) überleben die Patch-Runde`);
+    process.exit(1);
+  }
 }

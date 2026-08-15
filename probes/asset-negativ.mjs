@@ -79,6 +79,56 @@ e = mitKarte((c) => { delete c[1].asset.labels.sprung; });
 zeige("Sequenz auf Label-Anker ohne Text (Anker existiert nicht)", trifft(e, /Anker "label:sprung" gibt es auf dieser Karte nicht/).length === 1,
   trifft(e, /sequence\[3\]/)[0]?.slice(0, 90) ?? "(kein Fehler)");
 
+// ——— Sub-Zeilen und Anker-Notes (Stufe c) ———
+// c4 ist die psyche.person-Karte: sie trägt seit Schritt 4 zwei Sub-Zeilen und eine Note.
+e = mitKarte((c) => { c[3].asset.subs.innen = "EIN VIEL ZU LANGER ELABORATIONSTEXT FÜR DIESEN PLATZ"; });
+zeige("Sub-Zeile über dem gemessenen Deckel", trifft(e, /subs\.innen.*zu lang/).length === 1,
+  trifft(e, /subs\.innen/)[0]?.slice(0, 90) ?? "(kein Fehler)");
+
+e = mitKarte((c) => { c[3].asset.role = "inline"; });
+zeige("Sub-Zeile sprengt den Deckel der ANDEREN Rolle", trifft(e, /subs\.innen.*zu lang/).length === 1,
+  trifft(e, /subs\.innen/)[0]?.slice(0, 90) ?? "(kein Fehler)");
+
+e = mitKarte((c) => { c[3].asset.subs.nase = "GIBT ES NICHT"; });
+zeige("Sub-Zeile auf einem Platz, den es nicht gibt", trifft(e, /subs\.nase.*ist kein Label-Platz/).length === 1,
+  trifft(e, /subs\.nase/)[0]?.slice(0, 90) ?? "(kein Fehler)");
+
+e = mitKarte((c) => { delete c[3].asset.labels.innen; });
+zeige("Sub-Zeile ohne ihr Label", trifft(e, /subs\.innen.*Sub-Zeile ohne Label/).length === 1,
+  trifft(e, /subs\.innen/)[0]?.slice(0, 90) ?? "(kein Fehler)");
+
+e = mitKarte((c) => { c[1].asset.subs = { reize: "TRÄGT KEINE SUB-ZEILE" }; });
+zeige("Sub-Zeile auf einem Platz mit gemessenem Deckel 0", trifft(e, /subs\.reize.*keine Sub-Zeile \(gemessener Deckel 0\)/).length === 1,
+  trifft(e, /subs\.reize/)[0]?.slice(0, 96) ?? "(kein Fehler)");
+
+e = mitKarte((c) => { c[3].notes[0].anker = "node:nase"; });
+zeige("Note an einem Anker, den es nicht gibt", trifft(e, /notes\[0\]\.anker.*gibt es auf dieser Karte nicht/).length === 1,
+  trifft(e, /notes\[0\]\.anker/)[0]?.slice(0, 96) ?? "(kein Fehler)");
+
+e = mitKarte((c) => { c[3].notes[0].anker = "note:meldet-sich-als-gefühl-nie-als-satz"; });
+zeige("Note, die an einer Note hängt statt am Bild", trifft(e, /notes\[0\]\.anker.*gibt es auf dieser Karte nicht/).length === 1,
+  trifft(e, /notes\[0\]\.anker/)[0]?.slice(0, 96) ?? "(kein Fehler)");
+
+e = mitKarte((c) => { c[3].notes[0].text = "EIN ANMERKUNGSTEXT, DER WEIT ÜBER DEM GEMESSENEN DECKEL DIESES OBJEKTS LIEGT"; });
+zeige("Note-Text über dem gemessenen Deckel", trifft(e, /notes\[0\]\.text.*zu lang/).length === 1,
+  trifft(e, /notes\[0\]\.text/)[0]?.slice(0, 90) ?? "(kein Fehler)");
+
+e = mitKarte((c) => { c[3].notes = [c[3].notes[0], { ...c[3].notes[0], text: "ZWEITE" }, { ...c[3].notes[0], text: "DRITTE" }]; });
+zeige("mehr als 2 Notes auf einer Karte", trifft(e, /notes.*1–2 Einträge/).length === 1,
+  trifft(e, /\.notes:/)[0]?.slice(0, 90) ?? "(kein Fehler)");
+
+e = mitKarte((c) => { c[3].notes[0].ton = "türkis"; });
+zeige("Note mit unbekanntem Ton", trifft(e, /notes\[0\]\.ton.*ungültige Farbe/).length === 1,
+  trifft(e, /notes\[0\]\.ton/)[0]?.slice(0, 90) ?? "(kein Fehler)");
+
+e = mitKarte((c) => { c[3].notes[0] = { anker: "node:koerper", label: "ALTES FELD", text: "MELDET SICH" }; });
+zeige("Note mit curve-Feldnamen (label statt text)", trifft(e, /notes\[0\]\.label.*heißt auf einer asset-Karte "text"/).length === 1,
+  trifft(e, /notes\[0\]\.label/)[0]?.slice(0, 96) ?? "(kein Fehler)");
+
+e = mitKarte((c) => { c[3].notes[0].side = "above"; });
+zeige("Note mit Positionsangabe (Contract v2)", trifft(e, /notes\[0\].*keine Positionen/).length === 1,
+  trifft(e, /notes\[0\]/)[0]?.slice(0, 96) ?? "(kein Fehler)");
+
 // Positivprobe: die unveränderte Demo muss sauber sein — sonst messen die Kontrollen
 // oben gegen ein ohnehin kaputtes Objekt.
 const sauber = validateLesson(normalizeLesson(demo));

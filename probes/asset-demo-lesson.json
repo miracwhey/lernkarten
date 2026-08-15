@@ -87,12 +87,23 @@
       "text": "Was andere von dir sehen, ist die Oberfläche. Der <span class=\"w-es\">Antrieb</span> darunter entscheidet mit — auch wenn er nie zur Sprache kommt.",
       "asset": {
         "ref": "psyche.person",
-        "role": "inline",
+        "role": "hero",
         "labels": {
           "innen": "WAS DARUNTER ARBEITET",
           "aussen": "WAS DU ZEIGST"
+        },
+        "subs": {
+          "innen": "WÜNSCHE · ÄNGSTE · ALTE MUSTER",
+          "aussen": "WORTE, GESTIK, TATEN"
         }
       },
+      "notes": [
+        {
+          "anker": "node:koerper",
+          "text": "MELDET SICH ALS GEFÜHL, NIE ALS SATZ",
+          "ton": "es"
+        }
+      ],
       "caption": "Dieselbe Person, zwei Ebenen — die untere meldet sich selten direkt.",
       "trigger": "auto",
       "sequence": [

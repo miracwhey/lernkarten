@@ -86,6 +86,38 @@ const CASES = [
       },
       caption: "Stresstest der Label-Plätze."
     }])),
+  // ——— Asset-Karten: Label UND Sub-Zeile gleichzeitig auf ihrem Deckel ———
+  // Der Sub-Deckel steht JE ROLLE im Manifest (inline staucht die Komposition). Auch er
+  // wird gelesen, nicht abgeschrieben. Plätze mit Deckel 0 tragen in dieser Rolle keine
+  // Sub-Zeile und bleiben leer — das ist die gemessene Eigenschaft des Objekts.
+  ...Object.entries(ASSETS).filter(([, a]) => !a.verbraucher).flatMap(([ref, a]) =>
+    (a.rollen || ["hero"]).map((rolle) => [`asset-${ref.split(".").pop()}-${rolle}-maxsubs`, {
+      type: "asset", relation: "object",
+      text: `Label und Sub-Zeile von ${ref} auf ihrem Deckel (${rolle}).`,
+      asset: {
+        ref, role: rolle,
+        labels: Object.fromEntries((a.labelSlots || []).map((s) => [s.id, fuellText(s.beispiel, s.max)])),
+        subs: Object.fromEntries((a.labelSlots || [])
+          .filter((s) => (s.subMax?.[rolle] ?? 0) > 0)
+          .map((s) => [s.id, fuellText(s.subBeispiel || s.beispiel, s.subMax[rolle])]))
+      },
+      caption: "Stresstest der Sub-Zeilen."
+    }])),
+  // ——— Asset-Notes: eine Note an JEDEM Anker-Typ des Objekts ———
+  // Ein Anker-Typ, der nie geprüft wurde, ist eine Zusage ohne Deckung: `region:` ist eine
+  // Fläche, `ray:` ein Strahl, `node:` ein Punkt — sie stellen dem Solver verschiedene
+  // Aufgaben. Der Note-Deckel kommt aus dem Manifest und gilt am ENGSTEN Anker.
+  ...Object.entries(ASSETS).filter(([, a]) => !a.verbraucher && a.noteMax > 0).flatMap(([ref, a]) =>
+    (a.anker || []).map((ank) => [`asset-${ref.split(".").pop()}-note-${ank.replace(":", "-")}`, {
+      type: "asset", relation: "object",
+      text: `Note am Anker ${ank} von ${ref}, auf ihrem Deckel.`,
+      asset: {
+        ref, role: (a.rollen || ["hero"])[0],
+        labels: Object.fromEntries((a.labelSlots || []).map((s) => [s.id, s.beispiel]))
+      },
+      notes: [{ anker: ank, text: fuellText((a.labelSlots || [])[0]?.beispiel || "ANMERKUNG", a.noteMax) }],
+      caption: "Stresstest der Anker-Notes."
+    }])),
   ["decay-vs-flat", {
     type: "curve", text: "Zerfall trifft flache Linie.",
     xlabel: "STUNDEN", ylabel: "PEGEL",
@@ -256,6 +288,26 @@ const SEQ_CASES = [
     sequence: [
       { verb: "reveal", target: "label:blau" },
       { verb: "reveal", target: "region:scatter" }
+    ]
+  }, { schritt: 1, muster: /^LEER/ }],
+  // NEGATIV-KONTROLLE: Sub-Zeile und Note hängen an demselben Gegenstand wie ihr Label.
+  // Erscheint der erst später, stehen BEIDE im leeren Bild. Ohne diese Kontrolle wäre
+  // nicht gemessen, ob die neuen Elemente überhaupt an der Sichtbarkeit teilnehmen — ein
+  // Punkt-Marker ohne sein Objekt ist derselbe Fehler wie ein Label ohne seins.
+  ["seq-asset-sub-und-note-vor-objekt", {
+    type: "asset", relation: "object",
+    text: "Sub-Zeile und Note erscheinen vor ihrem Gegenstand.",
+    asset: {
+      ref: "psyche.person", role: "hero",
+      labels: { aussen: "WAS DU ZEIGST" },
+      subs: { aussen: "WORTE, GESTIK, TATEN" }
+    },
+    notes: [{ anker: "node:koerper", text: "MELDET SICH ALS GEFÜHL", ton: "es" }],
+    caption: "Negativ-Kontrolle.",
+    trigger: "auto",
+    sequence: [
+      { verb: "reveal", target: "sub:aussen" },
+      { verb: "reveal", target: "node:koerper" }
     ]
   }, { schritt: 1, muster: /^LEER/ }],
   // Der Zug leiht sich die Strichelung der Serie für seine Bewegung. Am Ende muss die

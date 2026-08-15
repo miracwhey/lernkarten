@@ -136,7 +136,21 @@ for (const [ref, a] of Object.entries(assets)) {
       fehler(datei, `Label-Platz "${s.id}": Datei sagt data-anchor-ref="${inDatei.attr["data-anchor-ref"]}", Manifest sagt "${s.anker}"`);
     if (!(s.max > 0)) fehler(datei, `Label-Platz "${s.id}" ohne max — ohne Deckel kann kein Validator die Länge prüfen`);
     for (const k of ["x", "y"]) if (inDatei.attr[k] === undefined) fehler(datei, `Label-Platz "${s.id}" ohne ${k}`);
+    // Sub-Deckel je Rolle: er darf nur Rollen nennen, die das Objekt überhaupt trägt —
+    // ein Deckel für eine Rolle, die der Validator nie zulässt, ist eine tote Zahl.
+    for (const r of Object.keys(s.subMax || {}))
+      if (!(a.rollen || ["hero"]).includes(r))
+        fehler(datei, `Label-Platz "${s.id}": subMax nennt Rolle "${r}", das Objekt trägt nur ${(a.rollen || ["hero"]).join(", ")}`);
+    // Der abgenommene Sub-Text muss unter seinem eigenen Deckel liegen — sonst behauptet
+    // das Manifest einen Text, den der Validator ablehnt.
+    if (s.subBeispiel !== undefined) {
+      const grosszuegig = Math.max(0, ...Object.values(s.subMax || {}));
+      if (s.subBeispiel.length > grosszuegig)
+        fehler(datei, `Label-Platz "${s.id}": subBeispiel ist ${s.subBeispiel.length} Zeichen, der größte gemessene subMax ${grosszuegig}`);
+    }
   }
+  if (a.noteMax !== undefined && !(a.noteMax > 0))
+    fehler(datei, `noteMax ist ${a.noteMax} — entweder eine gemessene Zahl > 0 oder das Feld weglassen`);
   for (const d of slotDatei) if (!slotIds.includes(d.id)) fehler(datei, `data-slot="${d.id}" steht in der Datei, aber nicht in labelSlots[]`);
 
   // 8) Puls-Wege: jedes deklarierte Paar ist im Bild GEZEICHNET, und kein Weg führt

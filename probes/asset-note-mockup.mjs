@@ -7,7 +7,13 @@
 //   c-hero-notes — hero + Slot-Sub-Zeilen (Elaboration, konstruktiv am Label gebunden)
 //                  + 1 freie Anker-Note mit Punkt am Anker (Vokabular der curve-Notes)
 // Die Notes in Stufe c sind HIER von Hand platziert (Mockup!) — der Bau dazu ist
-// Schritt 4 (Contract additiv: labelSlots[].sub + notes[] auf asset-Karten).
+// Schritt 4 (Contract additiv: asset.subs + notes[] auf asset-Karten).
+//
+// SEIT SCHRITT 4 GEBAUT: die Demo-Karte trägt ihre Sub-Zeilen und ihre Note selbst.
+// Dieses Skript bleibt trotzdem lauffähig und reproduziert die abgenommene Referenz —
+// dafür werden `subs` und `notes` der Karte hier ABGEZOGEN, sonst zeichnete der Renderer
+// sie und die Handplatzierung läge ein zweites Mal darüber. Das Bild ist die Vorlage,
+// nicht der Ist-Zustand: der gebaute Stand steht in probes/asset-shots/c4-asset-s2.png.
 // Nutzung: node probes/asset-note-mockup.mjs
 import { chromium } from "playwright";
 import { mkdirSync, readFileSync } from "fs";
@@ -39,7 +45,8 @@ await page.addScriptTag({ path: repo + "/renderer.js" });
 page.on("pageerror", (e) => console.error("PAGEERROR:", e.message));
 
 // Ruhezustand ohne Sequenz: die Abnahme gilt der Komposition, nicht dem Puls.
-const still = (card, role) => ({ ...card, sequence: undefined, asset: { ...card.asset, role } });
+const still = (card, role) => ({ ...card, sequence: undefined, notes: undefined,
+  asset: { ...card.asset, role, subs: undefined } });
 
 const shoot = async (card, name, notes) => {
   await page.evaluate(({ card, notes }) => {

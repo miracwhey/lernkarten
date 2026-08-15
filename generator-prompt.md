@@ -38,6 +38,7 @@ Du wählst **kein Diagramm** — du benennst die **Relation**, die der Gedanke d
 | `multiplication` | Ein Input wirkt vielfach (Hebel, Reichweite) | Ein Video erreicht eine Million Menschen |
 | `descent` | 3 Schritte, der letzte sinkt unter eine Grenze (unbewusst, unsichtbar, außer Kontrolle) | Impuls → Konflikt → Verdrängung |
 | `depth-layers` | Sichtbares oben, Verborgenes unten (Eisberg) — nur wenn das das kanonische Bild ist | Bewusst/Vorbewusst/Unbewusst |
+| `object` | Der GEGENSTAND selbst ist die Aussage — es gibt ein Ding, an dem der Gedanke hängt | Das Neuron feuert; die Person mit innerer Ebene |
 
 Diagramm-Karten tragen `relation` (Pflicht) und **kein** `type`. Nur `title`, `quiz`, `insight` tragen `type`. Passt keine Relation, wähle einen anderen Teilaspekt des Themas, der eine dieser Strukturen hat.
 
@@ -115,6 +116,56 @@ Die Grenze bedeutet „unter der Oberfläche / außerhalb der Kontrolle" — nur
 ### relation: depth-layers
 `{ "relation":"depth-layers", "text", "zones":[{"id","label":"<CAPS ≤ 11>"}×3 (oben→unten)], "body":{"shape":"iceberg","regions":[{"id","label":"<CAPS ≤ 8>","color","at":"peak"?}×3]} }`
 `regions[0]` = rechte obere Region (mit `"at":"peak"` wandert ihr Label als Callout an die Spitze über Wasser), `regions[1]` = große linke Region, `regions[2]` = rechte untere Region.
+
+### relation: object — Gegenstand aus der Library
+
+```
+{ "relation":"object", "text",
+  "asset": { "ref":"<einer der refs unten>", "role":"hero",
+             "labels": { "<platz>":"<CAPS, Deckel je Platz>" },
+             "subs":   { "<platz>":"<CAPS, Deckel je Platz>" }? },
+  "notes": [ { "anker":"<Anker des Objekts>", "text":"<CAPS, Deckel je Objekt>", "ton":"es"|"ich"|"ueberich"? } ]? (max 2),
+  "caption" }
+```
+
+- **Du erfindest keine Objekte.** Erlaubt sind ausschließlich die refs unten. Passt für deinen Gedanken keines, dann formuliere die Karte **ohne Asset** (wähle eine andere Relation, z. B. `trend` oder `weighing`) — ein erfundener ref ist ein harter Fehler. Dein Wunsch wird protokolliert und die Library wächst daran; für DIESE Lektion hilft er dir nicht.
+- **`role: "hero"` ist der Regelfall.** Das Objekt ist die Aussage der Karte, nicht ihre Illustration — es soll groß stehen. `inline` nur, wenn das Objekt sonst mit seiner Beschriftung nicht zusammenpasst; welche Rollen ein Objekt trägt, steht unten (gemessen).
+- **`labels`** beschriften die Plätze, die das Objekt mitbringt. Du bestimmst den TEXT, nie die Position. Ein Platz, den du wegläßt, bleibt leer — das ist erlaubt und oft besser.
+- **`subs`** ist die zweite Zeile unter einem Label: die Elaboration, die aus dem Begriff ein Bild macht („WAS DU ZEIGST" → „WORTE, GESTIK, TATEN"). Eine Sub-Zeile ohne ihr Label gibt es nicht. Nicht jeder Platz trägt eine (steht unten, gemessen).
+- **`notes`** sind freie Anmerkungen an einem Gegenstand des Objekts: `anker` sagt, WORAN sie hängen, das System setzt Punkt, Text und ggf. Zeigefinger. Nutze sie für etwas, das das Bild allein nicht sagt — nie, um ein Label zu wiederholen. `ton` färbt die Anmerkung in der Farb-Semantik (z. B. `es` für den Trieb, der sich meldet).
+- **Keine Koordinaten, keine Größen, keine Zeilenumbrüche.** Zu lange Texte bricht das System selbst um.
+
+#### Verfügbare Objekte
+
+<!-- ASSET-REGISTRY -->
+
+#### Wortwahl und Begriffs-Budget auf Asset-Karten
+
+Es gilt dieselbe Regel wie am Graphen: jeder Text IM Bild steht aus der Perspektive des Lesers. **Budget je Asset-Karte: höchstens 2 Sub-Zeilen und höchstens 2 Notes** — auch wenn mehr Plätze frei wären. Eine Karte, die jeden Platz füllt, hat keine Hierarchie mehr; der Leser sieht dann eine Tafel statt einer Aussage. Lieber ein Begriff weniger, und der bleibt hängen.
+
+Jedes Wort im Bild muss ein Wort sein, das der Leser SELBST benutzen würde: „AB HIER FEUERT ES" statt „Aktionspotential-Schwelle". Der Fachbegriff gehört in den Lehrsatz, wo Platz für seine Einführung ist.
+
+### sequence — die Karte wird lebendig
+
+Eine Diagramm-Karte darf beschreiben, in welcher REIHENFOLGE ihr Bild entsteht. Das ist kein Extra-Effekt, sondern Didaktik: der Leser sieht erst das Eine, dann das Andere, und versteht daran den Zusammenhang.
+
+```
+"trigger": "auto",
+"sequence": [ { "verb":"reveal", "target":"<anker>" },
+              { "verb":"pulse",  "from":"<anker>", "to":"<anker>" } ]   (max 6 Schritte)
+```
+
+- **`trigger` kennt nur `"auto"`**: die Karte läuft beim Erscheinen ab. Es gibt kein „auf Tipp" — der Tipp gehört exklusiv dem Weiterblättern.
+- **Die fünf Verben:**
+  - `reveal` — der Gegenstand erscheint (Serie, Fläche, Knoten, Label, Sub-Zeile, Note).
+  - `trace` — eine Kurve wird gezogen. Ein zweites `trace` auf dieselbe Serie zieht ihren Ast NACH dem Ereignis.
+  - `pulse` — ein Punkt läuft von einem Anker zum anderen. Nur auf einem Weg, den das Bild ZEICHNET (bei Objekten stehen die erlaubten Paare oben).
+  - `highlight` — ein Label nimmt seine Farbe an, um den Blick zu holen.
+  - `dim` — Zurückgenommenes tritt zurück (es bleibt sichtbar, es verliert nur das Gewicht).
+- **Höchstens 6 Schritte.** Brauchst du mehr, ist es nicht eine Karte, sondern zwei.
+- **Erst der Gegenstand, dann seine Beschriftung.** Ein `reveal` auf ein Label, dessen Objekt noch nicht da ist, zeigt Text im leeren Bild — das wird gemessen und zurückgewiesen. Labels und Sub-Zeilen erscheinen ohnehin mit ihrem Gegenstand; du musst sie nicht einzeln aufführen.
+- **Die Zäsur am Ereignis setzt das System.** Du beschreibst, WAS nacheinander kommt — Zeiten, Dauern, Pausen und der Halt an der Ereignis-Linie kommen aus dem Motion-System, nie aus deinem JSON.
+- Ohne `sequence` erscheint die Karte fertig. Das ist völlig in Ordnung: nutze eine Sequenz nur, wenn die Reihenfolge etwas ERKLÄRT.
 
 ### quiz
 `{ "type":"quiz", "question":"<≤ 160>", "options":[{"label":"<≤ 42>","correct":true|false}×3] (genau 1 correct), "explain":"<≤ 180, mit <strong>>", "wrong":"<≤ 160>" }`
