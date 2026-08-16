@@ -117,3 +117,33 @@ Zeitbasis, Größenordnungs-Vergleich und interner Konsistenz. Befunde werden
 zeilenweise deterministisch gepatcht, danach läuft der Detektor **erneut** — was
 als „hart" überlebt, fliegt als Zeile raus, und das Format-Gate zählt neu.
 Einzeln fahren: `node worker/dossier-check.mjs <dossier.md> [--patch out.md]`.
+
+## Dauerbetrieb als Dienst (macOS)
+
+Der Worker rendert die Karten mit einem echten Browser und kann deshalb nicht in
+eine Edge Function — er braucht einen Rechner, der ihn am Leben hält. Von Hand
+gestartet stirbt er mit der Sitzung, und dann bleiben Aufträge liegen, ohne dass
+es jemand merkt: Die App zeigt weiter „in der Warteschlange".
+
+`de.leonvalentin.lernkarten.worker.plist` ist die launchd-Vorlage dafür —
+startet beim Anmelden, zieht sich nach jedem Ende selbst wieder hoch, Log unter
+`~/Library/Logs/lernkarten-worker.log`.
+
+```sh
+cp worker/de.leonvalentin.lernkarten.worker.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/de.leonvalentin.lernkarten.worker.plist
+launchctl print gui/$(id -u)/de.leonvalentin.lernkarten.worker | grep -E 'state|pid'
+```
+
+Anhalten: `launchctl bootout gui/$(id -u)/de.leonvalentin.lernkarten.worker`.
+Nach Änderungen am Worker: bootout, dann bootstrap — launchd startet den alten
+Prozess sonst unverändert weiter.
+
+Die Pfade in der Vorlage sind absolut (launchd kennt keine Shell-Expansion) und
+gelten für `~/Workspace/lernkarten` mit Homebrew-node. Auf einer anderen Maschine
+beide anpassen.
+
+**Grenze, die bleibt:** Schläft der Mac, ruht auch der Worker; er arbeitet die
+Warteschlange beim Aufwachen ab. Wer Aufträge unabhängig vom Rechner verarbeitet
+haben will, muss den Worker auf einen eigenen Server umziehen — der Code ändert
+sich dafür nicht, nur sein Zuhause.

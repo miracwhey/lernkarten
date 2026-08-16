@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>de.leonvalentin.lernkarten.worker</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/node</string>
+    <string>/Users/leonvalentin/Workspace/lernkarten/worker/index.mjs</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/leonvalentin/Workspace/lernkarten</string>
+
+  <!-- Beim Anmelden starten und nach jedem Ende wieder hochziehen: der Worker
+       soll leben, solange der Mac wach ist. Ohne KeepAlive wäre ein Absturz
+       still — die Aufträge blieben liegen, ohne dass es jemand merkt. -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <!-- Stirbt er sofort wieder (fehlende .env, kaputter Key), nicht in einer
+       Schleife brennen: zehn Sekunden Abstand zwischen zwei Startversuchen. -->
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/Users/leonvalentin/Library/Logs/lernkarten-worker.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/leonvalentin/Library/Logs/lernkarten-worker.log</string>
+
+  <!-- launchd startet mit einem kargen PATH; node liegt bei Homebrew. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+</dict>
+</plist>
