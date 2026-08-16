@@ -31,6 +31,9 @@ probes/label-mockup/shots/
 probes/verify-shots/
 probes/foto-testset/jpg/
 probes/foto-testset/orig/
+# Beschreibt die privaten Aufnahmen des Testsets (wessen Hand, welches Buch,
+# welche Verpackung) — bleibt lokal, wie die Fotos selbst.
+probes/foto-testset/ground-truth.md
 app/MockupFotos/
 runs/
 probes/foto-testset/mockup-shots/
