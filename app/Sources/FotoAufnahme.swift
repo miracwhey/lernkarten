@@ -103,6 +103,11 @@ final class FotoKamera: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
     private let ausgabe = AVCapturePhotoOutput()
     private let queue = DispatchQueue(label: "de.leonvalentin.lernkarten.kamera")
     private var abschluss: ((UIImage?) -> Void)?
+    /// Die Session wird EINMAL bestückt. Seit der Sucher im Sheet lebt, wird
+    /// `starten()` bei jedem Rückweg vom Thema-Tab erneut gerufen — ein zweites
+    /// `addInput` lehnt AVFoundation ab, und ohne diese Marke bliebe der Sucher
+    /// danach schwarz.
+    private var bestueckt = false
 
     func starten() async {
         guard !FotoFake.kamera else { return }
@@ -111,24 +116,27 @@ final class FotoKamera: NSObject, ObservableObject, AVCapturePhotoCaptureDelegat
             return
         }
         queue.async { [self] in
-            session.beginConfiguration()
-            session.sessionPreset = .photo
-            defer { session.commitConfiguration() }
-            guard let geraet = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-                  let eingang = try? AVCaptureDeviceInput(device: geraet),
-                  session.canAddInput(eingang), session.canAddOutput(ausgabe)
-            else { return }
-            session.addInput(eingang)
-            session.addOutput(ausgabe)
-            session.commitConfiguration()
-            session.startRunning()
+            if !bestueckt {
+                session.beginConfiguration()
+                session.sessionPreset = .photo
+                guard let geraet = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+                      let eingang = try? AVCaptureDeviceInput(device: geraet),
+                      session.canAddInput(eingang), session.canAddOutput(ausgabe)
+                else { session.commitConfiguration(); return }
+                session.addInput(eingang)
+                session.addOutput(ausgabe)
+                session.commitConfiguration()
+                bestueckt = true
+            }
+            if !session.isRunning { session.startRunning() }
             DispatchQueue.main.async { self.laeuft = true }
         }
     }
 
     func stoppen() {
-        queue.async { [session] in
+        queue.async { [self] in
             if session.isRunning { session.stopRunning() }
+            DispatchQueue.main.async { self.laeuft = false }
         }
     }
 

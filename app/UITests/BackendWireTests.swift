@@ -31,8 +31,8 @@ final class BackendWireTests: XCTestCase {
         XCTAssert(app.staticTexts["Bibliothek"].waitForExistence(timeout: 5))
 
         app.buttons["Neues lernen"].tap()
-        XCTAssert(app.staticTexts["Erfassen"].waitForExistence(timeout: 3))
-        app.buttons["Thema"].tap()
+        XCTAssert(app.staticTexts["sheet-kicker"].waitForExistence(timeout: 3))
+        app.buttons["mode-Thema"].tap()
         let field = app.textFields.firstMatch
         XCTAssert(field.waitForExistence(timeout: 2))
         field.tap()
@@ -48,7 +48,7 @@ final class BackendWireTests: XCTestCase {
         XCTAssert(app.staticTexts["Bibliothek"].waitForExistence(timeout: 5))
         XCTAssert(app.staticTexts[topic].waitForExistence(timeout: 15),
                   "Der Job muss aus der DB zurückgelesen werden")
-        let status = app.staticTexts["job-status"]
+        let status = app.buttons["job-zeile"]
         XCTAssert(status.waitForExistence(timeout: 5))
         XCTAssert(status.label.contains("Wird gebaut"), "Statuszeile: \(status.label)")
 
@@ -99,8 +99,6 @@ final class BackendWireTests: XCTestCase {
         XCTAssert(app.staticTexts["Bibliothek"].waitForExistence(timeout: 10))
 
         app.buttons["Neues lernen"].tap()
-        XCTAssert(app.staticTexts["Erfassen"].waitForExistence(timeout: 5))
-        app.buttons["foto-start"].tap()
         XCTAssert(app.buttons["foto-ausloeser"].waitForExistence(timeout: 5))
 
         let zaehler = app.staticTexts["foto-zaehler"]

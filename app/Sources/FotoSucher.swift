@@ -1,64 +1,44 @@
 import SwiftUI
 import UIKit
 
-/// Kamera-Screen — Layout 1:1 aus FotoAufnahmeMockup (abgenommene Spec): Sucher im
-/// abgerundeten Rechteck, Banner oben, darunter Stapel-Leiste mit Auslöser und
-/// „Fertig". Neu gegenüber dem Mockup ist nur, was das Mockup nicht regelt: das
-/// Warten auf die Erkennung (Sucher friert ein) und der technische Fehler.
-struct FotoAufnahmeView: View {
+/// Sucher und Stapel-Leiste — die beiden Bausteine, aus denen der Foto-Tab des
+/// Erstellen-Sheets besteht. Sie leben seit dem UX-Block (Mockup 16.08.) nicht
+/// mehr in einem eigenen Vollbild-Screen: der Foto-Tab IST der Sucher, weil der
+/// Weg zur Kamera sonst über eine Attrappe und einen zweiten Screen führte.
+
+/// Die Sucher-Fläche mit Banner und Wartehinweis. Was sie zeigt, hängt an der
+/// Phase: Live-Bild beim Aufnehmen, eingefrorenes letztes Foto beim Erkennen.
+struct FotoSucher: View {
     @ObservedObject var modell: FotoFlussModel
-    var onClose: () -> Void
-
-    @StateObject private var kamera = FotoKamera()
-
-    /// Höchstens drei Vorschauen in der Leiste — bei fünf Fotos passt die Zeile
-    /// sonst nicht mehr neben Auslöser und „Fertig"; der Zähler trägt die Wahrheit.
-    private var sichtbareVorschauen: [AufgenommenesFoto] { Array(modell.fotos.prefix(3)) }
+    @ObservedObject var kamera: FotoKamera
 
     var body: some View {
-        VStack(spacing: 0) {
-            ZStack(alignment: .top) {
-                RoundedRectangle(cornerRadius: 22)
-                    .fill(Theme.ink)
-                    .overlay { sucher }
-                    .clipShape(RoundedRectangle(cornerRadius: 22))
-                    .overlay(alignment: .bottom) { wartehinweis }
+        ZStack(alignment: .top) {
+            RoundedRectangle(cornerRadius: 22)
+                .fill(Theme.ink)
+                .overlay { bild }
+                .clipShape(RoundedRectangle(cornerRadius: 22))
+                .overlay(alignment: .bottom) { wartehinweis }
 
-                HStack {
-                    Text("Cover + Seiten — alles wird EINE Lektion")
-                        .microCaps()
-                        .foregroundStyle(Theme.paper)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(Theme.ink.opacity(0.55), in: Capsule())
-                    Spacer()
-                    Button(action: onClose) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(Theme.paper)
-                            .frame(width: 32, height: 32)
-                            .background(Theme.ink.opacity(0.55), in: Circle())
-                    }
-                    .accessibilityIdentifier("foto-close")
-                }
-                .padding(12)
+            // Rechts bleibt Luft, damit das Banner umbricht statt die Sucher-Kante
+            // zu berühren — so stand es im abgenommenen Mockup.
+            HStack {
+                Text("Cover + Seiten — alles wird EINE Lektion")
+                    .microCaps()
+                    .foregroundStyle(Theme.paper)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Theme.ink.opacity(0.55), in: RoundedRectangle(cornerRadius: 18))
+                Spacer(minLength: 56)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 14)
-
-            if modell.phase == .fehler { fehlerkarte }
-
-            leiste
+            .padding(12)
         }
-        .background(Theme.paper)
-        .task { await kamera.starten() }
-        .onDisappear { kamera.stoppen() }
     }
 
-    // ── Sucher ──
-
     @ViewBuilder
-    private var sucher: some View {
+    private var bild: some View {
         if modell.phase == .erkennung || modell.phase == .fehler {
             // Eingefroren: das zuletzt Geschossene bleibt stehen, kein neuer Screen.
             if let letztes = modell.fotos.last {
@@ -105,11 +85,15 @@ struct FotoAufnahmeView: View {
             .accessibilityIdentifier("foto-warten")
         }
     }
+}
 
-    /// Ein 502 der Function ist ein technischer Fehler — nie der Zustand „unsicher".
-    /// Der Grund steht im Klartext dabei: am Gerät gibt es keine Konsole, in die
-    /// man schauen könnte, also ist dieser Kasten die einzige Fehlerquelle.
-    private var fehlerkarte: some View {
+/// Ein 502 der Function ist ein technischer Fehler — nie der Zustand „unsicher".
+/// Der Grund steht im Klartext dabei: am Gerät gibt es keine Konsole, in die man
+/// schauen könnte, also ist dieser Kasten die einzige Fehlerquelle.
+struct FotoFehlerkarte: View {
+    @ObservedObject var modell: FotoFlussModel
+
+    var body: some View {
         HStack(spacing: 10) {
             Text(modell.fehlertext ?? "Technischer Fehler — versuch es gleich noch einmal")
                 .font(.system(size: 13.5))
@@ -133,10 +117,20 @@ struct FotoAufnahmeView: View {
         .padding(.horizontal, 14)
         .padding(.top, 12)
     }
+}
 
-    // ── Stapel-Leiste ──
+/// Stapel · Auslöser · Fertig. Im Mockup sitzt die Leiste direkt unter dem Sucher
+/// und über dem Umschalter — eine Ebene höher als früher, sonst unverändert.
+struct FotoLeiste: View {
+    @ObservedObject var modell: FotoFlussModel
+    var onAusloesen: () -> Void
+    var onFertig: () -> Void
 
-    private var leiste: some View {
+    /// Höchstens drei Vorschauen in der Leiste — bei fünf Fotos passt die Zeile
+    /// sonst nicht mehr neben Auslöser und „Fertig"; der Zähler trägt die Wahrheit.
+    private var sichtbareVorschauen: [AufgenommenesFoto] { Array(modell.fotos.prefix(3)) }
+
+    var body: some View {
         HStack(spacing: 14) {
             HStack(spacing: 6) {
                 ForEach(sichtbareVorschauen) { foto in
@@ -169,7 +163,7 @@ struct FotoAufnahmeView: View {
                     .accessibilityIdentifier("foto-zaehler")
             }
             Spacer()
-            Button(action: ausloesen) {
+            Button(action: onAusloesen) {
                 Circle()
                     .stroke(Theme.ink.opacity(0.35), lineWidth: 3)
                     .frame(width: 62, height: 62)
@@ -179,7 +173,7 @@ struct FotoAufnahmeView: View {
             .disabled(!modell.kannAusloesen)
             .accessibilityIdentifier("foto-ausloeser")
             Spacer()
-            Button { Task { await modell.erkennen() } } label: {
+            Button(action: onFertig) {
                 Text("Fertig")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Theme.card)
@@ -192,16 +186,5 @@ struct FotoAufnahmeView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
-    }
-
-    private func ausloesen() {
-        if FotoFake.kamera {
-            modell.aufnehmen(FotoFake.naechstes(modell.fotos.count))
-        } else {
-            kamera.ausloesen { bild in
-                guard let bild else { return }
-                modell.aufnehmen(bild)
-            }
-        }
     }
 }

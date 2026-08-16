@@ -5,8 +5,9 @@ struct LibraryView: View {
     let lessons: [Lesson]
     let srs: [CardKey: CardSRS]
     var jobs: [GenerationJob] = []
-    var enqueueError: String?
+    var auftragsFehler: String?
     var onLearn: (Lesson) -> Void
+    var onJob: (GenerationJob) -> Void
     var onPractice: () -> Void
     var onCreate: () -> Void
 
@@ -37,9 +38,22 @@ struct LibraryView: View {
                 VStack(spacing: 0) {
                     // Laufende und gescheiterte Bau-Aufträge stehen als normale
                     // Zeile oben in der Liste — der einzige Ort für Bau-Status.
-                    ForEach(jobs) { job in
-                        JobRow(job: job)
-                        Divider().overlay(Theme.line.opacity(0.6))
+                    // Der Takt hält die Stufenzeit lebendig; ohne laufenden Bau
+                    // gibt es ihn nicht.
+                    if !jobs.isEmpty {
+                        TimelineView(.periodic(from: .now, by: 1)) { takt in
+                            ForEach(jobs) { job in
+                                Button { onJob(job) } label: {
+                                    JobRow(job: job, jetzt: takt.date)
+                                }
+                                .buttonStyle(.plain)
+                                // Der Identifier gehört an den Knopf: die Zeile ist
+                                // jetzt eine Bedienung, und ihre Ansage fasst Titel
+                                // und Stand zu einem Element zusammen.
+                                .accessibilityIdentifier("job-zeile")
+                                Divider().overlay(Theme.line.opacity(0.6))
+                            }
+                        }
                     }
                     ForEach(lessons) { lesson in
                         Button { onLearn(lesson) } label: {
@@ -52,11 +66,11 @@ struct LibraryView: View {
                     }
                 }
 
-                if let enqueueError {
-                    Text(enqueueError)
+                if let auftragsFehler {
+                    Text(auftragsFehler)
                         .font(.system(size: 12.5, weight: .semibold))
                         .foregroundStyle(Theme.bad)
-                        .accessibilityIdentifier("enqueue-error")
+                        .accessibilityIdentifier("auftrag-fehler")
                 }
 
                 VStack(spacing: 10) {
@@ -130,17 +144,19 @@ struct LibraryView: View {
     }
 }
 
-/// Bau-Zeile: gedämpftes Motiv, gedämpfter Titel, darunter Punkt + Stufe — genau
-/// die `.lesson.building`-Zeile aus Mockup S1. Kein Fällig-Count, kein Tap-Ziel.
+/// Bau-Zeile: gedämpftes Motiv, gedämpfter Titel, darunter Punkt + Stufe, darunter
+/// der Stufenbalken. Seit dem UX-Block führt der Chevron eine Ebene tiefer — vorher
+/// stand hier ein Zustand ohne jeden Weg, ihn genauer anzusehen.
 struct JobRow: View {
     let job: GenerationJob
+    let jetzt: Date
 
     private var accent: Color { job.failed ? Theme.bad : Theme.ich }
 
     var body: some View {
         HStack(spacing: 14) {
             motif
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(job.displayTitle)
                     .font(Theme.serif(18, weight: .medium))
                     .foregroundStyle(Theme.muted)
@@ -150,18 +166,23 @@ struct JobRow: View {
                         .fill(accent)
                         .frame(width: 7, height: 7)
                         .offset(y: -2)
-                    Text(job.statusLine)
+                    // Beim Fehler steht der Grund hier, sonst Stufe und Zeit: die
+                    // Zeile beantwortet damit genau die Frage, die man vor ihr hat.
+                    Text(job.failed ? job.statusLine : job.kurzStatus(jetzt: jetzt))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(accent)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("job-status")
+                StufenBalken(erreicht: job.erreichteStufe, farbe: accent)
             }
             Spacer(minLength: 8)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.muted.opacity(0.6))
         }
         .padding(.vertical, 13)
+        .contentShape(Rectangle())
     }
 
     /// Zwei blasse Kreise statt der drei Farbkreise — die Lektion hat noch kein Motiv.
@@ -172,6 +193,24 @@ struct JobRow: View {
         }
         .compositingGroup()
         .frame(width: 46, height: 24)   // gleicher Rahmen wie LessonRow — Motive fluchten
+    }
+}
+
+/// Drei Segmente statt einer Prozentleiste: die Pipeline kennt genau drei Stufen,
+/// mehr Auflösung gäbe es nur erfunden.
+struct StufenBalken: View {
+    let erreicht: Int
+    let farbe: Color
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(1...3, id: \.self) { i in
+                Capsule()
+                    .fill(i <= erreicht ? farbe : Theme.line)
+                    .frame(height: 3)
+            }
+        }
+        .frame(maxWidth: 168)
     }
 }
 

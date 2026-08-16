@@ -172,49 +172,16 @@ final class FotoFlussModel: ObservableObject {
     }
 }
 
-/// Vollbild-Ausflug aus dem Erstellen-Sheet. Der Fluss endet entweder mit einem
-/// Job (dann schließt auch das Sheet) oder mit Abbruch.
-struct FotoFlussView: View {
-    @ObservedObject var jobs: JobStore
-    /// Job liegt an — das Erstellen-Sheet darf zu.
-    var onGebaut: () -> Void
-    /// Abbruch: nur der Kamera-Screen schließt, das Sheet bleibt stehen.
-    var onAbbruch: () -> Void
-
-    @StateObject private var modell = FotoFlussModel()
-
-    var body: some View {
-        Group {
-            if modell.phase == .bestaetigung, let ergebnis = modell.ergebnis {
-                FotoBestaetigungView(
-                    ergebnis: ergebnis,
-                    fotos: modell.fotos,
-                    onZurueck: { modell.zurueckZurKamera() },
-                    onClose: abbrechen,
-                    onBauen: bauen
-                )
-            } else {
-                FotoAufnahmeView(modell: modell, onClose: abbrechen)
-            }
-        }
-        .background(Theme.paper)
-    }
-
-    /// Beim Abbruch bleiben keine Fotos im Eingang liegen.
-    private func abbrechen() {
-        Task { await modell.verwerfen() }
-        onAbbruch()
-    }
-
-    private func bauen(thema: String, quelle: String?, interpretation: String?, depth: Depth) {
-        let typ = modell.ergebnis?.typ ?? "unklar"
-        let quelltext = FotoQuelltext.bauen(
+/// Der Quelltext-Block für den Job — aus der bestätigten Quelle, der bestätigten
+/// Lesart und dem OCR-Text der Fotos. Steht hier statt in der Ansicht, damit der
+/// Weg vom Bestätigen zum Auftrag genau eine Stelle hat.
+extension FotoFlussModel {
+    func quelltext(quelle: String?, interpretation: String?) -> String {
+        FotoQuelltext.bauen(
             quelle: quelle,
-            typ: typ,
+            typ: ergebnis?.typ ?? "unklar",
             interpretation: interpretation,
-            ocr: modell.ocrTexte
+            ocr: ocrTexte
         )
-        Task { await jobs.enqueuePhoto(topic: thema, source: quelle, sourceText: quelltext, depth: depth) }
-        onGebaut()
     }
 }

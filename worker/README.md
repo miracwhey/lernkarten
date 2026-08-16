@@ -139,6 +139,11 @@ Anhalten: `launchctl bootout gui/$(id -u)/de.leonvalentin.lernkarten.worker`.
 Nach Änderungen am Worker: bootout, dann bootstrap — launchd startet den alten
 Prozess sonst unverändert weiter.
 
+**Reihenfolge bei Änderungen, die die Datenbank betreffen:** erst `supabase db
+push`, dann den Dienst neu laden. Umgekehrt läuft ein Worker gegen Funktionen,
+die es noch nicht gibt — er meldet den Fehlschlag nur ins Log und baut still
+ohne Stufenmeldung weiter, was in der App wie ein hängender Auftrag aussieht.
+
 Die Pfade in der Vorlage sind absolut (launchd kennt keine Shell-Expansion) und
 gelten für `~/Workspace/lernkarten` mit Homebrew-node. Auf einer anderen Maschine
 beide anpassen.

@@ -57,8 +57,16 @@ async function patchJob(id, fields, was) {
   if (error) console.error(`${was} fehlgeschlagen (${id}):`, error.message);
   return !error;
 }
-const setStage = (id, stage) => patchJob(id, { stage }, `Stufe → ${stage}`);
-const failJob = (id, error) => patchJob(id, { status: "failed", stage: null, error: error.slice(0, 500) }, "Job → failed");
+// Stufe setzen heißt auch: ihre Startzeit festhalten. Beides in einem Aufruf,
+// weil die Detail-Ansicht sonst eine Stufe ohne Beginn zeigen müsste.
+async function setStage(id, stage) {
+  const { error } = await db.rpc("set_job_stage", { job_id: id, new_stage: stage });
+  if (error) console.error(`Stufe → ${stage} fehlgeschlagen (${id}):`, error.message);
+  return !error;
+}
+// stage bleibt stehen: sie ist die Antwort auf „woran ist es gescheitert?" und
+// wird in der Bau-Detail-Ansicht als gescheiterte Stufe gezeigt.
+const failJob = (id, error) => patchJob(id, { status: "failed", error: error.slice(0, 500) }, "Job → failed");
 const doneJob = (id, lesson_id) => patchJob(id, { status: "done", stage: null, error: null, lesson_id }, "Job → done");
 
 /// Jobs, die ein abgestürzter Worker auf 'running' stehen ließ: unter dem
@@ -73,7 +81,9 @@ async function requeueStale() {
       await failJob(job.id, "Der Bau wurde abgebrochen und der Versuch nicht wiederholt.");
       console.log(`Job ${job.id}: stale, Versuche erschöpft → failed`);
     } else {
-      await patchJob(job.id, { status: "queued", stage: null }, "Job → queued");
+      // Auch die Stufenzeiten des abgestürzten Laufs gehen weg — der neue Anlauf
+      // fängt vorn an, alte Startzeiten wären Zeiten eines anderen Versuchs.
+      await patchJob(job.id, { status: "queued", stage: null, stage_started: {} }, "Job → queued");
       console.log(`Job ${job.id}: stale → zurück in die Queue`);
     }
   }

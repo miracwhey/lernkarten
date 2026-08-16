@@ -34,11 +34,11 @@ final class FotoFlowUITests: XCTestCase {
         bauen.tap()
 
         XCTAssert(app.staticTexts["Bibliothek"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Erfassen"].exists, "Der Foto-Fluss schließt auch das Sheet")
+        XCTAssertFalse(app.staticTexts["sheet-kicker"].exists, "Der Foto-Fluss schließt auch das Sheet")
 
-        let status = app.staticTexts["job-status"]
+        let status = app.buttons["job-zeile"]
         XCTAssert(status.waitForExistence(timeout: 5), "Bau-Status gehört in die Bibliothekszeile")
-        XCTAssert(status.label.contains("Wird gebaut"), "Statuszeile: \(status.label)")
+        XCTAssert(status.label.contains("In der Warteschlange"), "Statuszeile: \(status.label)")
 
         let zeile = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Pruefung")).firstMatch
         XCTAssert(zeile.waitForExistence(timeout: 5), "Das editierte Thema betitelt die Bau-Zeile")
@@ -116,6 +116,31 @@ final class FotoFlowUITests: XCTestCase {
         shot("aufnahme")
     }
 
+    /// Der Sucher gleich beim Öffnen — der eigentliche Punkt des UX-Blocks: kein
+    /// Platzhalter, kein zweiter Screen, der Umschalter bleibt sichtbar.
+    func testShotSheetSucher() throws {
+        let app = starten(erkennung: nil)
+        app.buttons["Neues lernen"].tap()
+        XCTAssert(app.buttons["foto-ausloeser"].waitForExistence(timeout: 5))
+        sleep(1)
+        shot("sheet-sucher")
+    }
+
+    /// Der Umschalter führt zu Thema und Text zurück — der Sucher darf sie nicht
+    /// verdrängen, sie sind gleichrangige Wege.
+    func testUmschalterBleibtErreichbar() throws {
+        let app = starten(erkennung: nil)
+        app.buttons["Neues lernen"].tap()
+        XCTAssert(app.buttons["foto-ausloeser"].waitForExistence(timeout: 5))
+
+        app.buttons["mode-Thema"].tap()
+        XCTAssert(app.textFields.firstMatch.waitForExistence(timeout: 3), "Thema-Eingabe muss kommen")
+        XCTAssertFalse(app.buttons["foto-ausloeser"].exists, "Ohne Sucher kein Auslöser")
+
+        app.buttons["mode-Foto"].tap()
+        XCTAssert(app.buttons["foto-ausloeser"].waitForExistence(timeout: 3), "…und wieder zurück")
+    }
+
     func testShotErkannt() throws {
         let app = starten(erkennung: "erkannt")
         kameraOeffnen(app)
@@ -164,9 +189,8 @@ final class FotoFlowUITests: XCTestCase {
 
     private func kameraOeffnen(_ app: XCUIApplication) {
         app.buttons["Neues lernen"].tap()
-        XCTAssert(app.staticTexts["Erfassen"].waitForExistence(timeout: 5))
-        app.buttons["foto-start"].tap()
-        XCTAssert(app.buttons["foto-ausloeser"].waitForExistence(timeout: 5), "Kamera-Screen muss aufgehen")
+        XCTAssert(app.buttons["foto-ausloeser"].waitForExistence(timeout: 5),
+                  "Der Foto-Tab IST der Sucher — kein Zwischenschritt")
     }
 
     /// Auslösen und jedes Mal am Zähler nachweisen, dass das Foto im Stapel liegt.

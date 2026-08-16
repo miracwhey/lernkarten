@@ -60,9 +60,9 @@ final class ShellUITests: XCTestCase {
     // Ebene 2: Sheet — Segmente, Thema-Eingabe, Bestätigen; X bricht ab.
     func testCreateSheetFlow() throws {
         app.buttons["Neues lernen"].tap()
-        XCTAssert(app.staticTexts["Erfassen"].waitForExistence(timeout: 3))
+        XCTAssert(app.staticTexts["sheet-kicker"].waitForExistence(timeout: 3))
         shot("sheet-1-photo")
-        app.buttons["Thema"].tap()
+        app.buttons["mode-Thema"].tap()
         let field = app.textFields.firstMatch
         XCTAssert(field.waitForExistence(timeout: 2))
         field.tap()
@@ -82,10 +82,10 @@ final class ShellUITests: XCTestCase {
     // Ebene 2 → Ebene 1: „Lektion bauen" schließt das Sheet und der Bau-Status
     // erscheint als Zeile in der Bibliothek — nirgendwo sonst.
     func testBuildCreatesLibraryStatusRow() throws {
-        XCTAssertFalse(app.staticTexts["job-status"].exists, "Ohne Auftrag keine Statuszeile")
+        XCTAssertFalse(app.buttons["job-zeile"].exists, "Ohne Auftrag keine Statuszeile")
         app.buttons["Neues lernen"].tap()
-        XCTAssert(app.staticTexts["Erfassen"].waitForExistence(timeout: 3))
-        app.buttons["Thema"].tap()
+        XCTAssert(app.staticTexts["sheet-kicker"].waitForExistence(timeout: 3))
+        app.buttons["mode-Thema"].tap()
         let field = app.textFields.firstMatch
         XCTAssert(field.waitForExistence(timeout: 2))
         field.tap()
@@ -97,10 +97,10 @@ final class ShellUITests: XCTestCase {
 
         // Sheet ist zu, Bibliothek trägt die Zeile.
         XCTAssert(app.staticTexts["Bibliothek"].waitForExistence(timeout: 3))
-        XCTAssertFalse(app.staticTexts["Erfassen"].exists, "Das Erstellen-Sheet ist kurzlebig")
-        let status = app.staticTexts["job-status"]
+        XCTAssertFalse(app.staticTexts["sheet-kicker"].exists, "Das Erstellen-Sheet ist kurzlebig")
+        let status = app.buttons["job-zeile"]
         XCTAssert(status.waitForExistence(timeout: 3), "Bau-Status gehört in die Bibliothekszeile")
-        XCTAssert(status.label.contains("Wird gebaut"), "Statuszeile: \(status.label)")
+        XCTAssert(status.label.contains("In der Warteschlange"), "Statuszeile: \(status.label)")
         XCTAssert(app.staticTexts["Photosynthese"].exists, "Die Bau-Zeile trägt das Thema als Titel")
         shot("library-1-building-row")
     }

@@ -234,4 +234,37 @@ final class FotoTests: XCTestCase {
         XCTAssertEqual(job.kind, "photo")
         XCTAssertEqual(job.statusLine, "Wird gebaut – In der Warteschlange")
     }
+
+    /// Dieselbe Probe für die Spalten des UX-Blocks: eine Zeile ohne Stufenzeiten
+    /// und ohne Wiederholungszähler muss lesbar bleiben — sonst nimmt eine neue
+    /// Spalte dem Bestand die Anzeige weg.
+    func testJobOhneStufenzeitenUndRetriesDekodiert() throws {
+        let alt = """
+        {"id":"1D3D8C22-1B0E-4E5F-9A5B-9F0C9B5E0A13","kind":"topic","topic":"Photosynthese",
+         "source_text":null,"status":"running","stage":"karten","error":null,
+         "created_at":"2026-08-14T10:00:00Z"}
+        """
+        let job = try JSONDecoder.iso.decode(GenerationJob.self, from: Data(alt.utf8))
+        XCTAssertEqual(job.retries, 0)
+        XCTAssertNil(job.bauBeginn, "Ohne Zeitstempel wird keine Bauzeit erfunden")
+        XCTAssertNil(job.tiefe, "Ohne depth-Spalte bleibt die Tiefe leer statt geraten")
+        XCTAssertEqual(job.erreichteStufe, 2, "Die Stufe selbst steht ja da")
+    }
+
+    /// Und die Gegenprobe: mit Feldern werden sie auch gelesen.
+    func testJobMitStufenzeitenDekodiert() throws {
+        let neu = """
+        {"id":"1D3D8C22-1B0E-4E5F-9A5B-9F0C9B5E0A14","kind":"photo","topic":"Graffiti",
+         "source":"Ihme-Passage","source_text":"QUELLE: ...","depth":"kompakt",
+         "status":"running","stage":"karten","error":null,
+         "created_at":"2026-08-16T10:00:00Z","retries":1,
+         "stage_started":{"quellen":"2026-08-16T10:00:20+00:00","karten":"2026-08-16T10:01:12+00:00"}}
+        """
+        let job = try JSONDecoder.iso.decode(GenerationJob.self, from: Data(neu.utf8))
+        XCTAssertEqual(job.tiefe, .kompakt)
+        XCTAssertEqual(job.retries, 1)
+        XCTAssertNotNil(job.bauBeginn)
+        let stufen = job.stufen(jetzt: Date(timeIntervalSince1970: 0))
+        XCTAssertEqual(stufen[0].dauer.map { Int($0.rounded()) }, 52, "Quellen 0:52 aus den Zeitstempeln")
+    }
 }
