@@ -1849,8 +1849,141 @@ function wireAnnotations(root, card) {
     return best;
   };
 
-  const raus = [];
+  // Zwei Ebenen: eine Zone ist eine FLÄCHE und muss hinter alles andere, sonst deckt sie
+  // die Gegenstände zu, die sie zusammenfasst. Der Rest liegt darüber.
+  const unten = [], raus = [];
+  const bbox = (pts) => {
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+  };
   for (const [ai, an] of plan.entries()) {
+    if (an.art === "ring") {
+      // Reiner Marker: „hier hinschauen". Er trägt bewusst KEINEN Text — bei Imprint
+      // (Karte 03, Macroexpressions) umschließt der Ring die Stelle und ein separates
+      // Label benennt sie. Wer beschriften will, setzt zusätzlich ein callout auf denselben
+      // Anker; so bleibt jedes Primitiv bei einer Aufgabe.
+      const pts = punkteVon(an.an);
+      if (!pts.length) continue;
+      const b = bbox(pts);
+      const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+      // Der Ring umschließt, er weicht nicht aus: seine Lage ist durch den Gegenstand
+      // bestimmt, es gibt hier nichts zu suchen. Radius mit Luft, damit er die Kontur
+      // nicht berührt und nicht als deren Teil gelesen wird.
+      const rx = (b.x1 - b.x0) / 2 + 7, ry = (b.y1 - b.y0) / 2 + 7;
+      const ton = tonVon(an.an);
+      const anker = `annot:ring-${ai}`;
+      raus.push(`<ellipse class="c-ring"${AN(anker)} data-label-anchor="${an.an}" cx="${cx.toFixed(1)}"`
+        + ` cy="${cy.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}" fill="none"`
+        + ` stroke="${ton ? C(ton) : C("ink")}"/>`);
+      continue;
+    }
+    if (an.art === "pfeil") {
+      // Gerichtete Wirkung: A wirkt auf B. Ansatz und Ziel sind das NÄCHSTE Punktepaar
+      // beider Konturen — der kürzeste Weg zwischen den Gegenständen ist der, den das
+      // Auge ohnehin zieht. Beide Enden rücken ab, damit der Pfeil neben den Objekten
+      // steht statt in ihnen zu stecken.
+      const pA = punkteVon(an.von), pB = punkteVon(an.bis);
+      if (!pA.length || !pB.length) continue;
+      let best = null;
+      for (const a of pA) for (const b of pB) {
+        const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (!best || d < best.d) best = { d, a, b };
+      }
+      if (!best || best.d < 12) continue;            // zu dicht beieinander für einen Weg
+      const ux = (best.b[0] - best.a[0]) / best.d, uy = (best.b[1] - best.a[1]) / best.d;
+      const x1 = best.a[0] + ux * 5, y1 = best.a[1] + uy * 5;
+      const x2 = best.b[0] - ux * 8, y2 = best.b[1] - uy * 8;
+      // Zeichnet die Karte den Weg schon, ist der Pfeil redundant — er läge als zweite
+      // Linie auf der ersten. Am Neuron verbindet das Axon Soma und Synapse bereits.
+      //
+      // Die Karte SAGT selbst, welche Anker sie verbindet: die Puls-Routen tragen
+      // `data-link="a>b"`. Das ist die verlässliche Auskunft — geometrisch ist sie kaum zu
+      // haben, weil die gerade Verbindung zweier Konturen nicht auf dem geschwungenen Weg
+      // liegt, den die Karte zeichnet (am Neuron das Axon). Ein Anteilsmaß ließ den
+      // Axon-Pfeil deshalb durch.
+      const verbunden = [...svg.querySelectorAll("[data-link]")].some((el) => {
+        const [p1, p2] = (el.getAttribute("data-link") || "").split(">");
+        return (p1 === an.von && p2 === an.bis) || (p1 === an.bis && p2 === an.von);
+      });
+      if (verbunden) continue;
+      // Zusätzlich geometrisch: liegt der Weg über weite Strecken AUF Geometrie, wäre er
+      // eine zweite Linie auf der ersten. Gemessen wird der Anteil, nicht die Berührung —
+      // `leaderFree` prüft KREUZUNGEN, und eine Kreuzung ist unvermeidbar: zwischen zwei
+      // Waagschalen liegt immer der Balken.
+      const wegN = Math.max(8, Math.ceil(best.d / 4));
+      let drauf = 0;
+      for (let k = 0; k <= wegN; k++) {
+        const px = x1 + (x2 - x1) * (k / wegN), py = y1 + (y2 - y1) * (k / wegN);
+        if (hindernis.some(([hx, hy]) => Math.hypot(hx - px, hy - py) < 3)) drauf++;
+      }
+      if (drauf / (wegN + 1) > 0.6) continue;
+      const ton = tonVon(an.von) || tonVon(an.bis);
+      const fill = ton ? C(ton) : C("ink");
+      const anker = `annot:pfeil-${ai}`;
+      // Spitze als Dreieck am Ziel: ein `marker` bräuchte eine defs-Definition je Farbe.
+      const sp = 4.5;
+      const spitze = `${x2 + ux * 7},${y2 + uy * 7} ${x2 - uy * sp},${y2 + ux * sp} ${x2 + uy * sp},${y2 - ux * sp}`;
+      raus.push(`<line class="c-pfeil"${AN(anker)} x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}"`
+        + ` x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${fill}"/>`
+        + `<polygon class="c-pfeilspitze"${AN(anker)} points="${spitze}" fill="${fill}"/>`);
+      if (an.text) {
+        // Beschriftung neben der Mitte des Wegs, über denselben Solver wie alles andere.
+        const w = measure(an.text, SIZE, 600), h = ZEILE;
+        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        const kand = [];
+        for (const [dx, dy] of RICHTUNG) for (const ab of [9, 13, 18, 24, 32]) {
+          const r = rect(mx + dx * (ab + w / 2), my + dy * (ab + h / 2), w, h);
+          kand.push({ r, ab });
+        }
+        kand.sort((x, y) => (x.ab - distPix(x.r, hindernis)) - (y.ab - distPix(y.r, hindernis)));
+        const wahl = platziere(kand, {
+          frei: (c) => inBild(c.r) && !hitPlaced(c.r, LUFT_CX, LUFT_CY)
+            && !hitPix(grow(c.r, 2), hindernis) && !aufFremderFlaeche(c.r, [])
+        });
+        if (wahl && inBild(wahl.r) && !aufFremderFlaeche(wahl.r, [])) {
+          put(wahl.r);
+          raus.push(textSvg(wahl.r, SIZE, an.text, "c-callout-text", fill,
+            AN(anker) + ` data-label-anchor="${an.von}"`));
+        }
+      }
+      continue;
+    }
+    if (an.art === "zone") {
+      // Benannte Hülle um mehrere Gegenstände: „diese gehören zusammen und heißen X".
+      // Imprints „Now"-Feld (Karte 02) ist genau das — eine farbige Fläche mit Namen, in
+      // der Tasse, Würfel und Gehirn liegen.
+      const pts = (an.umfasst || []).flatMap(punkteVon);
+      if (!pts.length) continue;
+      const b = bbox(pts);
+      const PAD = 10;
+      const x = b.x0 - PAD, y = b.y0 - PAD, w2 = (b.x1 - b.x0) + 2 * PAD, h2 = (b.y1 - b.y0) + 2 * PAD;
+      const ton = (an.umfasst || []).map(tonVon).find(Boolean);
+      const fill = ton ? C(ton) : C("ink");
+      const anker = `annot:zone-${ai}`;
+      unten.push(`<rect class="c-zone"${AN(anker)} x="${x.toFixed(1)}" y="${y.toFixed(1)}"`
+        + ` width="${w2.toFixed(1)}" height="${h2.toFixed(1)}" rx="6"`
+        + ` fill="${ton ? SOFT(ton) : C("line")}"/>`);
+      // Der Name gehört an eine KANTE der Zone — dort liest er sich als ihr Name und nicht
+      // als Beschriftung von irgendetwas darin. Welche Kante, entscheidet der Solver:
+      // fest an die Oberkante gesetzt landete er am Neuron unter „REIZE KOMMEN AN" und
+      // prüfte dabei nichts.
+      const tw = measure(an.text, SIZE, 600);
+      const ecken = [
+        [x + tw / 2 + 7, y + ZEILE / 2 + 3], [x + w2 - tw / 2 - 7, y + ZEILE / 2 + 3],
+        [x + tw / 2 + 7, y + h2 - ZEILE / 2 - 3], [x + w2 - tw / 2 - 7, y + h2 - ZEILE / 2 - 3],
+        [x + tw / 2 + 7, y - ZEILE / 2 - 2], [x + w2 - tw / 2 - 7, y - ZEILE / 2 - 2],
+        [x + tw / 2 + 7, y + h2 + ZEILE / 2 + 2], [x + w2 - tw / 2 - 7, y + h2 + ZEILE / 2 + 2]
+      ].map(([cx2, cy2]) => ({ r: rect(cx2, cy2, tw, ZEILE) }));
+      const wahlZ = platziere(ecken, {
+        frei: (c) => inBild(c.r) && !hitPlaced(c.r, LUFT_CX, LUFT_CY) && !hitPix(grow(c.r, 2), hindernis),
+        schaden: (c) => (inBild(c.r) ? schadenVon(c.r, hindernis) : null)
+      });
+      if (wahlZ && inBild(wahlZ.r)) {
+        put(wahlZ.r);
+        raus.push(textSvg(wahlZ.r, SIZE, an.text, "c-callout-text", fill, AN(anker)));
+      }
+      continue;
+    }
     if (an.art === "klammer") {
       const ptsA = punkteVon(an.von), ptsB = punkteVon(an.bis);
       if (!ptsA.length || !ptsB.length) continue;    // unbekannter Anker — der Validator lehnt ihn ab
@@ -1978,6 +2111,9 @@ function wireAnnotations(root, card) {
       + leaderSvg(leader, anker, "", "leader-c")
       + textSvg(wahl.r, SIZE, an.text, "c-callout-text", fill, AN(anker) + ` data-label-anchor="${an.an}"`));
   }
+  // Zonen zuerst und ganz nach hinten: `afterbegin` legt sie unter die Karten-Geometrie,
+  // damit die Fläche die Gegenstände nicht zudeckt, die sie zusammenfasst.
+  if (unten.length) svg.insertAdjacentHTML("afterbegin", unten.join("\n"));
   if (raus.length) svg.insertAdjacentHTML("beforeend", raus.join("\n"));
 }
 

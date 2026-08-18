@@ -284,7 +284,7 @@ const COLORS = new Set(["es", "ich", "ueberich"]);
 /// eine unbekannte Annotation stillschweigend: die Karte sähe heil aus und hätte die
 /// Aussage verloren, die das Modell setzen wollte.
 export const ANNOT_MAX = 4;
-export const ANNOT_ARTEN = ["callout", "klammer"];   // ring/pfeil/zone folgen additiv
+export const ANNOT_ARTEN = ["callout", "klammer", "ring", "pfeil", "zone"];
 function checkAnnotations(card, p, err) {
   if (card.annotations === undefined) return;
   const { anker } = ankerModell(card);
@@ -307,13 +307,29 @@ function checkAnnotations(card, p, err) {
     const ap = `${p}.annotations[${i}]`;
     if (!ANNOT_ARTEN.includes(a?.art))
       err(ap + ".art", `unbekannte Art "${a?.art}" (erlaubt: ${ANNOT_ARTEN.join(", ")})`);
-    if (typeof a?.text !== "string" || !a.text.trim())
+    // Der Ring markiert nur, er benennt nicht; beim Pfeil ist die Beschriftung optional
+    // (die Richtung ist schon die Aussage). Alles andere braucht seinen Text.
+    const brauchtText = a?.art !== "ring" && a?.art !== "pfeil";
+    if (a?.art === "ring" && a?.text !== undefined)
+      err(ap + ".text", "ein ring markiert nur — für eine Beschriftung setze zusätzlich ein callout auf denselben Anker");
+    if (brauchtText && (typeof a?.text !== "string" || !a.text.trim()))
       err(ap + ".text", "fehlt — eine Annotation ohne Text bezeichnet nichts");
-    else if (a.text.length > 28)
+    else if (typeof a?.text === "string" && a.text.length > 28)
       err(ap + ".text", `zu lang (${a.text.length} > 28 Zeichen) — kürze auf einen Ruf, keinen Satz`);
     // Die Klammer misst eine Spanne und braucht deshalb ZWEI Anker; der Callout
     // bezeichnet eine Stelle und braucht einen. Beide Formen prüfen dieselbe Registry.
-    const felder = a?.art === "klammer" ? ["von", "bis"] : ["an"];
+    const felder = (a?.art === "klammer" || a?.art === "pfeil") ? ["von", "bis"]
+      : a?.art === "zone" ? [] : ["an"];
+    if (a?.art === "zone") {
+      const u = a.umfasst;
+      if (!Array.isArray(u) || u.length < 2)
+        err(ap + ".umfasst", `braucht mindestens 2 Anker — eine Zone um einen einzigen Gegenstand `
+          + `fasst nichts zusammen (nimm ein callout oder einen ring)`);
+      else u.forEach((v, k) => {
+        if (!anker.includes(v)) err(`${ap}.umfasst[${k}]`, `unbekannter Anker "${v}" — diese Karte hat: ${anker.join(", ")}`);
+        else if (OHNE_KONTUR.test(v)) err(`${ap}.umfasst[${k}]`, `"${v}" bezeichnet Text, keine Geometrie`);
+      });
+    }
     for (const f of felder) {
       const v = a?.[f];
       if (!v) err(`${ap}.${f}`, `fehlt — ${a?.art === "klammer"
@@ -325,8 +341,9 @@ function checkAnnotations(card, p, err) {
         err(`${ap}.${f}`, `"${v}" bezeichnet Text, keine Geometrie — hänge die Annotation an das Objekt `
           + `selbst (${anker.filter((n) => !OHNE_KONTUR.test(n)).join(", ") || "diese Karte hat keinen"})`);
     }
-    if (a?.art === "klammer" && a.von && a.von === a.bis)
-      err(ap, `von und bis sind derselbe Anker ("${a.von}") — eine Klammer über nichts misst nichts`);
+    if ((a?.art === "klammer" || a?.art === "pfeil") && a.von && a.von === a.bis)
+      err(ap, `von und bis sind derselbe Anker ("${a.von}") — ${a.art === "pfeil"
+        ? "ein Pfeil auf sich selbst zeigt nichts" : "eine Klammer über nichts misst nichts"}`);
   });
 }
 

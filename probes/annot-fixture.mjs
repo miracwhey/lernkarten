@@ -26,6 +26,7 @@ const lade = (datei, i) => {
 const neuron = lade("lessons/wie-nervenzellen-feuern.json", 1);
 const eisberg = lade("lessons/freud-psyche.json", 1);
 const kurve = lade("lessons/warum-wir-schlafen.json", 1);
+const waage = lade("lessons/wie-nervenzellen-feuern.json", 9);
 
 const FAELLE = [
   ["01-neuron-ohne", neuron],
@@ -49,7 +50,27 @@ const FAELLE = [
     { art: "klammer", text: "WAS ICH ZEIGE", von: "node:berg", bis: "waterline" },
     { art: "callout", text: "UND WAS NICHT", an: "region:es" }
   ] }],
-  ["10-neuron-klammer", { ...neuron, annotations: [{ art: "klammer", text: "DER GANZE WEG", von: "node:dendrit", bis: "node:synapse" }] }]
+  ["10-neuron-klammer", { ...neuron, annotations: [{ art: "klammer", text: "DER GANZE WEG", von: "node:dendrit", bis: "node:synapse" }] }],
+  // ring markiert, callout benennt — bei Imprint (Macroexpressions) genau dieses Paar.
+  ["11-neuron-ring", { ...neuron, annotations: [{ art: "ring", an: "node:soma" }] }],
+  ["12-neuron-ring-callout", { ...neuron, annotations: [
+    { art: "ring", an: "node:soma" },
+    { art: "callout", text: "HIER ENTSCHEIDET SICH", an: "node:soma" }
+  ] }],
+  // Zwei Negativfälle für den Pfeil, beide am Neuron: die Karte zeichnet ihre Wege selbst
+  // (Axon zwischen Soma und Synapse), ein Pfeil darauf wäre eine zweite Linie auf der
+  // ersten. Und Dendrit/Soma berühren sich — dazwischen ist kein Weg.
+  ["13-pfeil-redundant", { ...neuron, annotations: [{ art: "pfeil", text: "LÄUFT WEITER", von: "node:soma", bis: "node:synapse" }] }],
+  ["14-pfeil-zu-nah", { ...neuron, annotations: [{ art: "pfeil", von: "node:dendrit", bis: "node:soma" }] }],
+  // Positivfall: die Waagschalen sind räumlich getrennt und NICHT direkt verbunden.
+  ["14b-waage-pfeil", { ...waage, annotations: [{ art: "pfeil", text: "KIPPT ES", von: "node:erregung", bis: "node:hemmung" }] }],
+  ["15-neuron-zone", { ...neuron, annotations: [{ art: "zone", text: "DIE ZELLE", umfasst: ["node:dendrit", "node:soma"] }] }],
+  ["16-alles", { ...neuron, annotations: [
+    { art: "zone", text: "DIE ZELLE", umfasst: ["node:dendrit", "node:soma"] },
+    { art: "ring", an: "node:synapse" },
+    { art: "pfeil", von: "node:soma", bis: "node:synapse" },
+    { art: "callout", text: "SPRINGT ÜBER", an: "node:synapse" }
+  ] }]
 ];
 
 const browser = await chromium.launch();
@@ -65,7 +86,7 @@ page.on("pageerror", (e) => { fehler.push(e.message); console.error("PAGEERROR:"
 for (const [name, card] of FAELLE) {
   const n = await page.evaluate((c) => {
     renderCardInto(document.getElementById("area"), c);
-    return document.querySelectorAll("#area .c-callout, #area .c-klammer").length;
+    return document.querySelectorAll("#area .c-callout, #area .c-klammer, #area .c-ring, #area .c-pfeil, #area .c-zone").length;
   }, card);
   await page.waitForTimeout(150);
   await page.locator(".phone").screenshot({ path: `${outdir}/${name}.png` });

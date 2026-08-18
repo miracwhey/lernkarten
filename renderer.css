@@ -240,6 +240,14 @@
   /* Maßklammer: dünn wie der Leader, aber durchgehend und ohne Rundung — sie ist ein
      Messwerkzeug im Bild, keine gezeichnete Form des Gegenstands. */
   .c-klammer { stroke-width: 1.1; stroke-linejoin: miter; stroke-linecap: butt; opacity: 0.8; }
+  /* Marker-Ring: umschließt eine Stelle, ohne sie zu übermalen — kräftiger als die
+     Klammer, weil er allein steht und nichts beschriftet. */
+  .c-ring { stroke-width: 2; opacity: 0.85; }
+  /* Wirkungspfeil: dünn und ruhig; die Aussage ist die Richtung, nicht die Linie. */
+  .c-pfeil { stroke-width: 1.4; stroke-linecap: butt; opacity: 0.9; }
+  .c-pfeilspitze { opacity: 0.9; }
+  /* Zone: eine weiche Fläche im Hintergrund, die zusammenfasst statt zu betonen. */
+  .c-zone { opacity: 0.5; }
   /* Leader nur als letztes Mittel: gepunktet und dünn, damit er nie wie eine
      Ereignis-Linie oder ein Achsen-Strich gelesen wird. */
   .leader { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 2.5; opacity: 0.75; }
