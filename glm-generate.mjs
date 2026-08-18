@@ -186,6 +186,7 @@ const diagramme = `${MIN_CARDS - 3}–${MAX_CARDS - 3}`;
 const kartenAuftrag = `## Umfang (Contract — wird geprüft)
 
 ${MIN_CARDS}–${MAX_CARDS} Karten${depth ? ` (Tiefe „${depth}")` : ""}: Karte 1 = title, dazwischen ${diagramme} Diagramm-Karten, vorletzte = quiz, letzte = insight.
+Mindestens zwei der Diagramm-Karten tragen „annotations" — die Beschriftung IM Bild, die sagt, worauf zu schauen ist.
 Mehr Karten heißen feinere Gedanken-Schritte aus dem Dossier — nicht längere Karten und keine Wiederholungen.
 In "stats" der Titel-Karte steht die tatsächliche Kartenzahl: "<N> Karten · <M> Minuten".`;
 const userBase = `Thema: ${TOPIC}

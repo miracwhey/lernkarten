@@ -32,12 +32,18 @@ export const auditCurveCard = ({ card, limits, seqStep }) => {
   // Der Schritt-Modus rendert über den ECHTEN Karten-Pfad: `renderCardInto` verdrahtet
   // die Sequenz, ein blankes innerHTML tut das nicht — gemessen würde sonst immer der
   // Zustand „alles sichtbar", also genau das, was das Schritt-Gate finden soll.
+  // Auch OHNE Schritt-Modus läuft jetzt der echte Karten-Pfad. Ein blankes innerHTML
+  // überspringt `wireAnnotations` — die Erklär-Schicht (Callout, Klammer, Ring, Pfeil,
+  // Zone) entsteht erst dort. Gemessen am ersten Generator-Lauf, der Annotationen
+  // lieferte: die Karten trugen sie im JSON, die Audit-Shots zeigten sie nicht, und
+  // KEINE ihrer Lagen wurde je auf Kollision oder Clipping geprüft. Eine Fähigkeit, die
+  // das Gate nicht sieht, ist schlimmer als eine, die es nicht gibt.
   let cur = null, steps = 0;
+  renderCardInto(area, card, { onAdvance: () => {} });
   if (SEQ) {
-    renderCardInto(area, card, { onAdvance: () => {} });
     steps = window.__seqSteps;
     cur = window.__seqGoto(seqStep);
-  } else area.innerHTML = RENDERERS[card.type](card);
+  }
   const svg = document.querySelector(".diagram svg");
   if (!svg) return { out: null, ast: null, cur, steps };   // reine HTML-Karte — kein Geometrie-Audit
   const vb = svg.viewBox.baseVal;

@@ -1792,6 +1792,19 @@ function wireAnnotations(root, card) {
     return null;
   };
 
+  // Ein Leader darf keine BESCHRIFTUNG queren. `leaderFree` prüft nur gegen Geometrie —
+  // Texte stehen in der Belegung, nicht in der Punktwolke. Gefunden vom Audit, nachdem es
+  // die Schicht erstmals sah: auf der Eisberg-Karte kreuzte der Zeigefinger eines Callouts
+  // das Zonen-Label „DEIN GEFÜHL" (PATH-Befund). Geprüft wird stückweise, weil hitPlaced
+  // Rechtecke vergleicht und eine Linie keines ist.
+  const leaderFreiVonText = (g) => {
+    const n = Math.max(2, Math.ceil(leaderLen(g) / 5));
+    for (let k = 0; k <= n; k++) {
+      const x = g.x1 + (g.x2 - g.x1) * (k / n), y = g.y1 + (g.y2 - g.y1) * (k / n);
+      if (hitPlaced(rect(x, y, 2, 2), 0, 0)) return false;
+    }
+    return true;
+  };
   const SIZE = 10.5, ZEILE = boxH(SIZE), RAND = 4;
   // Ein Callout braucht MEHR Luft als ein freier Text. LUFT_Y = 2 ist für Kurven-Labels
   // richtig (dort ist der Platz knapp und Text neben Text liest sich als zwei Texte); ein
@@ -2086,7 +2099,7 @@ function wireAnnotations(root, card) {
     const eigeneEls = elementeVon(an.an);
     const frei = (c) => inBild(c.r) && !hitPlaced(c.r, LUFT_CX, LUFT_CY) && !hitPix(grow(c.r, 2), hindernis)
       && !aufFremderFlaeche(c.r, eigeneEls)
-      && (!c.braucht || (leaderLen(c.g) <= LEAD_C && leaderFree(c.g, hindernis)));
+      && (!c.braucht || (leaderLen(c.g) <= LEAD_C && leaderFree(c.g, hindernis) && leaderFreiVonText(c.g)));
     const eindeutig = (c) => fremd.every((pts) => naechster(c.r, pts).d >= c.nah.d - 1.5);
     const wahl = platziere(kandidaten, { frei, eindeutig,
       schaden: (c) => (inBild(c.r) ? schadenVon(c.r, hindernis) + c.score * 0.05 : null) });

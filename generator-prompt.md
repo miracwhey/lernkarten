@@ -65,7 +65,7 @@ Im `text` sind erlaubt: `<b>…</b>` (Indigo — der Lösungs-/Kernbegriff), `<s
   "series":[ … 1–2 Serien … ],
   "stop": { "label":"<CAPS ≤ 20>", "t": 0.15–0.9 }?,
   "notes":[ { "label":"<CAPS ≤ 22>", "series": <Index>, "t": 0–1 | "at":"apex", "side":"above"|"below"? } ]? (max 2),
-  "caption" }
+  "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4), "caption" }
 ```
 Serie: `{ "label":"<≤ 18>"?, "color", "shape", "from"?, "to"?, "afterStop"?, "reboundTo"?, "area":true?, "dash":true?, "faded":true? }`
 
@@ -94,7 +94,7 @@ Jeder Text IM Bild (Serien-Label, `notes`, `stop.label`, Achsen) steht aus der P
 **Begriffs-Budget** (Leitlinie, kein Limit): ein Label je Serie, ein Ereignis-Begriff, höchstens ein Achsen-Label mit Eigenaussage. `notes` nur für etwas, das die Kurve allein nicht sagt — eine Anmerkung, die ihr Serien-Label wiederholt, ist Lärm im Bild. Lieber ein Begriff weniger und der bleibt hängen.
 
 ### relation: multiplication
-`{ "relation":"multiplication", "text", "source":{"label":"<≤ 12>","sub":"<≤ 22>","color"}, "count":3-6, "targets":[{"label":"<≤ 16>"}×count]?, "result":{"label":"<≤ 12>"}, "caption" }`
+`{ "relation":"multiplication", "text", "source":{"label":"<≤ 12>","sub":"<≤ 22>","color"}, "count":3-6, "targets":[{"label":"<≤ 16>"}×count]?, "result":{"label":"<≤ 12>"}, "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4), "caption" }`
 
 Diese Relation trägt zwei verschiedene Aussagen, und `targets` entscheidet welche:
 
@@ -105,24 +105,25 @@ Diese Relation trägt zwei verschiedene Aussagen, und `targets` entscheidet welc
 
 ### relation: contrast
 `{ "relation":"contrast", "text", "left":{"title":"<CAPS ≤ 18>","color","items":[{"label":"<≤ 20>","sub":"<≤ 32>"}×2]}, "right":{…}, "caption" }`
+(Diese Karte trägt keine `annotations` — sie hat kein Bild, an dem sie hängen könnten.)
 
 ### relation: intersection
-`{ "relation":"intersection", "text", "a":{"label":"<CAPS ≤ 18>","color"}, "b":{…}, "overlap":{"label":["<≤ 9>","<≤ 9>"] (1–2 Zeilen),"color"}, "caption" }`
+`{ "relation":"intersection", "text", "a":{"label":"<CAPS ≤ 18>","color"}, "b":{…}, "overlap":{"label":["<≤ 9>","<≤ 9>"] (1–2 Zeilen),"color"}, "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4), "caption" }`
 
 ### relation: loop
-`{ "relation":"loop", "text", "steps":[{"label":"<≤ 12>","sub":"<≤ 20>","color"}×3–5], "caption" }`
+`{ "relation":"loop", "text", "steps":[{"label":"<≤ 12>","sub":"<≤ 20>","color"}×3–5], "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4), "caption" }`
 Uhrzeigersinn, Start oben. Hebe die treibende Station farblich hervor (z. B. Belohnung = ueberich). **Nimm so viele Stationen, wie der Kreislauf wirklich hat** — drei echte Stationen sind besser als eine vierte, die nur die Zahl füllt, und ein Kreis mit fünf Gliedern muss nicht auf vier zusammengezogen werden.
 
 ### relation: weighing
-`{ "relation":"weighing", "text", "left":{"label":"<≤ 9>","sub":"<≤ 16>","color"}, "right":{…}, "pivot":{"label":"<≤ 10>","sub":"<≤ 16>","color"} }`
+`{ "relation":"weighing", "text", "left":{"label":"<≤ 9>","sub":"<≤ 16>","color"}, "right":{…}, "pivot":{"label":"<≤ 10>","sub":"<≤ 16>","color"}, "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4) }`
 **Links hängt tiefer = wiegt schwerer.** Nutze das semantisch. Der `pivot` ist das Vermittelnde/Ergebnis, keine Schnittmenge.
 
 ### relation: descent
-`{ "relation":"descent", "text", "steps":[{"label":"<≤ 16>","sub":"<≤ 26>","color"}×3, letzter mit "submerged":true], "sink":{"label":"<CAPS ≤ 20>"}, "caption"? }`
+`{ "relation":"descent", "text", "steps":[{"label":"<≤ 16>","sub":"<≤ 26>","color"}×3, letzter mit "submerged":true], "sink":{"label":"<CAPS ≤ 20>"}, "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4), "caption"? }`
 Die Grenze bedeutet „unter der Oberfläche / außerhalb der Kontrolle" — nur nutzen, wenn das zum Konzept passt.
 
 ### relation: depth-layers
-`{ "relation":"depth-layers", "text", "zones":[{"id","label":"<CAPS ≤ 11>"}×3 (oben→unten)], "body":{"shape":"iceberg","regions":[{"id","label":"<CAPS ≤ 8>","color","at":"peak"?}×3]} }`
+`{ "relation":"depth-layers", "text", "zones":[{"id","label":"<CAPS ≤ 11>"}×3 (oben→unten)], "body":{"shape":"iceberg","regions":[{"id","label":"<CAPS ≤ 8>","color","at":"peak"?}×3]}, "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4) }`
 `regions[0]` = rechte obere Region (mit `"at":"peak"` wandert ihr Label als Callout an die Spitze über Wasser), `regions[1]` = große linke Region, `regions[2]` = rechte untere Region.
 
 ### relation: object — Gegenstand aus der Library
@@ -133,7 +134,7 @@ Die Grenze bedeutet „unter der Oberfläche / außerhalb der Kontrolle" — nur
              "labels": { "<platz>":"<CAPS, Deckel je Platz>" },
              "subs":   { "<platz>":"<CAPS, Deckel je Platz>" }? },
   "notes": [ { "anker":"<Anker des Objekts>", "text":"<CAPS, Deckel je Objekt>", "ton":"es"|"ich"|"ueberich"? } ]? (max 2),
-  "caption" }
+  "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4), "caption" }
 ```
 
 - **Die Library ist klein, aber jedes Objekt darin trägt weiter als sein Titel vermuten lässt.** Ein Objekt passt, wenn der Gedanke der Karte AN diesem Ding hängt — nicht nur, wenn das Thema der Lektion davon handelt: das Neuron trägt jede Karte über Reiz, Schwelle und Weiterleitung, die Person jede über Innen gegen Außen, der Himmel jede über „was du siehst, entsteht erst im Auge". Lies die Liste unten daraufhin, bevor du zu einem Diagramm greifst.
@@ -213,7 +214,7 @@ Der Slug ist die Beschriftung in Kleinbuchstaben, Leerzeichen als `-`: aus `"SCH
 - **Beschrifte nie eine Beschriftung.** Anker auf `label:` oder `zone:` sind Text, kein Gegenstand — hänge die Annotation an das Ding selbst.
 - **Farbe wird geerbt.** Ein Callout an einem roten Gegenstand ist rot; du gibst nie eine Farbe an.
 - **Keine Positionen.** Wo etwas sitzt, ob eine Linie zum Anker nötig ist, auf welcher Seite die Klammer steht — das rechnet das System. Du nennst nur Bedeutung und Ziel.
-- Ohne `annotations` ist die Karte vollständig. Nutze sie nur, wenn sie etwas ERKLÄRT, das im Bild sonst untergeht — nicht, um ein Label zu wiederholen.
+- **Die Schicht ist der Normalfall, nicht die Ausnahme.** Fast jede gute Lehrbuch-Grafik beschriftet, markiert oder misst etwas an ihrem Bild — ein Diagramm ohne ein Wort darin lässt den Leser raten, worauf er schauen soll. Prüfe bei JEDER Diagramm-Karte, ob eine Annotation die Aussage schärft; sitzt sie nicht, lass sie weg. Wiederhole nie ein Label, das schon dasteht.
 
 ### quiz
 `{ "type":"quiz", "question":"<≤ 160>", "options":[{"label":"<≤ 42>","correct":true|false}×3] (genau 1 correct), "explain":"<≤ 180, mit <strong>>", "wrong":"<≤ 160>" }`

@@ -31,7 +31,12 @@ const knownCompound = (w) => {
 };
 
 // Enum-, Referenz- und Eigennamen-Felder sind keine Prosa — dort prüft der Detektor nicht.
-const SKIP_KEYS = new Set(["type", "relation", "color", "shape", "from", "to", "afterStop", "side", "series", "id", "source", "cite", "eyebrow"]);
+// `art`/`an`/`von`/`bis`/`umfasst`/`anker` sind TECHNISCHE Felder der Erklär-Schicht und der
+// Asset-Notes: dort stehen Anker-Namen und Enum-Werte, keine Prosa. Ohne sie meldete der
+// erste Lauf mit Annotationen „callout", „step", „waterline" und „stop" als
+// Rechtschreibverdacht — vier Falschtreffer, in denen der eine echte („ADEPOSIN") unterging.
+const SKIP_KEYS = new Set(["type", "relation", "color", "shape", "from", "to", "afterStop", "side", "series", "id", "source", "cite", "eyebrow",
+  "art", "an", "von", "bis", "umfasst", "anker"]);
 
 // Zwei Fund-Klassen: `suspicious` = nirgends herleitbar (Verschreiber-Verdacht);
 // `composita` = NUR über den Komposita-Schnitt akzeptiert. Letztere sind lexikalisch
