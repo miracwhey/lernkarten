@@ -141,6 +141,22 @@ gezeichnete. Die Beschriftung nennt Werte, die das Bild nicht zeigt, und es gibt
 Gate, das das prüft: der Judge prüft Fakten im TEXT, das Audit prüft Lagen, niemand
 vergleicht Label gegen Kurvenhöhe.
 
+**Leons dritte Option (18.08.), und sie ist die stärkste: Zahlen INTERN nutzen, nicht
+anzeigen.** Die Kurve entsteht aus echten Werten, im Bild steht keine einzige Zahl. Damit
+fällt der Zielkonflikt weg, statt entschieden zu werden:
+
+- Der Look bleibt der von Imprint (Befund 4: kein Zahlendiagramm in den zwölf Karten).
+- Die Aussagen werden trotzdem wahr: „NOCH 50 % WIRKUNG" landet dort, wo die Kurve
+  wirklich auf der Hälfte steht, weil beide aus derselben Rechnung kommen.
+- Erst dadurch wird das Gate überhaupt möglich, das Beschriftung gegen Kurvenhöhe misst —
+  es braucht einen Sollwert, und ohne interne Zahlen gibt es keinen.
+- Das Anzeigen wird davon unabhängig: eine spätere Karte kann Zahlen zeigen, ohne dass
+  irgendetwas an der Geometrie neu gebaut werden muss.
+
+Offen dabei: woher die Werte kommen (aus dem Dossier, aus einer Formel je `shape`, oder
+das Modell nennt sie und der Validator prüft sie gegen den Text), und ob `t` weiterhin ein
+Bruchteil bleibt oder eine Einheit bekommt.
+
 **Empfehlung, in dieser Reihenfolge:**
 
 1. **Zuerst die Kurve an ihre eigene Behauptung binden** — `decay-halflife` so zeichnen,
