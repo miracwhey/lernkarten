@@ -140,6 +140,28 @@ const leaderFree = (g, pix) => {
   return true;
 };
 
+// ——— Umbruch: dieselbe Wortgrenze für jeden Text, der eine Lage suchen muss ———
+// Umbruch ist eine LAYOUT-Entscheidung und gehört deshalb dem Renderer: das Karten-JSON
+// liefert einen Satz, nicht zwei Zeilen. Gebrochen wird an der Wortgrenze, die beide
+// Zeilen am gleichmäßigsten macht — deterministisch, ohne Rest.
+// Herausgelöst aus der Asset-Note, weil die Erklär-Schicht denselben Bedarf hat und ihn
+// nicht hatte: der Callout suchte nur EINZEILIG. Gemessen an der Eisberg-Karte war ein
+// 171 Einheiten breiter Kasten in einer 400er Karte in KEINER der 1728 Lagen frei — der
+// Solver fiel auf den Notnagel, und dessen Leader querte ein Zonen-Label (PATH-Befund).
+// Die Breite ist die Ursache, nicht die Auswahl; ein Text, der nicht umbrechen darf,
+// nimmt sich mehr Raum, als die Karte hat.
+const umbruch = (txt, size, weight) => {
+  const w = String(txt).split(" ");
+  if (w.length < 2) return [[txt]];
+  let best = null;
+  for (let i = 1; i < w.length; i++) {
+    const a = w.slice(0, i).join(" "), b = w.slice(i).join(" ");
+    const d = Math.abs(measure(a, size, weight) - measure(b, size, weight));
+    if (!best || d < best.d) best = { d, zeilen: [a, b] };
+  }
+  return [[txt], best.zeilen];
+};
+
 // ——— Auswahl einer Lage aus vorsortierten Kandidaten ———
 // Die KANDIDATEN erzeugt der Karten-Typ: seine Geometrie bestimmt, wo ein Text überhaupt
 // stehen könnte, und seine Sonderfälle (Fläche am Objekt, Apex am Kurvenast) lassen sich
@@ -383,20 +405,7 @@ function assetEinbau(ref, { A, labels = {}, subs = {}, notes = [], role = "hero"
       .flatMap((el) => (el.matches(ASSET_GEO_SEL) ? [el] : [...el.querySelectorAll(ASSET_GEO_SEL)]))
       .flatMap(abtasten);
   };
-  // Umbruch ist eine LAYOUT-Entscheidung und gehört deshalb dem Renderer: das Karten-JSON
-  // liefert einen Satz, nicht zwei Zeilen. Gebrochen wird an der Wortgrenze, die beide
-  // Zeilen am gleichmäßigsten macht — deterministisch, ohne Rest.
-  const varianten = (txt) => {
-    const w = String(txt).split(" ");
-    if (w.length < 2) return [[txt]];
-    let best = null;
-    for (let i = 1; i < w.length; i++) {
-      const a = w.slice(0, i).join(" "), b = w.slice(i).join(" ");
-      const d = Math.abs(measure(a, NOTE_SIZE, 600) - measure(b, NOTE_SIZE, 600));
-      if (!best || d < best.d) best = { d, zeilen: [a, b] };
-    }
-    return [[txt], best.zeilen];
-  };
+  const varianten = (txt) => umbruch(txt, NOTE_SIZE, 600);
   const inBild = (r) => cornersOf(r).every(([x, y]) => x >= 4 && x <= 396 && y >= 8 && y <= 292);
   const RICHTUNG = [[0, 1], [0, -1], [1, 0], [-1, 0], [0.71, 0.71], [0.71, -0.71], [-0.71, 0.71], [-0.71, -0.71]];
   const ABSTAND = [8, 12, 17, 23, 30, 38];
@@ -2085,24 +2094,39 @@ function wireAnnotations(root, card) {
     };
     const schritt = Math.max(1, Math.ceil(eigen.length / 24));
     const saat = eigen.filter((_, i) => i % schritt === 0);
-    const w = measure(an.text, SIZE, 600), h = ZEILE;
-    const kandidaten = [];
-    for (const p of saat) for (const [dx, dy] of RICHTUNG) for (const ab of ABSTAND) {
-      const r = rect(p[0] + dx * (ab + (Math.abs(dx) * w + Math.abs(dy) * h) / 2),
-                     p[1] + dy * (ab + (Math.abs(dx) * w + Math.abs(dy) * h) / 2), w, h);
-      const nah = naechster(r, eigen);
-      const braucht = nah.d > LEADER_AB;
-      kandidaten.push({ r, dot: nah.p, nah, braucht, g: leaderGeom(r, nah.p),
-        score: nah.d * 0.45 - distPix(r, hindernis) });
-    }
-    kandidaten.sort((a, b) => a.score - b.score);
+    const lagen = (zeilen) => {
+      const breiten = zeilen.map((z) => measure(z, SIZE, 600));
+      const w = Math.max(...breiten), h = zeilen.length * ZEILE;
+      const k = [];
+      for (const p of saat) for (const [dx, dy] of RICHTUNG) for (const ab of ABSTAND) {
+        const r = rect(p[0] + dx * (ab + (Math.abs(dx) * w + Math.abs(dy) * h) / 2),
+                       p[1] + dy * (ab + (Math.abs(dx) * w + Math.abs(dy) * h) / 2), w, h);
+        const nah = naechster(r, eigen);
+        k.push({ r, zeilen, breiten, dot: nah.p, nah, braucht: nah.d > LEADER_AB, g: leaderGeom(r, nah.p),
+          score: nah.d * 0.45 - distPix(r, hindernis) });
+      }
+      return k.sort((a, b) => a.score - b.score);
+    };
     const eigeneEls = elementeVon(an.an);
     const frei = (c) => inBild(c.r) && !hitPlaced(c.r, LUFT_CX, LUFT_CY) && !hitPix(grow(c.r, 2), hindernis)
       && !aufFremderFlaeche(c.r, eigeneEls)
       && (!c.braucht || (leaderLen(c.g) <= LEAD_C && leaderFree(c.g, hindernis) && leaderFreiVonText(c.g)));
     const eindeutig = (c) => fremd.every((pts) => naechster(c.r, pts).d >= c.nah.d - 1.5);
-    const wahl = platziere(kandidaten, { frei, eindeutig,
-      schaden: (c) => (inBild(c.r) ? schadenVon(c.r, hindernis) + c.score * 0.05 : null) });
+    // Umbruch ist die AUSWEICHFORM, nicht die Regelform: ein Callout ist eine
+    // Bildbeschriftung, kein Absatz. Deshalb eine STAFFEL über die Formen und kein
+    // gemeinsamer Score-Topf — in einem Topf gewinnt der kompaktere Kasten fast immer,
+    // weil der Score Abstand zur Geometrie belohnt. Gemessen am Eisberg: „WAS ICH ZEIGE"
+    // brach um, obwohl die einzeilige Lage frei war, und ein Zuschlag von 6 Punkten gegen
+    // eine Abstandsspanne von 80 ist keine Rangordnung, sondern ein Wunsch.
+    const formen = umbruch(an.text, SIZE, 600).map(lagen);
+    let wahl = formen.map((k) => platziere(k, { frei, eindeutig })).find((c) => c && frei(c));
+    // Nirgends frei — dann entscheidet der kleinste Schaden über ALLE Formen zusammen.
+    // Die Leader-Querung eines Labels wiegt hier so schwer wie Text auf einer Linie: das
+    // ist derselbe sichtbare Defekt, und das Gate meldet beides als PATH. Ohne diesen Term
+    // war die Notlage blind für genau die Regel, die die Regellage einhält.
+    if (!wahl) wahl = platziere(formen.flat().sort((a, b) => a.score - b.score), { frei, eindeutig,
+      schaden: (c) => (inBild(c.r) ? schadenVon(c.r, hindernis) + c.score * 0.05
+        + (c.braucht && leaderLen(c.g) <= LEAD_C && !leaderFreiVonText(c.g) ? 1000 : 0) : null) });
     if (!wahl) continue;
     put(wahl.r);
     const ton = tonVon(an.an);
@@ -2122,7 +2146,9 @@ function wireAnnotations(root, card) {
       + ` y="${(wahl.r.cy - wahl.r.h / 2 - 2).toFixed(1)}" width="${(wahl.r.w + 10).toFixed(1)}"`
       + ` height="${(wahl.r.h + 4).toFixed(1)}" rx="3" fill="${ton ? SOFT(ton) : C("card")}"/>`
       + leaderSvg(leader, anker, "", "leader-c")
-      + textSvg(wahl.r, SIZE, an.text, "c-callout-text", fill, AN(anker) + ` data-label-anchor="${an.an}"`));
+      + wahl.zeilen.map((z, zi) => textSvg(
+        rect(wahl.r.cx, wahl.r.cy - wahl.r.h / 2 + ZEILE * (zi + 0.5), wahl.breiten[zi], ZEILE),
+        SIZE, z, "c-callout-text", fill, AN(anker) + ` data-label-anchor="${an.an}"`)).join(""));
   }
   // Zonen zuerst und ganz nach hinten: `afterbegin` legt sie unter die Karten-Geometrie,
   // damit die Fläche die Gegenstände nicht zudeckt, die sie zusammenfasst.

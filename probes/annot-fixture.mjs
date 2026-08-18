@@ -70,6 +70,12 @@ const FAELLE = [
   // Callout an einer layers-Region (deren rect geclippt und damit irreführend ist)?
   ["17-cycle-step", { ...kreis, annotations: [{ art: "callout", text: "HIER KIPPT ES", an: "step:schwelle" }] }],
   ["18-layers-region", { ...eisberg, annotations: [{ art: "callout", text: "DAS ZEIGE ICH", an: "region:ich" }] }],
+  // Der Fall aus dem ersten Generator-Lauf mit Schicht (Eisberg, ring-2.6-1t): der Text
+  // ist einzeilig 171 Einheiten breit, in einer 400er Karte war KEINE der 1728 Lagen
+  // frei, der Solver fiel auf den Notnagel und dessen Leader querte das Zonen-Label
+  // „DEIN GEFÜHL". Umbruch ist die Ausweichform, die diese Notlage auflöst — und der
+  // Deckel dafür, dass ein Callout nicht mehr Raum nimmt, als die Karte hat.
+  ["19-callout-lang", { ...eisberg, annotations: [{ art: "callout", text: "ADENOSIN STAUT SICH HIER", an: "waterline" }] }],
   ["16-alles", { ...neuron, annotations: [
     { art: "zone", text: "DIE ZELLE", umfasst: ["node:dendrit", "node:soma"] },
     { art: "ring", an: "node:synapse" },
