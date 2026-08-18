@@ -100,6 +100,64 @@ Beleg: Imprint 01. Bild: Quelle, Kegel, Zielfläche — auf dem Kegel steht, WAS
   Asset existiert (Auge, Person), kann es später an ihre Stelle treten, ohne dass der
   Contract sich ändert.
 
+## Maße und Zahlen an den Achsen (Leon, 18.08.)
+
+Der Gedanke: wenn `composition` schon mit Prozent arbeitet, wären Maße und Zahlen an x-
+und y-Achse vielleicht auch für die Genauigkeit gut.
+
+**Der Punkt trifft — aber die Reihenfolge entscheidet alles.** Es gibt zwei Sorten von
+Geometrie im Katalog, und sie vertragen Zahlen unterschiedlich gut:
+
+**Wo die Geometrie die Zahl schon TRÄGT, sind Zahlen gratis und exakt.** Bei
+`composition` ist der Sektorwinkel der Anteil, bei `zone-axis` ist die Zonenbreite der
+Abschnitt und die Pole tragen bereits Werte („0 STUNDEN WACH" → „19 STUNDEN WACH").
+Zwischenmarken sind dort direkt ableitbar, ohne dass irgendwer etwas behaupten muss.
+
+**Wo die Geometrie eine FORM-Behauptung ist, würden Zahlen präzise lügen.** Die
+Kurvenkarte zeichnet keine Daten, sondern Formen (`decay-halflife`, `compound-rise`, …);
+der Prompt sagt ausdrücklich „Keine Koordinaten, keine Punktlisten. Das System zeichnet
+die Form", und `t` ist ein Bruchteil der Strecke, keine Einheit.
+
+Gemessen (`node probes/kurve-treue.mjs`) ist das kein theoretisches Bedenken. Beide
+Spalten in derselben Normierung: Start = 100 %, Ende der gezeichneten Strecke = 0 %;
+Vergleichskurve = echter Zerfall über drei Halbwertszeiten, so wie die Karte selbst ihre
+Strecke liest („nach 5 Stunden die Hälfte, nach 10 ein Viertel", Callouts auf t=0,33 und
+t=0,67).
+
+| Stelle auf der Strecke | Kurve zeigt | echter Zerfall über 3 Halbwertszeiten |
+|---|---|---|
+| 25 % | 48,4 % | 59 % |
+| 33 % | **36,7 %** | **50 %** |
+| 50 % | 21,4 % | 35 % |
+| 67 % | **11,4 %** | **25 %** |
+
+Die gezeichnete `decay-halflife` fällt deutlich steiler als der Zerfall, den sie benennt —
+und sie erreicht am Ende die Null, was ein Zerfall nie tut. Das ist der zweite Teil
+derselben Ursache: die Form ist als Bildidee gebaut, nicht als Funktion.
+Das hat eine Folge, die schon heute sichtbar ist, ganz ohne Achsen-Zahlen: im Lauf vom
+18.08. setzte das Modell „NOCH 50 % WIRKUNG" auf `t=0,33` und „NUR NOCH 25 %" auf
+`t=0,67` — richtig gerechnet für eine echte Halbwertszeit-Kurve, falsch für die
+gezeichnete. Die Beschriftung nennt Werte, die das Bild nicht zeigt, und es gibt kein
+Gate, das das prüft: der Judge prüft Fakten im TEXT, das Audit prüft Lagen, niemand
+vergleicht Label gegen Kurvenhöhe.
+
+**Empfehlung, in dieser Reihenfolge:**
+
+1. **Zuerst die Kurve an ihre eigene Behauptung binden** — `decay-halflife` so zeichnen,
+   dass die Halbierung wirklich auf der Hälfte der genannten Zeit liegt. Das ist ein
+   kleiner Eingriff mit sofortiger Wirkung, unabhängig von allen Zahlen an Achsen: die
+   Aussagen auf der Karte werden wahr.
+2. **Dann Zahlen dort erlauben, wo die Geometrie sie hält** — `zone-axis` und
+   `composition` sofort, die Kurve erst nach Schritt 1.
+3. **Ein Gate dazu**, das Label-Werte gegen die Kurvenhöhe misst: ohne das wandert der
+   Fehler nur von der Achse ins Label zurück.
+
+Offen bleibt die Stil-Frage: Imprint benutzt in den zwölf Referenz-Karten **kein
+einziges** Zahlendiagramm (Befund 4 der Analyse). Zahlen erhöhen die Genauigkeit, ziehen
+die Karte aber Richtung Statistik-Grafik. Mein Vorschlag wäre, Zahlen als OPTION zu
+behandeln, die eine Karte nutzt, wenn ihre Aussage quantitativ ist („nach 5 Stunden die
+Hälfte") — und wegzulassen, wenn sie es nicht ist („erst frisch, dann träge").
+
 ## Was zu entscheiden ist
 
 1. **Alle vier, oder eine Auswahl?** Jede kostet Renderer + Validator + Prompt + Werkbank.
