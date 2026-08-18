@@ -1,7 +1,7 @@
 // Modell-Kette für Dossier- und Generator-Stufe: der erste Eintrag zuerst, bei
 // erschöpftem Kontingent der nächste. Der Judge bleibt in jedem Fall DeepSeek —
 // er darf nie das Generator-Modell sein (glm-generate.mjs bekommt --judgekey).
-import { attemptSignal, isAbortError, loadKey, nimChat, sleep, stripThink, throwIfAborted, warnAbgeschnitten, REQ_TIMEOUT_MS } from "../nim.mjs";
+import { attemptSignal, collectUsage, isAbortError, loadKey, nimChat, sleep, stripThink, throwIfAborted, warnAbgeschnitten, REQ_TIMEOUT_MS } from "../nim.mjs";
 
 export const NIM_BASE = "https://integrate.api.nvidia.com/v1";
 
@@ -71,6 +71,11 @@ async function openaiChat(key, model, messages, opts) {
     }
     if (res.ok) {
       warnAbgeschnitten(data, model.id);
+      // Verbrauch mitschreiben, wenn der Aufrufer einen Sammler stellt. Ohne das
+      // taucht die Dossier-Stufe in KEINER Kostenrechnung auf — obwohl sie laut
+      // Job-Ablauf der teuerste Einzel-Call ist. Eine Stufe, die nicht abgerechnet
+      // wird, ist beim Optimieren unsichtbar und wird zuverlässig übersehen.
+      collectUsage(opts.usage, data);
       return data.choices?.[0]?.message?.content;
     }
     if (res.status === 429 || res.status >= 500) {

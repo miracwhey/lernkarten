@@ -11,6 +11,20 @@
 - **Koffein:** Blockiert Adenosin-Rezeptoren (Antagonist). Es entfernt kein Adenosin und macht nicht wach — es **maskiert** den Schlafdruck. Das Adenosin steigt hinter der Blockade weiter; lässt die Wirkung nach, trifft der aufgestaute Druck auf einmal („Koffein-Crash").
 - **Gedächtnis:** Schlaf nach dem Lernen verschiebt frische Inhalte vom Hippocampus (Zwischenspeicher) in den Kortex (Langzeitspeicher) und macht Platz für Neues.
 
+## Strukturen (im Stoff enthalten)
+
+> Dieselben Fakten, nach ihrer FORM sortiert statt nach ihrer Art. Jeder Punkt nennt eine
+> Beziehung, die im Material steckt — welches Bild daraus wird, entscheidet der Generator.
+> Kein Punkt bringt einen neuen Fakt: alles hier steht oben schon.
+
+- **Ein Kreislauf, der sich selbst füttert:** Wachsein sammelt Adenosin → der Schlafdruck steigt → Schlaf baut das Adenosin ab → das Wachsein beginnt von vorn.
+- **Ein Auslöser, viele Wirkungen:** Eine Nacht Schlaf wirkt zugleich auf Gedächtnis, Immunabwehr, Leistung am Steuer und Lebenserwartung — verschiedene Bereiche, ein Hebel.
+- **Sichtbares über Verborgenem:** Was du spürst (wach, leistungsfähig), liegt über dem, was wirklich läuft — hinter der Koffein-Blockade steigt das Adenosin ungebremst weiter. Der obere Teil ist der kleinere.
+- **Ein Gegenstand, an dem der Vorgang hängt:** Der Adenosin-Rezeptor am Neuron — dort findet das Andocken statt, und dort sitzt die Blockade.
+- **Zwei Größen im Gegeneinander:** Schlafdruck (Prozess S) und innere Uhr (Prozess C) laufen unabhängig voneinander und bestimmen erst zusammen, wie müde du bist.
+- **Ein Verlauf über die Zeit:** Koffein zerfällt mit 5–7 Stunden Halbwertszeit — nach 5 h die Hälfte, nach 10 h ein Viertel.
+- **Eine Schwelle, die unbemerkt gerissen wird:** 10 Nächte à 6 Stunden ergeben die Leistung von 24 h Wachsein — das eigene Gefühl eicht sich mit und meldet weiter „normal".
+
 ## Zahlen (belegt)
 
 - Koffein-Halbwertszeit: **5–7 Stunden** (Lehrbeispiel: 5 Stunden → nach 5 h noch 50 %, nach 10 h noch 25 %).

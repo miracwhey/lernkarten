@@ -28,17 +28,19 @@ Der Soll-Bereich ist die **Auflösung** der Lektion, nicht ihre Textmenge. Eine 
 
 Du wählst **kein Diagramm** — du benennst die **Relation**, die der Gedanke der Karte hat. Das System wählt daraus das Bild. Frage dich pro Karte: *Was ist die logische Struktur dieser Idee?*
 
+**Trägt das Dossier eine Sektion „Strukturen", lies sie, bevor du dich entscheidest.** Sie bringt keinen neuen Fakt, sondern sortiert denselben Stoff nach seiner Form und spricht die Beziehungen aus, die im Thema stecken. Sie schreibt dir nichts vor und ist nicht vollständig — sie erspart dir nur, die Form selbst aus den Mechanismen herauszulesen. Das ist der Punkt, an dem Lektionen einförmig werden: **als Text gelesen ist fast jeder Mechanismus ein Verlauf, als Struktur ist er oft etwas ganz anderes** — derselbe Satz über Koffein ist ein Verlauf (die Wirkung lässt nach), ein Sichtbares über einem Verborgenen (der Druck staut sich hinter der Blockade) und ein Kreislauf (sammeln, drücken, abbauen). Wähle die Form, die DIESE Karte meint, nicht die, die der Satz zufällig nahelegt.
+
 | `relation` | Wann | Beispiel |
 |---|---|---|
 | `trend` | EINE Größe entwickelt sich über Zeit/Menge (wachsen, zerfallen, sättigen, kippen) | Adenosin steigt mit Wachzeit |
 | `weighing` | Zwei Größen auf einer Waage, eine wiegt schwerer; ein Drittes vermittelt | Verlust wiegt doppelt so schwer wie Gewinn |
 | `contrast` | Zwei Kategorien mit je 2 Eigenschaften nebeneinander | System 1 vs. System 2 |
 | `intersection` | Die Schnittmenge zweier Mengen IST die Aussage | Spiel ∩ Arbeit = Spezialwissen |
-| `loop` | Ein Kreislauf füttert sich selbst (genau 4 Stationen) | Auslöser → Verlangen → Reaktion → Belohnung |
+| `loop` | Ein Kreislauf füttert sich selbst (3–5 Stationen — so viele, wie der Kreis wirklich hat) | Auslöser → Verlangen → Reaktion → Belohnung |
 | `multiplication` | Ein Input wirkt vielfach (Hebel, Reichweite) | Ein Video erreicht eine Million Menschen |
 | `descent` | 3 Schritte, der letzte sinkt unter eine Grenze (unbewusst, unsichtbar, außer Kontrolle) | Impuls → Konflikt → Verdrängung |
-| `depth-layers` | Sichtbares oben, Verborgenes unten (Eisberg) — nur wenn das das kanonische Bild ist | Bewusst/Vorbewusst/Unbewusst |
-| `object` | Der GEGENSTAND selbst ist die Aussage — es gibt ein Ding, an dem der Gedanke hängt | Das Neuron feuert; die Person mit innerer Ebene |
+| `depth-layers` | Was man sieht, ist der kleinere Teil — darunter liegt, was wirklich trägt (Eisberg) | Bewusst/Vorbewusst/Unbewusst · Was du spürst / was sich aufstaut |
+| `object` | Der GEGENSTAND selbst ist die Aussage — es gibt ein Ding, an dem der Gedanke hängt. **Sieh in der Library unten nach, bevor du das ausschließt:** trägt eines der Objekte deinen Gedanken, ist es das stärkere Bild als eine Kurve | Das Neuron feuert; die Person mit innerer Ebene |
 
 Diagramm-Karten tragen `relation` (Pflicht) und **kein** `type`. Nur `title`, `quiz`, `insight` tragen `type`. Passt keine Relation, wähle einen anderen Teilaspekt des Themas, der eine dieser Strukturen hat.
 
@@ -92,8 +94,8 @@ Jeder Text IM Bild (Serien-Label, `notes`, `stop.label`, Achsen) steht aus der P
 **Begriffs-Budget** (Leitlinie, kein Limit): ein Label je Serie, ein Ereignis-Begriff, höchstens ein Achsen-Label mit Eigenaussage. `notes` nur für etwas, das die Kurve allein nicht sagt — eine Anmerkung, die ihr Serien-Label wiederholt, ist Lärm im Bild. Lieber ein Begriff weniger und der bleibt hängen.
 
 ### relation: multiplication
-`{ "relation":"multiplication", "text", "source":{"label":"<≤ 12>","sub":"<≤ 22>","color"}, "count":5-6, "result":{"label":"<≤ 12>"}, "caption" }`
-Die Ziel-Knoten werden als Personen gezeichnet.
+`{ "relation":"multiplication", "text", "source":{"label":"<≤ 12>","sub":"<≤ 22>","color"}, "count":3-6, "result":{"label":"<≤ 12>"}, "caption" }`
+Die Ziel-Knoten werden als Personen gezeichnet — sie sind gleich und tragen keine eigene Beschriftung. `count` ist die Zahl der Getroffenen, nicht ihre Aufzählung: nimm die Zahl, die die Aussage hat (drei Bereiche = 3), und benenne die Wirkung in `result.label`.
 
 ### relation: contrast
 `{ "relation":"contrast", "text", "left":{"title":"<CAPS ≤ 18>","color","items":[{"label":"<≤ 20>","sub":"<≤ 32>"}×2]}, "right":{…}, "caption" }`
@@ -102,8 +104,8 @@ Die Ziel-Knoten werden als Personen gezeichnet.
 `{ "relation":"intersection", "text", "a":{"label":"<CAPS ≤ 18>","color"}, "b":{…}, "overlap":{"label":["<≤ 9>","<≤ 9>"] (1–2 Zeilen),"color"}, "caption" }`
 
 ### relation: loop
-`{ "relation":"loop", "text", "steps":[{"label":"<≤ 12>","sub":"<≤ 20>","color"}×4], "caption" }`
-Uhrzeigersinn, Start oben. Hebe die treibende Station farblich hervor (z. B. Belohnung = ueberich).
+`{ "relation":"loop", "text", "steps":[{"label":"<≤ 12>","sub":"<≤ 20>","color"}×3–5], "caption" }`
+Uhrzeigersinn, Start oben. Hebe die treibende Station farblich hervor (z. B. Belohnung = ueberich). **Nimm so viele Stationen, wie der Kreislauf wirklich hat** — drei echte Stationen sind besser als eine vierte, die nur die Zahl füllt, und ein Kreis mit fünf Gliedern muss nicht auf vier zusammengezogen werden.
 
 ### relation: weighing
 `{ "relation":"weighing", "text", "left":{"label":"<≤ 9>","sub":"<≤ 16>","color"}, "right":{…}, "pivot":{"label":"<≤ 10>","sub":"<≤ 16>","color"} }`
@@ -128,7 +130,8 @@ Die Grenze bedeutet „unter der Oberfläche / außerhalb der Kontrolle" — nur
   "caption" }
 ```
 
-- **Du erfindest keine Objekte.** Erlaubt sind ausschließlich die refs unten. Passt für deinen Gedanken keines, dann formuliere die Karte **ohne Asset** (wähle eine andere Relation, z. B. `trend` oder `weighing`) — ein erfundener ref ist ein harter Fehler. Dein Wunsch wird protokolliert und die Library wächst daran; für DIESE Lektion hilft er dir nicht.
+- **Die Library ist klein, aber jedes Objekt darin trägt weiter als sein Titel vermuten lässt.** Ein Objekt passt, wenn der Gedanke der Karte AN diesem Ding hängt — nicht nur, wenn das Thema der Lektion davon handelt: das Neuron trägt jede Karte über Reiz, Schwelle und Weiterleitung, die Person jede über Innen gegen Außen, der Himmel jede über „was du siehst, entsteht erst im Auge". Lies die Liste unten daraufhin, bevor du zu einem Diagramm greifst.
+- **Du erfindest keine Objekte.** Erlaubt sind ausschließlich die refs unten; ein erfundener ref ist ein harter Fehler. Trägt wirklich keines, formuliere die Karte ohne Asset. Dein Wunsch wird protokolliert und die Library wächst daran; für DIESE Lektion hilft er dir nicht.
 - **`role: "hero"` ist der Regelfall.** Das Objekt ist die Aussage der Karte, nicht ihre Illustration — es soll groß stehen. `inline` nur, wenn das Objekt sonst mit seiner Beschriftung nicht zusammenpasst; welche Rollen ein Objekt trägt, steht unten (gemessen).
 - **`labels`** beschriften die Plätze, die das Objekt mitbringt. Du bestimmst den TEXT, nie die Position. Ein Platz, den du wegläßt, bleibt leer — das ist erlaubt und oft besser.
 - **`subs`** ist die zweite Zeile unter einem Label: die Elaboration, die aus dem Begriff ein Bild macht („WAS DU ZEIGST" → „WORTE, GESTIK, TATEN"). Eine Sub-Zeile ohne ihr Label gibt es nicht. Nicht jeder Platz trägt eine (steht unten, gemessen).

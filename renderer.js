@@ -1197,12 +1197,38 @@ const RENDERERS = {
   },
 
   cycle(card) {
-    // Kreislauf: 4 Stationen, Pfeile im Uhrzeigersinn — der Loop ist die Aussage.
-    const pos = [[200, 60], [322, 170], [200, 280], [78, 170]];
-    const arrows = [
-      "M278,74 Q330,100 326,136", "M312,206 Q330,252 274,270",
-      "M126,288 Q70,260 74,204", "M88,134 Q70,88 124,72"
-    ];
+    // Kreislauf: 3–5 Stationen, Pfeile im Uhrzeigersinn — der Loop ist die Aussage.
+    // Plätze und Bögen kommen aus der Stationszahl, damit ein Gedanke nicht an der
+    // Vier scheitert. Bei vier Stationen sind es dieselben Plätze wie in der
+    // handgesetzten Fassung davor (RX/RY sind aus ihr abgelesen).
+    // Beim Fünfeck stehen zwei Stationen nebeneinander unten — zwei volle Boxen (132 px)
+    // passen dort auf 400 px Breite nicht mit Luft dazwischen. Der Kreis bekommt deshalb
+    // ab fünf Stationen ein breiteres Feld, statt die fünfte zu verbieten. Bei drei und
+    // vier ergibt die Formel exakt die Werte der handgesetzten Fassung (200 / 122).
+    const BREITE = card.steps.length >= 5 ? 460 : 400;
+    const CX = BREITE / 2, CY = 170, RX = CX - 78, RY = 110, LUFT = 15;
+    const schritt = 2 * Math.PI / card.steps.length;
+    const winkel = (i) => -Math.PI / 2 + i * schritt;
+    const auf = (a, rx, ry) => [CX + rx * Math.cos(a), CY + ry * Math.sin(a)];
+    const pos = card.steps.map((_, i) => auf(winkel(i), RX, RY));
+    // Der Bogen setzt hinter der einen Box an und endet vor der nächsten. Wo genau,
+    // wird GESUCHT statt geschätzt: die Station ist ein Rechteck (132×52), der Bogen
+    // läuft auf einer Ellipse, und ein fester Winkel-Abstand liegt mal außerhalb, mal
+    // darunter — die Boxen werden nach den Pfeilen gezeichnet und verschlucken dann
+    // den Pfeilkopf. Gesucht ist der erste Winkel, an dem der Bogen die Box verlässt.
+    const HALB_B = 66 + 5, HALB_H = 26 + 5;
+    const drausen = ([px, py], [mx, my]) => Math.abs(px - mx) > HALB_B || Math.abs(py - my) > HALB_H;
+    const frei = (i, drehsinn) => {
+      for (let g = 0; g <= 0.5 * schritt; g += Math.PI / 180) {
+        const p = auf(winkel(i) + drehsinn * g, RX + LUFT, RY + LUFT);
+        if (drausen(p, pos[i])) return p;
+      }
+      return auf(winkel(i) + drehsinn * 0.5 * schritt, RX + LUFT, RY + LUFT);
+    };
+    const arrows = card.steps.map((_, i) => {
+      const [x1, y1] = frei(i, +1), [x2, y2] = frei((i + 1) % card.steps.length, -1);
+      return `M${x1.toFixed(1)},${y1.toFixed(1)} A${RX + LUFT},${RY + LUFT} 0 0 1 ${x2.toFixed(1)},${y2.toFixed(1)}`;
+    });
     // arrow:i+1 ist der gezeichnete Weg von Schritt i zu Schritt i+1 — ein Puls im
     // Kreislauf läuft auf ihm, nicht quer durch die Mitte.
     const A = ankerVergabe();
@@ -1211,13 +1237,13 @@ const RENDERERS = {
     const anArrow = card.steps.map((_, i) => A(`arrow:${i + 1}`));
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
-      <div class="diagram"><svg viewBox="0 0 400 340" role="img" aria-label="Kreislauf: ${card.steps.map((s) => s.label).join(", ")}">
+      <div class="diagram"><svg viewBox="0 0 ${BREITE} 340" role="img" aria-label="Kreislauf: ${card.steps.map((s) => s.label).join(", ")}">
         <defs><marker id="cyarrow" markerWidth="9" markerHeight="8" refX="7" refY="4" orient="auto">
           <path d="M0,0 L8,4 L0,8 Z" fill="${C("ink")}"/>
         </marker></defs>
         ${arrows.map((d, i) => `<path${AN(anArrow[i])} data-idx="${i}" d="${d}" fill="none" stroke="${C("ink")}" stroke-width="1.8" marker-end="url(#cyarrow)"/>`).join("")}
         ${card.steps.map((s, i) => {
-          const [cx, cy] = pos[i];
+          const cx = +pos[i][0].toFixed(1), cy = +pos[i][1].toFixed(1);
           return `<g${AN(anStep[i])} data-idx="${i}">
             <rect${GLOW(s.color)} x="${cx - 66}" y="${cy - 26}" width="132" height="52" rx="14"
               fill="${SOFT(s.color)}" stroke="${C(s.color)}" stroke-width="2.5"/>

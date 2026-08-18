@@ -13,7 +13,7 @@ import { cardRange, lesezeit, normalizeLesson, validateLesson } from "./validate
 import { suspiciousWords, wordFindings } from "./spellcheck.mjs";
 import { factFlags, geometryFlags } from "./factcheck.mjs";
 import { judgeLesson, restoreMarkup } from "./judge.mjs";
-import { attemptSignal, chatJson, collectUsage, defaultPace, extractJson, infraFault, isAbortError, loadKey, NIM_BASE, warnAbgeschnitten } from "./nim.mjs";
+import { attemptSignal, chatJson, collectUsage, dayRateLimit, pushAssistant, defaultPace, extractJson, infraFault, isAbortError, loadKey, NIM_BASE, warnAbgeschnitten } from "./nim.mjs";
 
 const DIR = new URL(".", import.meta.url).pathname.replace(/\/$/, "");
 
@@ -76,7 +76,7 @@ const stats = {
   depth: depth ?? null, dossierPath: null, wallMs: 0, outcome: null,
   // Ausgang der ERSTEN Modell-Antwort — das eigentliche Können ohne Reparatur-Runden.
   contractErsterWurf: null,
-  runden: { vollRetries: 0, patchRunden: 0, ergaenzungsRunden: 0, generatorPatches: 0 },
+  runden: { vollRetries: 0, patchRunden: 0, ergaenzungsRunden: 0, kuerzungsRunden: 0, generatorPatches: 0 },
   spellVerdacht: [], judge: [], detektorReRun: null, notecheck: [], audit: [],
   usage: { gen: { in: 0, out: 0, calls: 0, providers: [] }, judge: { in: 0, out: 0, calls: 0, providers: [] } },
 };
@@ -154,8 +154,15 @@ function assetRegistryBlock() {
   if (!frei.length) return "(Die Library ist derzeit leer — formuliere jede Karte ohne Asset.)";
   return frei.map(([ref, a]) => {
     const rollen = a.rollen || ["hero"];
+    // Ein Deckel von ein, zwei Zeichen ist kein Platz für eine Sub-Zeile, sondern das
+    // Ergebnis der Kombinationsprobe, die alle Zeilen gleichzeitig belegt und den
+    // längsten kürzt, bis es passt (biology.neuron steht so auf 1). Als Angebot gelesen
+    // lädt so eine Zahl das Modell zu einem Text ein, den der Validator gleich wieder
+    // zurückweist — ein falsches Angebot ist schlechter als keines. Die Sub-Zeile soll
+    // aus dem Begriff ein Bild machen; unter einem kurzen Wort trägt sie das nicht.
+    const SUB_MIN = 4;
     const slots = (a.labelSlots || []).map((s) => {
-      const subs = Object.entries(s.subMax || {}).filter(([r, n]) => n > 0 && rollen.includes(r))
+      const subs = Object.entries(s.subMax || {}).filter(([r, n]) => n >= SUB_MIN && rollen.includes(r))
         .map(([r, n]) => `${r} ≤ ${n}`).join(", ");
       return `    - \`${s.id}\` (am ${s.anker}) — Label ≤ ${s.max} Zeichen`
         + (subs ? `, Sub-Zeile ${subs}` : ", keine Sub-Zeile (gemessen)")
@@ -266,7 +273,7 @@ async function llm(messages) {
   if (isAnthropic) return anthropicChat(messages);   // kein Free-Tier-Pacing nötig
   // Pacing gehört an den Host: NIM drosselt den Free-Tier aggressiv, fremde
   // Endpunkte brauchen nur Anstands-Abstand (nim.mjs defaultPace).
-  if (!firstCall) await new Promise((ok) => setTimeout(ok, defaultPace(BASE)));
+  if (!firstCall) await new Promise((ok) => setTimeout(ok, defaultPace(BASE, model)));
   firstCall = false;
   for (let i = 0; i < 8; i++) {
     let res, data, errBody;
@@ -306,6 +313,15 @@ async function llm(messages) {
       return text;
     }
     if (res.status === 429 || res.status >= 500) {
+      // Tages-Kontingent (OpenRouter `:free`) ist kein transienter Fehler: warten
+      // hilft nicht, und der abgesessene Lauf sähe wie Modell-Versagen aus.
+      const tag = res.status === 429 ? dayRateLimit(res, errBody) : null;
+      if (tag) {
+        const err = new Error(`API 429 (Tages-Kontingent erschöpft`
+          + (tag.waitMs ? `, frei in ${Math.round(tag.waitMs / 60000)} min` : "") + `): ${errBody}`);
+        err.infra = "ratelimit";
+        throw err;
+      }
       const wait = 30000 * (i + 1);
       console.log(`API ${res.status} — warte ${wait / 1000}s…`);
       await new Promise((ok) => setTimeout(ok, wait));
@@ -319,6 +335,16 @@ async function llm(messages) {
   const err = new Error("API: Rate-Limit hält an.");
   err.infra = "net";
   throw err;
+}
+
+/// Sieb für jeden catch um einen LLM-Aufruf. Reparatur-Runden DÜRFEN an einem Modell-
+/// Fehler scheitern — dann steht das Ergebnis eben schlechter da und die Pipeline lehnt
+/// begründet ab. An der INFRASTRUKTUR dürfen sie nicht STILL scheitern: ein erschöpftes
+/// Tages-Kontingent oder ein leeres Konto, das hier geschluckt wird, verlässt den Lauf
+/// als „reject-…" und schreibt dem Modell ein Konto-Problem ins Zeugnis.
+function nurModellfehler(stufe, e) {
+  if (e.infra) throw e;
+  console.log(`${stufe}: ${e.message}`);
 }
 
 // Contract-Prüfung IMMER mit der bestellten Tiefe — sonst prüft die Pipeline gegen
@@ -386,6 +412,46 @@ Antworte AUSSCHLIESSLICH mit einem JSON-Array der ${need} neuen Karten: [ { … 
   return ergaenzt;
 }
 
+const isTooManyCards = (e) => e.startsWith("cards: zu viele Karten");
+
+/// Kürzungs-Runde — das Gegenstück zur Ergänzung. Ohne sie fiel „eine Karte zu viel"
+/// in den vollen Retry: die ganze Lektion wurde verworfen und neu gewürfelt, obwohl
+/// EIN Streichen genügt hätte. Und der Neuwurf ist keine Verbesserung, sondern ein
+/// zweiter Würfel — gemessen an ling-2.6-flash (16.08.): Versuch 1 und 2 hatten je
+/// 1 Fehler, der dritte brachte 28. Die Asymmetrie war reine Auslassung: die
+/// Ergänzungs-Runde kannte den Fall bereits und wich ihm nur aus.
+/// Das Modell wählt, WELCHE Karte geht — das ist eine inhaltliche Entscheidung
+/// (die redundanteste), keine Positionsfrage. Struktur-Karten sind tabu und werden
+/// hier deterministisch geschützt, statt dem Modell zu vertrauen.
+async function dropCardsRound(current, tag) {
+  const zuviel = current.cards.length - MAX_CARDS;
+  const liste = current.cards.map((c, i) => `${i + 1}. [${c.relation ?? c.type}] `
+    + `${c.text ?? c.title ?? c.question ?? c.quote ?? ""}`.slice(0, 120)).join("\n");
+  const auftrag = `Deine Lektion hat ${current.cards.length} Karten, der Contract verlangt ${MIN_CARDS}–${MAX_CARDS}${depth ? ` (Tiefe „${depth}")` : ""}.
+
+Streiche GENAU ${zuviel} Diagramm-Karte(n) — die inhaltlich redundanteste zuerst, also die, deren Aussage eine andere Karte schon trägt. Ändere KEINE der bleibenden Karten.
+
+Die Titel-Karte (1.) sowie Quiz und Insight (die letzten beiden) bleiben immer.
+
+${liste}
+
+Antworte AUSSCHLIESSLICH mit einem JSON-Objekt: {"streichen": [<Nummer>, …]} — die Nummern aus der Liste oben.`;
+  const { value, raw: draw } = await chatJson(llm, [...messages,
+    { role: "assistant", content: JSON.stringify(current) }, { role: "user", content: auftrag }]);
+  writeFileSync(`${OUT}/${TAG}-raw-v2-${tag}.txt`, draw);
+  const geschuetzt = new Set([0, current.cards.length - 2, current.cards.length - 1]);
+  const weg = new Set((value?.streichen ?? [])
+    .map((n) => Number(n) - 1)
+    .filter((i) => Number.isInteger(i) && i >= 0 && i < current.cards.length && !geschuetzt.has(i))
+    .slice(0, zuviel));
+  // Wählt das Modell zu wenige gültige Karten, ist die Runde gescheitert: lieber der
+  // bisherige Weg (voller Retry) als eine Lektion, die willkürlich gekürzt wurde.
+  if (weg.size < zuviel) throw new Error(`Kürzungs-Runde nannte ${weg.size} gültige Karte(n), nötig ${zuviel}`);
+  const gekuerzt = normalizeLesson({ ...current, cards: current.cards.filter((_, i) => !weg.has(i)) });
+  console.log(`  ${weg.size} Karte(n) gestrichen (${current.cards.length} → ${gekuerzt.cards.length})`);
+  return gekuerzt;
+}
+
 const MAX_FULL = 3, MAX_PATCH = 3, MAX_ADD = 2;
 const messages = [{ role: "system", content: system }, { role: "user", content: userBase }];
 let lesson = null, raw = null, r = null;
@@ -394,7 +460,7 @@ if (fromFile) {
   // Prüf-Stufen-Modus: bestehende Lektion, keine Generierung.
   lesson = normalizeLesson(JSON.parse(readFileSync(fromFile, "utf8")));
   raw = JSON.stringify(lesson);
-  messages.push({ role: "assistant", content: raw });
+  pushAssistant(messages, raw);
   const errs = contract(lesson);
   stats.contractErsterWurf = { fehler: errs.length, liste: errs };
   console.log(errs.length ? `Eingangs-Contract: ${errs.length} Fehler (werden am Ende erneut geprüft)` : "Eingangs-Contract: PASS");
@@ -417,9 +483,25 @@ full: for (let i = 1; fromFile ? false : i <= MAX_FULL; i++) {
       raw = JSON.stringify(ergaenzt);
       const errs = contract(ergaenzt);
       r = errs.length ? { lesson: ergaenzt, errors: errs } : { lesson: ergaenzt };
-    } catch (e) { console.log("Ergänzungs-Runde fehlgeschlagen:", e.message); break; }
+    } catch (e) { nurModellfehler("Ergänzungs-Runde fehlgeschlagen", e); break; }
     if (!r.errors) { console.log(`Ergänzungs-Runde ${ar}: Contract PASS`); break full; }
     console.log(`Ergänzungs-Runde ${ar} — ${r.errors.length} Fehler verbleiben:\n` + r.errors.map((e) => "- " + e).join("\n"));
+  }
+
+  // Zu viele Karten: gezielt streichen statt neu würfeln — die Gegenrichtung zur
+  // Ergänzung. Eine Runde genügt, denn die Kürzung trifft die Zahl exakt; bleibt
+  // danach etwas offen, sind es Feld-Fehler, die die Patch-Runden unten abfangen.
+  if (r.lesson && r.errors.some(isTooManyCards)) {
+    console.log(`→ Kürzungs-Runde (bleibende Karten unangetastet)…`);
+    stats.runden.kuerzungsRunden++;
+    try {
+      const gekuerzt = await dropCardsRound(r.lesson, `drop${i}`);
+      raw = JSON.stringify(gekuerzt);
+      const errs = contract(gekuerzt);
+      r = errs.length ? { lesson: gekuerzt, errors: errs } : { lesson: gekuerzt };
+      if (!r.errors) { console.log("Kürzungs-Runde: Contract PASS"); break full; }
+      console.log(`Kürzungs-Runde — ${r.errors.length} Fehler verbleiben:\n` + r.errors.map((e) => "- " + e).join("\n"));
+    } catch (e) { nurModellfehler("Kürzungs-Runde fehlgeschlagen", e); }
   }
 
   if (r.lesson && r.errors.every(isFieldError)) {
@@ -427,11 +509,11 @@ full: for (let i = 1; fromFile ? false : i <= MAX_FULL; i++) {
     for (let pr = 1; pr <= MAX_PATCH; pr++) {
       console.log(`→ Patch-Runde ${pr} (nur fehlerhafte Felder)…`);
       stats.runden.patchRunden++;
-      messages.push({ role: "assistant", content: raw });
+      pushAssistant(messages, raw);
       messages.push({ role: "user", content: `Korrigiere NUR die fehlerhaften Felder. Fehlerliste:\n${r.errors.map((e) => "- " + e).join("\n")}\n\nAntworte mit einem flachen JSON-Objekt { "<pfad>": <neuer Wert>, … } — Pfade exakt wie in der Fehlerliste (z. B. "cards[4].left.sub"); nennt eine Fehlermeldung MEHRERE zusammengehörige Pfade, patche sie alle zusammen. Ein Wert von null löscht das jeweilige Feld. Nur das JSON, nichts sonst.` });
       let patch;
       try { const g = await chatJson(llm, messages); patch = g.value; raw = g.raw; }
-      catch (e) { console.log("Patch nicht parsebar:", e.message); continue; }
+      catch (e) { nurModellfehler("Patch nicht parsebar", e); continue; }
       writeFileSync(`${OUT}/${TAG}-raw-v2-patch${pr}.txt`, raw);
       for (const [path, value] of Object.entries(patch)) {
         try { setPath(lesson, path, value); } catch { console.log(`Patch-Pfad ungültig, übersprungen: ${path}`); }
@@ -450,7 +532,7 @@ full: for (let i = 1; fromFile ? false : i <= MAX_FULL; i++) {
   }
   console.log("→ Struktur-Fehler: voller Retry…");
   stats.runden.vollRetries++;
-  messages.push({ role: "assistant", content: raw });
+  pushAssistant(messages, raw);
   messages.push({ role: "user", content: `Deine Antwort verletzt den Contract. Fehlerliste:\n${r.errors.map((e) => "- " + e).join("\n")}\n\nKorrigiere alle Fehler und sende das VOLLSTÄNDIGE JSON-Objekt erneut — nur das JSON, nichts sonst.` });
 }
 lesson = r?.lesson ?? lesson;
@@ -462,7 +544,7 @@ async function generatorPatchRound(errorList) {
   messages.push({ role: "user", content: `Korrigiere NUR die fehlerhaften Felder. Fehlerliste:\n${errorList.map((e) => "- " + e).join("\n")}\n\nAntworte mit einem flachen JSON-Objekt { "<pfad>": <neuer Wert>, … } — Pfade exakt wie in der Fehlerliste; nennt eine Fehlermeldung MEHRERE zusammengehörige Pfade, patche sie alle zusammen. Ein Wert von null löscht das jeweilige Feld. Nur das JSON, nichts sonst.` });
   let patch;
   try { patch = (await chatJson(llm, messages)).value; }
-  catch (e) { console.log("Patch nicht parsebar:", e.message); return contract(lesson); }
+  catch (e) { nurModellfehler("Patch nicht parsebar", e); return contract(lesson); }
   for (const [path, value] of Object.entries(patch)) {
     try { setPath(lesson, path, value); } catch { console.log(`Patch-Pfad ungültig, übersprungen: ${path}`); }
   }
@@ -486,7 +568,7 @@ if (wf.suspicious.length && fromFile && !fromModel) {
     if (antwort.trim() !== "OK") {
       let patch = null;
       try { patch = extractJson(antwort); }
-      catch (e) { console.log("Spellfix-Patch nicht parsebar — behalte vorige Fassung:", e.message); }
+      catch (e) { nurModellfehler("Spellfix-Patch nicht parsebar — behalte vorige Fassung", e); }
       if (patch) {
         for (const [path, value] of Object.entries(patch)) {
           try { setPath(lesson, path, value); } catch { console.log(`Patch-Pfad ungültig, übersprungen: ${path}`); }
@@ -500,7 +582,7 @@ if (wf.suspicious.length && fromFile && !fromModel) {
         console.log("Spellfix übernommen. Verbleibender Verdacht:", suspiciousWords(lesson).map((s) => s.word).join(", ") || "keiner");
       }
     } else console.log("Modell bestätigt: alles korrekt.");
-  } catch (e) { console.log("Spell-Runde übersprungen (API):", e.message); }
+  } catch (e) { nurModellfehler("Spell-Runde übersprungen (API)", e); }
 }
 
 // Fakten-Stufe: deterministische Flags + Wort-Sinn-Aufträge (nur-als-Kompositum
@@ -538,7 +620,7 @@ async function applyJudgeFindings(findings) {
         if (typeof v === "string" && stripEq(v) === stripEq(it.value)) { setPath(lesson, it.path, v); console.log(`  ✓ ${it.path}`); }
         else console.log(`  ✗ ${it.path}: Restaurierung verändert Wortlaut oder fehlt — behalte Fix ohne Tags`);
       }
-    } catch (e) { console.log("  Markup-Restaurierung nicht möglich (API):", e.message); }
+    } catch (e) { nurModellfehler("  Markup-Restaurierung nicht möglich (API)", e); }
   }
   return unfixed;
 }
@@ -627,7 +709,7 @@ let finalErrs = contract(lesson);
 if (finalErrs.length) {
   console.log(`Contract nach Fakten-Fixes — ${finalErrs.length} Fehler:\n` + finalErrs.map((e) => "- " + e).join("\n") + "\n→ Generator-Patch-Runde…");
   try { finalErrs = await generatorPatchRound(finalErrs); }
-  catch (e) { console.log("Patch-Runde nicht möglich (API):", e.message); }
+  catch (e) { nurModellfehler("Patch-Runde nicht möglich (API)", e); }
   if (finalErrs.length) {
     console.log("Pipeline lehnt ab — verbleibende Contract-Fehler:\n" + finalErrs.map((e) => "- " + e).join("\n"));
     writeFileSync(`${OUT}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
@@ -686,7 +768,7 @@ if (hardClaims.length) {
     }
     writeFileSync(file, JSON.stringify(lesson, null, 2));
     hardClaims = await runNotecheck();
-  } catch (e) { console.log("Patch-Runde nicht möglich (API):", e.message); }
+  } catch (e) { nurModellfehler("Patch-Runde nicht möglich (API)", e); }
   if (hardClaims.length) {
     console.log("Pipeline lehnt ab — Bild-Text-Widerspruch bleibt.");
     writeFileSync(`${OUT}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));
@@ -735,7 +817,7 @@ if (leerBefunde.length) {
     }
     writeFileSync(file, JSON.stringify(lesson, null, 2));
     leerBefunde = runAudit();
-  } catch (e) { console.log("Patch-Runde nicht möglich (API):", e.message); }
+  } catch (e) { nurModellfehler("Patch-Runde nicht möglich (API)", e); }
   if (leerBefunde.length) {
     console.log("Pipeline lehnt ab — Beschriftung ohne Gegenstand überlebt die Patch-Runde.");
     writeFileSync(`${OUT}/${TAG}-lesson-v2-rejected.json`, JSON.stringify(lesson, null, 2));

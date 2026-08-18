@@ -18,6 +18,13 @@ const VORBILD_PATH = `${DIR}/../facts/why-we-sleep.md`;
 // exakt diesen Überschriften, jede als Aufzählung.
 export const SEKTIONEN = [
   { head: "## Mechanismen (belegt)", name: "Mechanismen" },
+  // Die Strukturen stehen DIREKT hinter den Mechanismen, und zwar aus einem gemessenen
+  // Grund: wer „Mechanismen" liest, denkt in Verläufen und zeichnet Kurven — im Bench
+  // waren 57 % aller Diagramm-Karten Kurven, während vier der neun Bildformen bei allen
+  // acht Modellen unbenutzt blieben, obwohl ihre Strukturen im Stoff steckten. Die
+  // Sektion trägt keinen neuen Fakt bei; sie sortiert denselben Stoff nach seiner FORM
+  // und legt damit offen, was der Generator sonst selbst entdecken müsste.
+  { head: "## Strukturen (im Stoff enthalten)", name: "Strukturen" },
   { head: "## Zahlen (belegt)", name: "Zahlen" },
   { head: "## Zitate (belegt, deutsche Übersetzung zulässig)", name: "Zitate" },
   { head: "## Typische Fehler (nicht schreiben)", name: "Typische Fehler" },
@@ -32,9 +39,9 @@ export const SEKTIONEN = [
 // die Antwort mitten im Dossier ab — das Format-Gate meldet dann „Sektion fehlt"
 // und schickt das Modell auf die falsche Fährte.
 export const DEPTHS = {
-  kompakt:  { Mechanismen: 3, Zahlen: 3, Zitate: 1, "Typische Fehler": 3, tokens: 4000, soll: "3–4 Mechanismen, 3–4 Zahlen" },
-  standard: { Mechanismen: 5, Zahlen: 5, Zitate: 1, "Typische Fehler": 3, tokens: 6000, soll: "6–8 Mechanismen, 5–7 Zahlen" },
-  tief:     { Mechanismen: 8, Zahlen: 7, Zitate: 1, "Typische Fehler": 5, tokens: 10000, soll: "9–12 Mechanismen, 8–10 Zahlen" },
+  kompakt:  { Mechanismen: 3, Strukturen: 3, Zahlen: 3, Zitate: 1, "Typische Fehler": 3, tokens: 5000, soll: "3–4 Mechanismen, 4–5 Strukturen, 3–4 Zahlen" },
+  standard: { Mechanismen: 5, Strukturen: 4, Zahlen: 5, Zitate: 1, "Typische Fehler": 3, tokens: 7000, soll: "6–8 Mechanismen, 5–7 Strukturen, 5–7 Zahlen" },
+  tief:     { Mechanismen: 8, Strukturen: 5, Zahlen: 7, Zitate: 1, "Typische Fehler": 5, tokens: 11000, soll: "9–12 Mechanismen, 6–8 Strukturen, 8–10 Zahlen" },
 };
 
 /// Zählt die Aufzählungspunkte je Sektion (eine Zeile, die mit "- " beginnt).
@@ -81,7 +88,8 @@ Harte Regeln:
 4. **Zitate**: nur echte, zuschreibbare Aussagen mit Urheber. Erfinde NIEMALS ein Zitat. Findest du kein belegtes Zitat, nimm einen breit anerkannten Merksatz des Fachgebiets und nenne als Urheber das Fachgebiet, nicht eine erfundene Person.
 5. **Typische Fehler**: die häufigsten Verwechslungen zum Thema — jeweils der falsche Satz PLUS in Klammern, warum er falsch ist. Diese Sektion ist der wichtigste Teil; sie hält den Generator von den üblichen Halbwahrheiten ab.
 6. Deutsch, Fachbegriffe präzise benennen (Rezeptor, Enzym, Antagonist — keine Umschreibung, wo der Begriff steht).
-7. Mechanismen erklären das WIE, nicht nur das DASS.`;
+7. Mechanismen erklären das WIE, nicht nur das DASS.
+8. **Strukturen**: Diese Sektion bringt KEINEN neuen Fakt — sie sortiert denselben Stoff nach seiner FORM statt nach seiner Art und beantwortet eine einzige Frage: *welche Beziehungen zwischen den Dingen des Themas stecken im Material?* Ein Kreislauf, der sich selbst füttert. Ein Auslöser mit vielen gleichzeitigen Wirkungen. Ein Sichtbares, unter dem etwas Größeres verborgen liegt. Ein Gegenstand, an dem der ganze Vorgang hängt. Zwei Größen im Gegeneinander. Ein Verlauf über Zeit oder Menge. Eine Schwelle, die unbemerkt gerissen wird. Eine Schnittmenge, die erst zusammen etwas ergibt. Eine Rangfolge, in der eines schwerer wiegt. Das sind Beispiele der Bandbreite, keine Liste zum Abhaken und keine Vorgabe: nimm die Formen, die WIRKLICH im Stoff stecken, gib jeder einen Namen aus der Sache heraus (nicht aus dieser Aufzählung) und schreibe sie als einen Satz aus. Erfinde keine Struktur, um die Sektion zu füllen — und lass keine weg, nur weil sie hier nicht aufgezählt ist.`;
 
 const VORBILD = () => `## Vorbild (Format — Inhalt ist ein anderes Thema, nur die Struktur übernehmen)
 
@@ -141,7 +149,7 @@ Nimm den etablierten Wissensstand des Fachgebiets. Ist das Thema breit, wähle d
 /// Zwei Gates hintereinander: FORMAT (deterministisch, hier) und ZAHLEN
 /// (unabhängiger Judge, dossier-check.mjs) — Letzteres kann Zeilen streichen,
 /// darum läuft das Format-Gate danach ein zweites Mal.
-export async function makeDossier({ kind, input, depth, topic, model, log = console.log, signal, zahlenGate = true }) {
+export async function makeDossier({ kind, input, depth, topic, model, log = console.log, signal, zahlenGate = true, usage }) {
   const messages = [
     { role: "system", content: SYSTEM },
     { role: "user", content: `${VORBILD()}\n\n---\n\n${auftrag({ kind, input, depth, topic })}` },
@@ -150,7 +158,7 @@ export async function makeDossier({ kind, input, depth, topic, model, log = cons
   for (let runde = 1; runde <= 2; runde++) {
     // Das Signal des Aufrufers reicht bis in den fetch: läuft die Job-Deadline ab,
     // wird der Request wirklich abgebrochen statt im Hintergrund weiterzulaufen.
-    md = stripFences(await chat(model, messages, { temperature: 0.3, maxTokens: (DEPTHS[depth] ?? DEPTHS.standard).tokens, retries: 3, signal }));
+    md = stripFences(await chat(model, messages, { temperature: 0.3, maxTokens: (DEPTHS[depth] ?? DEPTHS.standard).tokens, retries: 3, signal, usage }));
     errs = pruefeDossier(md, depth);
     if (!errs.length) {
       log(`Dossier-Format OK (${md.length} Zeichen, ${JSON.stringify(sektionsPunkte(md))})`);

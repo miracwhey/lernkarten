@@ -494,7 +494,7 @@ export function validateLesson(lesson, opts = {}) {
     fanout(c, p) {
       str(c.text, p + ".text", 220); str(c.caption, p + ".caption", 90);
       str(c.source?.label, p + ".source.label", 12); str(c.source?.sub, p + ".source.sub", 22); color(c.source?.color, p + ".source.color");
-      if (!(c.count >= 5 && c.count <= 6)) err(p + ".count", "muss 5–6 sein");
+      if (!(c.count >= 3 && c.count <= 6)) err(p + ".count", "muss 3–6 sein");
       str(c.result?.label, p + ".result.label", 12);
     },
     compare(c, p) {
@@ -514,7 +514,7 @@ export function validateLesson(lesson, opts = {}) {
     },
     cycle(c, p) {
       str(c.text, p + ".text", 220); str(c.caption, p + ".caption", 90);
-      if (arr(c.steps, p + ".steps", 4, 4)) c.steps.forEach((s, i) => { str(s.label, `${p}.steps[${i}].label`, 12); str(s.sub, `${p}.steps[${i}].sub`, 20); color(s.color, `${p}.steps[${i}].color`); });
+      if (arr(c.steps, p + ".steps", 3, 5)) c.steps.forEach((s, i) => { str(s.label, `${p}.steps[${i}].label`, 12); str(s.sub, `${p}.steps[${i}].sub`, 20); color(s.color, `${p}.steps[${i}].color`); });
     },
     balance(c, p) {
       str(c.text, p + ".text", 220);

@@ -5,7 +5,7 @@
 // Nutzung: node judge.mjs <lesson.json> <dossier.md> [modell-id]  → Exit 0 / 2.
 // Als Modul: import { judgeLesson }.
 import { readFileSync } from "fs";
-import { loadKey, resolveModel, nimChat, chatJson } from "./nim.mjs";
+import { loadKey, resolveModel, nimChat, chatJson, pushAssistant } from "./nim.mjs";
 import { factFlags } from "./factcheck.mjs";
 
 const JUDGE_SYSTEM = `Du bist Fakten-Prüfer für Lernkarten. Du erhältst ein Fakten-Dossier (die einzige zulässige Quelle), eine Lektion als JSON und eine Liste automatischer Prüfaufträge.
@@ -62,7 +62,7 @@ export async function judgeLesson(lesson, dossier, opts = {}) {
     if (parsed.checks.length >= flags.length || attempt >= 1)
       return { findings: parsed.findings, checks: parsed.checks, model, flags };
     console.log(`Judge: nur ${parsed.checks.length}/${flags.length} Prüfaufträge abgearbeitet — Retry…`);
-    messages.push({ role: "assistant", content: raw });
+    pushAssistant(messages, raw);
     messages.push({ role: "user", content: `Deine checks-Liste hat ${parsed.checks.length} Einträge, die Prüfauftrag-Liste ${flags.length}. Arbeite JEDEN Auftrag einzeln ab (gleiche Reihenfolge, mit expliziter Rechnung) und sende das vollständige JSON erneut.` });
   }
 }

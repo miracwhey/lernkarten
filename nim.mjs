@@ -15,23 +15,62 @@ export const NIM_BASE = "https://integrate.api.nvidia.com/v1";
 // echten Fristen setzen die Stufen darüber (Worker: Dossier 6 Min, Pipeline 30 Min).
 export const REQ_TIMEOUT_MS = 600000;
 
-/// Pacing-Default am Host, nicht am Aufrufer: der NIM-Free-Tier drosselt aggressiv und
-/// braucht 25 s Abstand, fremde Endpunkte (OpenRouter) nur Anstands-Abstand. Stünde der
-/// Default weiter fest bei 25 s, verlängerte jeder Bench-Lauf sich um Minuten Wartezeit.
-export const defaultPace = (base) => (base ?? NIM_BASE).includes("integrate.api.nvidia.com") ? 25000 : 2000;
+/// Pacing-Default am Host UND an der Modell-Variante, nicht am Aufrufer: der NIM-Free-
+/// Tier drosselt aggressiv und braucht 25 s Abstand, fremde Endpunkte (OpenRouter) nur
+/// Anstands-Abstand. Stünde der Default weiter fest bei 25 s, verlängerte jeder Bench-
+/// Lauf sich um Minuten Wartezeit.
+/// Die `:free`-Varianten auf OpenRouter haben ein eigenes Minuten-Limit von 20 Anfragen
+/// (= 3000 ms Abstand). Mit dem 2000-ms-Anstandsabstand feuert eine Kette von Patch-
+/// Runden bis zu 30/min und erzeugt ihre eigenen 429er — die dann wie Modell-Fehler
+/// aussehen. 3500 ms halten das Limit mit Luft für Uhr-Drift ein.
+export const defaultPace = (base, model) =>
+  (base ?? NIM_BASE).includes("integrate.api.nvidia.com") ? 25000
+  : /:free\b/.test(model ?? "") ? 3500
+  : 2000;
 
 /// Zuordnung HTTP-Status → Infrastruktur-Ursache. Ohne diese Trennung erscheint ein
 /// leeres Konto (402) oder ein falscher Key (401) im Bench als Modell-Versagen.
 export const infraFault = (status) => status === 402 ? "budget" : status === 401 || status === 403 ? "auth" : null;
 
+/// Ein 429 ist NICHT automatisch transient. OpenRouter deckelt `:free`-Modelle
+/// zusätzlich pro TAG (50 bzw. 1000 Anfragen, je nach gekauften Credits). Darauf mit
+/// der Backoff-Kette zu antworten sitzt eine Viertelstunde ab und scheitert dann
+/// doch — und der Lauf trägt das Konto-Limit als Modell-Urteil davon. Liegt der
+/// Reset weiter als `maxWaitMs` in der Zukunft, ist das Kontingent für heute weg.
+/// Rückgabe: null = transient (warten lohnt), sonst { waitMs } für den Bericht.
+export function dayRateLimit(res, body, maxWaitMs = 5 * 60 * 1000) {
+  const raw = Number(res.headers?.get?.("x-ratelimit-reset"));
+  if (Number.isFinite(raw) && raw > 0) {
+    // Der Header trägt je nach Anbieter Sekunden oder Millisekunden seit Epoche.
+    const waitMs = (raw > 1e12 ? raw : raw * 1000) - Date.now();
+    if (waitMs > maxWaitMs) return { waitMs };
+  }
+  if (/per[- ]day|daily limit|free-models-per-day/i.test(body ?? "")) return { waitMs: null };
+  return null;
+}
+
 /// Zählt Tokens und gesehene Provider in einen Sammler (OpenRouter routet ein Modell
 /// auf wechselnde Unter-Anbieter — ohne Erfassung vergleicht ein Bench unbemerkt
 /// verschieden quantisierte Deployments desselben Modells).
+///
+/// Tokens allein sind KEINE Kostenbasis: OpenRouter rechnet Prompt-Caching direkt in
+/// `usage.cost` ab, und ein gecachter Prompt-Token kostet je nach Modell ein Zehntel
+/// des Listenpreises (luna-pro gemessen: 20088 Prompt-Token, 99 % cached, $0.00025
+/// statt $0.00201). Wer Tokens × Listenpreis rechnet, überschätzt jedes Modell mit
+/// stabilem Systemprompt um ein Vielfaches — und benachteiligt es im Vergleich.
+/// `costCalls` trennt „kostet nichts" von „liefert kein cost-Feld" (NIM tut das):
+/// nur wenn JEDER Aufruf einen Betrag lieferte, ist `cost` eine vollständige Summe.
 export function collectUsage(usage, data) {
   if (!usage) return;
   usage.in += data?.usage?.prompt_tokens ?? 0;
   usage.out += data?.usage?.completion_tokens ?? 0;
   usage.calls = (usage.calls ?? 0) + 1;
+  const cost = data?.usage?.cost;
+  if (typeof cost === "number") {
+    usage.cost = (usage.cost ?? 0) + cost;
+    usage.costCalls = (usage.costCalls ?? 0) + 1;
+  }
+  usage.cached = (usage.cached ?? 0) + (data?.usage?.prompt_tokens_details?.cached_tokens ?? 0);
   const p = data?.provider;
   if (p && Array.isArray(usage.providers) && !usage.providers.includes(p)) usage.providers.push(p);
 }
@@ -77,7 +116,7 @@ let lastCall = 0;
 export async function nimChat(key, model, messages, opts = {}) {
   const base = opts.base ?? NIM_BASE;
   // Free-Tier-Pacing: Abstand halten statt ins Rate-Limit zu laufen.
-  const gap = (opts.paceMs ?? defaultPace(base)) - (Date.now() - lastCall);
+  const gap = (opts.paceMs ?? defaultPace(base, model)) - (Date.now() - lastCall);
   if (lastCall && gap > 0) await sleep(gap, opts.signal);
   for (let i = 0; i < (opts.retries ?? 8); i++) {
     throwIfAborted(opts.signal);
@@ -109,6 +148,13 @@ export async function nimChat(key, model, messages, opts = {}) {
       return stripThink(data.choices?.[0]?.message?.content);
     }
     if (res.status === 429 || res.status >= 500) {
+      const tag = res.status === 429 ? dayRateLimit(res, errBody) : null;
+      if (tag) {
+        const err = new Error(`API 429 (Tages-Kontingent erschöpft`
+          + (tag.waitMs ? `, frei in ${Math.round(tag.waitMs / 60000)} min` : "") + `): ${errBody}`);
+        err.infra = "ratelimit";
+        throw err;
+      }
       const wait = 30000 * (i + 1);
       console.log(`API ${res.status} (${model}) — warte ${wait / 1000}s…`);
       await sleep(wait, opts.signal);
@@ -137,6 +183,18 @@ export function sleep(ms, signal) {
 }
 
 export const stripThink = (raw) => (raw ?? "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+
+/// Hängt eine Modell-Antwort als Gesprächsbeitrag an — AUSSER sie ist leer.
+/// Eine leere Antwort (Denk-Budget aufgebraucht, Filter, Abbruch) ist kein Beitrag.
+/// Sie in die Historie zu schreiben macht nicht den einen Aufruf kaputt, sondern ALLE
+/// folgenden: strenge Anbieter weisen jedes Protokoll mit leerem Beitrag ab — Cohere
+/// mit `HTTP 400 invalid message provided at index N: must have non-empty content`
+/// (gemessen 17.08., north-mini-code:free, zwei von drei Läufen als Totalausfall).
+/// Tolerante Anbieter schlucken es, deshalb fällt es beim Bauen nie auf.
+export function pushAssistant(messages, raw) {
+  if (String(raw ?? "").trim()) messages.push({ role: "assistant", content: raw });
+  return messages;
+}
 
 /// Am Ausgabe-Budget abgeschnittene Antworten laut benennen. Ohne diesen Hinweis
 /// erscheint die Kürzung als Folgefehler (fehlende Sektion, kaputtes JSON) und die
@@ -244,7 +302,7 @@ export async function chatJson(chat, messages, opts = {}) {
   try { return { value: extractJson(raw), raw }; } catch (e) {
     if (!e.report) throw e;
     log(`  ${e.message} — ein Korrektur-Retry mit der defekten Stelle…`);
-    const retryMsgs = [...messages, { role: "assistant", content: raw }, { role: "user", content: e.report }];
+    const retryMsgs = [...pushAssistant([...messages], raw), { role: "user", content: e.report }];
     raw = await chat(retryMsgs);
     return { value: extractJson(raw), raw };      // scheitert das auch: harter Fehler
   }

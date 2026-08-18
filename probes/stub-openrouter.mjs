@@ -57,21 +57,62 @@ createServer((req, res) => {
   let body = "";
   req.on("data", (c) => (body += c));
   req.on("end", () => {
-    const json = (code, obj) => {
-      res.writeHead(code, { "Content-Type": "application/json" });
+    const json = (code, obj, kopf = {}) => {
+      res.writeHead(code, { "Content-Type": "application/json", ...kopf });
       res.end(JSON.stringify(obj));
     };
+    // Tages-Kontingent wie OpenRouter bei `:free`: 429 mit einem Reset, der Stunden
+    // in der Zukunft liegt. Warten hilft hier nicht — die Pipeline muss das erkennen,
+    // statt die Backoff-Kette abzusitzen und das Ergebnis dem Modell anzulasten.
+    const tageslimit = () => json(429, { error: { message: "Rate limit exceeded: free-models-per-day (Stub)", code: 429 } },
+      { "X-RateLimit-Reset": String(Date.now() + 6 * 3600 * 1000) });
     if (req.url.endsWith("/models")) {
       // Preise wie im echten Katalog als Strings je Token.
-      const ids = ["stub/gut", "stub/budget402", "stub/leerfix", "stub/leerstur", "stub/systembug", "openai/gpt-oss-120b"];
-      return json(200, { data: ids.map((id) => ({ id, pricing: { prompt: "0.000001", completion: "0.000002" }, context_length: 131072 })) });
+      // `:free`-Varianten mit Preis 0 — an ihnen prüft der Bench seine Regel „nie zwei
+      // kostenlose Läufe gleichzeitig" (gemeinsames Minuten-Kontingent des Kontos).
+      const ids = ["stub/gut", "stub/budget402", "stub/leerfix", "stub/leerstur", "stub/leerlimit",
+                   "stub/systembug", "stub/ratelimit429", "openai/gpt-oss-120b"];
+      const frei = ["stub/gut-a:free", "stub/gut-b:free"];
+      return json(200, { data: [
+        ...ids.map((id) => ({ id, pricing: { prompt: "0.000001", completion: "0.000002" },
+          context_length: 131072, top_provider: { max_completion_tokens: 65536 },
+          supported_parameters: ["max_tokens", "temperature"] })),
+        ...frei.map((id) => ({ id, pricing: { prompt: "0", completion: "0" },
+          context_length: 131072, top_provider: { max_completion_tokens: 65536 },
+          supported_parameters: ["max_tokens", "temperature"] })),
+      ] });
     }
     if (!req.url.endsWith("/chat/completions")) return json(404, { error: "unbekannt" });
 
     const anfrage = JSON.parse(body);
+    // Strenger Anbieter (Cohere-Verhalten, gemessen 17.08.): ein Gesprächsbeitrag ohne
+    // Inhalt macht die GANZE Anfrage ungültig, nicht nur den einen Beitrag. Der Stub
+    // prüft das bei JEDEM Modell — so fällt ein leerer Push überall auf, nicht nur dort,
+    // wo zufällig ein strenger Anbieter bedient.
+    const leererBeitrag = (anfrage.messages ?? []).findIndex((m) => !String(m.content ?? "").trim());
+    if (leererBeitrag > -1)
+      return json(400, { error: { message: "Provider returned error", code: 400, metadata: {
+        raw: `{"message":"invalid request: invalid message provided at index ${leererBeitrag}: must have non-empty content or tool calls."}`,
+        provider_name: "StubStreng" } } });
+
+    // stub/leerwurf — die erste Antwort ist LEER (Denk-Budget aufgebraucht). Ohne den
+    // pushAssistant-Filter landet sie als leerer Beitrag in der Historie und der
+    // NÄCHSTE Aufruf stirbt oben mit 400 — der Lauf endet als „system-bug".
+    if (String(anfrage.model).includes("leerwurf")) {
+      const schonGeantwortet = (anfrage.messages ?? []).some((m) => m.role === "assistant");
+      if (!schonGeantwortet) return json(200, antwort(anfrage.model, ""));
+      return json(200, antwort(anfrage.model, LEKTION));
+    }
+
     // Mitschnitt OHNE Authorization: der Body belegt, welche Parameter wirklich rausgingen.
     if (mitschnitt) appendFileSync(mitschnitt, JSON.stringify({
       model: anfrage.model, temperature: anfrage.temperature, max_tokens: anfrage.max_tokens,
+      // Zeichenzahl je Rolle: nur so ist sichtbar, WOHER der Input-Verbrauch kommt —
+      // fester Systemprompt, Dossier-Auftrag oder die mitwachsende Gesprächshistorie.
+      groesse: { gesamt: JSON.stringify(anfrage.messages).length,
+        system: (anfrage.messages.filter(m=>m.role==="system").map(m=>String(m.content).length)[0] ?? 0),
+        user: anfrage.messages.filter(m=>m.role==="user").reduce((a,m)=>a+String(m.content).length,0),
+        assistant: anfrage.messages.filter(m=>m.role==="assistant").reduce((a,m)=>a+String(m.content).length,0) },
       felder: Object.keys(anfrage), rollen: anfrage.messages.map((m) => m.role),
       // Der Systemprompt wird beim Start zusammengesetzt (Asset-Registry aus dem
       // Manifest). Nur so ist prüfbar, was WIRKLICH rausging — nicht, was die Datei sagt.
@@ -84,6 +125,8 @@ createServer((req, res) => {
 
     if (String(anfrage.model).includes("budget402"))
       return json(402, { error: { message: "Insufficient credits (Stub)", code: 402 } });
+    // stub/ratelimit429 — schon der Erstwurf läuft ins Tages-Kontingent.
+    if (String(anfrage.model).includes("ratelimit429")) return tageslimit();
 
     const system = anfrage.messages.find((m) => m.role === "system")?.content ?? "";
     const letzterUser = [...anfrage.messages].reverse().find((m) => m.role === "user")?.content ?? "";
@@ -103,11 +146,31 @@ createServer((req, res) => {
     // Marker „HART-LEER" strippt die Pipeline, er ist Maschinen-Signal und keine
     // Information fürs Modell. „leerfix" schickt genau den Patch, den die Zeile verlangt;
     // „leerstur" antwortet mit leerem Patch — der Befund überlebt und muss abgelehnt werden.
-    const leerModus = /leerfix|leerstur/.test(String(anfrage.model));
-    if (leerModus && letzterUser.includes("Zeichne den Gegenstand FRÜHER"))
+    // „leerlimit" nimmt denselben Weg wie „leerstur", verliert das Kontingent aber
+    // GENAU in der Reparatur-Runde: der Lauf darf dann nicht als „reject-audit" enden
+    // (das wäre ein Modell-Urteil für ein Konto-Problem), sondern als „infra-ratelimit".
+    const leerModus = /leerfix|leerstur|leerlimit/.test(String(anfrage.model));
+    if (leerModus && letzterUser.includes("Zeichne den Gegenstand FRÜHER")) {
+      if (String(anfrage.model).includes("leerlimit")) return tageslimit();
       return json(200, antwort(anfrage.model, JSON.stringify(
         String(anfrage.model).includes("leerfix") ? { "cards[1].sequence": SEQ_HEIL } : {})));
+    }
     if (leerModus) return json(200, antwort(anfrage.model, mitSequenz(SEQ_LEER)));
+
+    // Kürzungs-Weg: die Lektion hat EINE Karte zu viel (9 statt 8). Vor der Kürzungs-
+    // Runde fiel dieser Fall in den vollen Retry und die Lektion wurde neu gewürfelt.
+    //   stub/zuvielfix  — nennt in der Kürzungs-Runde die doppelte Karte (Weg i)
+    //   stub/zuvielstur — nennt keine gültige Karte, der Fall fällt zurück (Weg ii)
+    if (/zuvielfix|zuvielstur/.test(String(anfrage.model))) {
+      if (letzterUser.includes('{"streichen"'))
+        return json(200, antwort(anfrage.model, JSON.stringify(
+          String(anfrage.model).includes("zuvielfix") ? { streichen: [3] } : { streichen: [] })));
+      // Karte 2 verdoppeln: der EINZIGE Unterschied zur grünen Lektion ist die Anzahl,
+      // damit ausschließlich der Kürzungs-Weg über den Ausgang entscheidet.
+      const l = JSON.parse(LEKTION);
+      l.cards.splice(2, 0, JSON.parse(JSON.stringify(l.cards[2])));
+      return json(200, antwort(anfrage.model, JSON.stringify(l)));
+    }
 
     // System-Weg: die Überlappung steckt in der GEOMETRIE der Karte, nicht in einer
     // Aussage — es gibt darum auch keine Patch-Runde, die sie beheben könnte. Der Stub
