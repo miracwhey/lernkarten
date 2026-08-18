@@ -1,0 +1,31 @@
+{
+  "relation": "trend",
+  "text": "Koffein zerfällt mit einer Halbwertszeit von etwa 5 Stunden: Nach 5 Stunden ist noch die Hälfte aktiv, nach 10 Stunden nur ein Viertel.",
+  "xlabel": "NACH KONSUM",
+  "ylabel": "REST-WIRKUNG",
+  "series": [
+    {
+      "label": "Koffein im Blut",
+      "color": "es",
+      "shape": "decay-halflife",
+      "from": "high",
+      "to": "floor"
+    }
+  ],
+  "annotations": [
+    {
+      "art": "callout",
+      "text": "NOCH 50 % WIRKUNG",
+      "an": "series:koffein-im-blut",
+      "t": 0.33
+    },
+    {
+      "art": "callout",
+      "text": "NUR NOCH 25 %",
+      "an": "series:koffein-im-blut",
+      "t": 0.67
+    }
+  ],
+  "caption": "Ein Kaffee um 16 Uhr ist um 21 Uhr noch zur Hälfte aktiv.",
+  "type": "curve"
+}

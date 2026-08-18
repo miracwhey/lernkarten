@@ -76,6 +76,12 @@ const FAELLE = [
   // „DEIN GEFÜHL". Umbruch ist die Ausweichform, die diese Notlage auflöst — und der
   // Deckel dafür, dass ein Callout nicht mehr Raum nimmt, als die Karte hat.
   ["19-callout-lang", { ...eisberg, annotations: [{ art: "callout", text: "ADENOSIN STAUT SICH HIER", an: "waterline" }] }],
+  // Zwei Callouts auf EINER Serie, aus dem ersten Lauf, in dem die Contract-Quote beide
+  // Schichten erzwang. Das Serien-Label klebt schräg an seiner Kurve (27,4°); die
+  // Belegung trug Texte achsparallel ein, der Leader lief mitten durch das Label, und
+  // die Prüfung sah nichts. Die Karte steht als eigene Datei daneben, weil ihre Geometrie
+  // der Fall ist — ein nachgebauter Kurvenverlauf wäre ein anderer.
+  ["20-callout-gedrehtes-label", JSON.parse(readFileSync(resolve(repo, "probes/annot-dreh-karte.json"), "utf8"))],
   ["16-alles", { ...neuron, annotations: [
     { art: "zone", text: "DIE ZELLE", umfasst: ["node:dendrit", "node:soma"] },
     { art: "ring", an: "node:synapse" },

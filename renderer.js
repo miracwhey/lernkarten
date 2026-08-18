@@ -1771,9 +1771,15 @@ function wireAnnotations(root, card) {
   const { put, hitPlaced, schadenVon } = belegung();
   for (const t of svg.querySelectorAll("text")) {
     const b = t.getBBox(), m = matrix(t);
+    // Die DREHUNG gehört dazu. `rect`/`hitRect` rechnen längst mit orientierten Boxen —
+    // hier ging der Winkel verloren, und ein Serien-Label, das schräg an seiner Kurve
+    // klebt, lag als achsparalleles Rechteck woanders als im Bild. Gemessen am ersten
+    // Lauf mit zwei Callouts auf einer Serie: „Koffein im Blut" steht auf 27,4°, der
+    // Leader lief mitten hindurch, und die Prüfung sah nichts (PATH-Befund).
     put(rect(m.a * (b.x + b.width / 2) + m.c * (b.y + b.height / 2) + m.e,
              m.b * (b.x + b.width / 2) + m.d * (b.y + b.height / 2) + m.f,
-             b.width * (Math.hypot(m.a, m.b) || 1), b.height * (Math.hypot(m.c, m.d) || 1)));
+             b.width * (Math.hypot(m.a, m.b) || 1), b.height * (Math.hypot(m.c, m.d) || 1),
+             Math.atan2(m.b, m.a) * 180 / Math.PI));
   }
 
   const punkteVon = (name) => [...svg.querySelectorAll(`[data-anchor~="${CSS.escape(name)}"]`)]
