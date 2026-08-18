@@ -70,6 +70,26 @@ const SONDERFALL = [{
     { anker: "node:synapse", text: "AM ENDE SPRINGT DAS SIGNAL UEBER DEN SPALT ZUM NAECHSTEN", ton: "ich" }
   ],
   caption: "Sonderfall Platznot."
+}, {
+  // Bandlage: zwei deckungsgleiche Serien — die Konstellation, die label-audit als INFO
+  // meldet („Serienabstand < 10 px", bei Strichstärke 3 sind die Kurven optisch eins).
+  //
+  // VERSUCH GESCHEITERT, absichtlich dokumentiert: der Fall sollte die laxe Stufe
+  // erzwingen, tut es aber nicht. `eindeutig` fragt, ob die FREMDE Serie NÄHER liegt als
+  // die eigene; bei Deckungsgleichheit sind beide gleich weit, die Prüfung ist also
+  // erfüllt. Sie schlägt nur an, wenn die eigene Serie WEITER weg ist — etwa wenn zwei
+  // Kurven sich kreuzen und hinter dem Kreuzungspunkt auseinanderlaufen. Solche Lagen
+  // entstehen im Bestand nur am Apex-Ast, und der läuft über apexPlace, nicht über den
+  // gemeinsamen Kern. Die laxe Stufe bleibt damit ungemessenes Sicherheitsnetz.
+  quelle: "sonderfall: Bandlage (zwei deckungsgleiche Serien)",
+  type: "curve", relation: "trend",
+  text: "Zwei deckungsgleiche Serien.", xlabel: "ZEIT", ylabel: "WERT",
+  series: [
+    { label: "ERSTE FLACHE", color: "es", shape: "flat", from: "mid" },
+    { label: "ZWEITE FLACHE", color: "ich", shape: "flat", from: "mid", dash: true }
+  ],
+  notes: [{ label: "HIER LIEGT ALLES AUFEINANDER", series: 0, t: 0.5 }],
+  caption: "Sonderfall Bandlage."
 }];
 
 const karten = [];

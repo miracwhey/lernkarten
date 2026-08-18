@@ -228,6 +228,15 @@
   .halo { paint-order: stroke; stroke: var(--card); stroke-width: 3px; stroke-linejoin: round; }
   .c-stopline { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 5; }
   .c-notedot { opacity: 0.9; }
+  /* Erklär-Schicht: ein Callout ist ein eigenes Objekt AUF dem Bild, keine zweite
+     Bildschrift — deshalb gefüllter Kasten statt Papier-Halo. Die Füllung erbt die
+     Farbe ihres Ankers (inline), hier steht nur die Kante als Grundton. */
+  .c-callout { stroke: var(--line); stroke-width: 0.75; }
+  .c-callout-text { font-weight: 700; letter-spacing: 0.02em; }
+  /* Der Leader der Erklär-Schicht ist das Regelmittel, nicht die Notlösung: eine ruhige
+     durchgezogene Linie, die zeigt, worauf sie zeigt. Die gepunktete `.leader` bleibt
+     für Notes, wo sie erst bei zu großem Abstand überhaupt erscheint. */
+  .leader-c { stroke: var(--ink); stroke-width: 0.9; opacity: 0.55; }
   /* Leader nur als letztes Mittel: gepunktet und dünn, damit er nie wie eine
      Ereignis-Linie oder ein Achsen-Strich gelesen wird. */
   .leader { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 2.5; opacity: 0.75; }

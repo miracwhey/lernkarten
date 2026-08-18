@@ -108,16 +108,34 @@ Zwei Folgerungen:
    schlechthin — liefert für `region:` und `zone:` keine Kontur. Vor dem Bau von `klammer`
    zu klären, sonst trifft das Primitiv genau die Karte nicht, für die es gedacht war.
 
-## Risiko, das dadurch größer wird
+## „Solver-Fall (b)" ist kein Bug — nachgeprüft 18.08.
 
-Der **offene Solver-Fall (b)** — ein Label landet näher an der fremden Serie als an der
-eigenen — sitzt genau in der Zuordenbarkeits-Prüfung, die hier zum Fundament wird. Heute
-steht er in der OFFEN-Liste als „kein Reproduktionsfall, ohne den nicht angehen", weil er
-nur `curve` trifft.
+Der Fall stand als Blocker in der Liste: ein Label landet näher an der fremden Serie als an
+der eigenen (`"CRASH"` 4.5 < 13.4 px). Das Bench-Protokoll sagt etwas anderes — die
+Originalzeile lautet:
 
-**Wird die Schicht generisch, trifft er jede Karte.** Der Fall wandert damit von
-„irgendwann" auf „vor dem Ausrollen", und er braucht zuerst einen Reproduktionsfall —
-konstruierbar über zwei Anker, deren Konturen sich auf unter 1 px nähern.
+```
+INFO  "CRASH" (Serie 1) liegt näher an Serie 0 (4.5 < 13.4 px), Serienabstand dort 0.7 px
+```
+
+**`INFO`, nicht `ZUORD`.** `label-audit.mjs` stuft die Lage bewusst herab, wenn der
+Serienabstand unter 10 px liegt: bei Strichstärke 3 sind die Kurven dort optisch ein Band,
+und keine Lage wäre eindeutig. Die Regel stammt vom 14.08., der Bench lief am 17.08. — sie
+war aktiv. Kein Lauf ist daran gescheitert; die frühere Notiz hat eine INFO-Zeile als
+Fehler gelesen.
+
+**Damit entfällt der Blocker.** Die Zuordenbarkeits-Prüfung kann unverändert Fundament der
+Schicht werden.
+
+### Was dabei offen bleibt
+
+Die **laxe Stufe** der Staffel ist ungemessen. `eindeutig` fragt, ob die fremde Kontur
+NÄHER liegt als die eigene — bei Deckungsgleichheit sind beide gleich weit, die Prüfung ist
+erfüllt. Sie schlägt nur an, wenn die eigene Kontur weiter weg ist, und solche Lagen
+entstehen im Bestand nur am Apex-Ast, der über `apexPlace` läuft statt über den
+gemeinsamen Kern. Drei Anläufe (Bandlage, Platznot, Linien-Anker) haben sie nicht
+ausgelöst. Der Zweig bleibt Sicherheitsnetz — mit neuen Primitiven, die eigene Kandidaten
+mitbringen, kann er relevant werden.
 
 ## Offene Design-Entscheidungen (Leon)
 

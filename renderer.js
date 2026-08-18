@@ -93,8 +93,11 @@ const textSvg = (r, size, txt, cls, fill, attrs = "") => {
   return `<text class="svglabel ${cls}" transform="translate(${r.cx.toFixed(1)} ${r.cy.toFixed(1)})${dreh}"
         y="${(size * BASE_OFF).toFixed(2)}" font-size="${size}" text-anchor="middle" style="fill:${fill}" ${attrs}>${txt}</text>`;
 };
-const leaderSvg = (g, anker, extra = "") => g
-  ? `<line class="leader"${AN(anker)}${extra} x1="${g.x1.toFixed(1)}" y1="${g.y1.toFixed(1)}" x2="${g.x2.toFixed(1)}" y2="${g.y2.toFixed(1)}"/>`
+// `cls` trennt die zwei Rollen, die ein Leader hat: bei Notes ist er die DEGRADATION einer
+// Bindung und tritt deshalb zurück (blass, gepunktet); in der Erklär-Schicht ist er das
+// REGELMITTEL und muss lesbar zeigen, worauf er zeigt. Eine Geometrie, zwei Tonlagen.
+const leaderSvg = (g, anker, extra = "", cls = "leader") => g
+  ? `<line class="${cls}"${AN(anker)}${extra} x1="${g.x1.toFixed(1)}" y1="${g.y1.toFixed(1)}" x2="${g.x2.toFixed(1)}" y2="${g.y2.toFixed(1)}"/>`
   : "";
 
 // ——— Leader: die letzte Degradation einer Text-Bindung ———
@@ -498,6 +501,14 @@ const RENDERERS = {
     const anZone = card.zones.map((z, i) => A(`zone:${ankerSlug(z.label, String(i))}`));
     const anWater = A("waterline");
     const anLabel = card.body.regions.map((r, i) => A(`label:${ankerSlug(r.label, String(i))}`));
+    // Die Regionen sind geclippte Rechtecke (x 90–335, y 30–440): ihre eigene Kontur ist
+    // fast die ganze Karte, sichtbar ist nur die Schnittmenge mit dem Berg. Als Anker für
+    // eine Klammer oder ein Callout wäre sie deshalb irreführend — gemessen mit
+    // probes/anker-kontur.mjs, das für layers 1 von 10 Ankern mit Kontur fand. Der
+    // Berg-UMRISS ist die einzige echte Kontur der Karte und bekommt hier seinen Namen;
+    // ohne ihn könnte die Erklär-Schicht ausgerechnet am Eisberg nicht hängen.
+    // Zuletzt vergeben, damit die Dedup-Suffixe der bestehenden Namen sich nicht verschieben.
+    const anBerg = A("node:berg");
     const SPLIT_X = 225;        // Mittellinie Berg
     const ES_TOP_Y = 268;       // Ich/Es-Grenze
     // Die Berg-Kontur kommt aus der Library (nature.eisberg) — hier stand sie dreifach
@@ -527,7 +538,7 @@ const RENDERERS = {
           <line x1="${SPLIT_X}" y1="46" x2="${SPLIT_X}" y2="440" stroke="${C("ink")}" stroke-width="2"/>
           <line x1="${SPLIT_X}" y1="${ES_TOP_Y}" x2="330" y2="${ES_TOP_Y}" stroke="${C("ink")}" stroke-width="2"/>
         </g>
-        <path class="a-line"${BERG_T} d="${berg}" fill="none" stroke="${C("ink")}"/>
+        <path class="a-line"${AN(anBerg)}${BERG_T} d="${berg}" fill="none" stroke="${C("ink")}"/>
         <path${AN(anWater)} d="${wave1} ${wave2rev} Z" fill="${C("water1")}"/>
         <path${AN(anWater)} d="${wave1}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
         <path${AN(anWater)} d="${wave2}" fill="none" stroke="${C("ink")}" stroke-width="2"/>
@@ -1678,9 +1689,161 @@ function wireSequence(root, card) {
   } else play();
 }
 
+// ————————————————————— v4: Erklär-Schicht —————————————————————
+// Callout und Klammer legen sich auf ein FERTIGES Diagramm. Sie laufen deshalb nach dem
+// Karten-Markup und nicht in den Karten-Typen: Anker-Geometrie ist erst im DOM messbar,
+// und dieselbe Schicht soll auf jedem Typ sitzen (docs/erklaer-schicht-spec.md). Derselbe
+// Weg, den wireSequence schon geht.
+//
+// Das Karten-JSON nennt nur Bedeutung und Ziel — `art`, `text`, und den Anker. Wo der
+// Kasten sitzt, wie die Linie läuft und OB es eine gibt, rechnet der Solver. Ein Modell
+// kann die Lage damit nicht falsch angeben, weil es sie gar nicht angeben kann.
+function wireAnnotations(root, card) {
+  const plan = Array.isArray(card.annotations) ? card.annotations : null;
+  if (!plan || !plan.length) return;
+  const svg = root.querySelector(".diagram svg");
+  if (!svg) return;                       // Karten ohne Diagramm tragen keine Schicht
+  const vb = svg.viewBox.baseVal;
+
+  // Alles rechnet im SVG-User-Space: die Typen haben verschiedene viewBoxen (400×300,
+  // 400×432), und ein eingebautes Asset bringt seine eigene Transformation mit. Dieselbe
+  // Umrechnung wie in label-audit.mjs — zwei Maßsysteme gegeneinander zu messen meldete
+  // Nähe, wo Abstand ist.
+  const matrix = (el) => svg.getScreenCTM().inverse().multiply(el.getScreenCTM());
+  const abtasten = (el) => {
+    const out = [];
+    let len = 0;
+    try { len = el.getTotalLength(); } catch { return out; }
+    if (!len) return out;
+    const m = matrix(el), skal = Math.hypot(m.a, m.b) || 1;
+    const n = Math.max(1, Math.ceil((len * skal) / ASSET_TASTSCHRITT));
+    for (let k = 0; k <= n; k++) {
+      const p = el.getPointAtLength(len * (k / n));
+      out.push([m.a * p.x + m.c * p.y + m.e, m.b * p.x + m.d * p.y + m.f]);
+    }
+    return out;
+  };
+  // `rect` kommt hier dazu, anders als bei ASSET_GEO_SEL: die Karten-Typen zeichnen damit
+  // (layers-Regionen), und als HINDERNIS ist ein Rechteck richtig, auch wenn es als ANKER
+  // irreführend wäre.
+  const GEO_SEL = "path:not(.a-route), line, polyline, polygon, circle, rect";
+  const hindernis = [...svg.querySelectorAll(GEO_SEL)].flatMap(abtasten);
+
+  // Bestehende Texte sind belegt: ein Callout, das auf einem Label landet, hat den Platz
+  // genommen, den die Karte schon vergeben hatte.
+  const { put, hitPlaced, schadenVon } = belegung();
+  for (const t of svg.querySelectorAll("text")) {
+    const b = t.getBBox(), m = matrix(t);
+    put(rect(m.a * (b.x + b.width / 2) + m.c * (b.y + b.height / 2) + m.e,
+             m.b * (b.x + b.width / 2) + m.d * (b.y + b.height / 2) + m.f,
+             b.width * (Math.hypot(m.a, m.b) || 1), b.height * (Math.hypot(m.c, m.d) || 1)));
+  }
+
+  const punkteVon = (name) => [...svg.querySelectorAll(`[data-anchor~="${CSS.escape(name)}"]`)]
+    .flatMap((el) => (el.matches(GEO_SEL) ? [el] : [...el.querySelectorAll(GEO_SEL)]))
+    .flatMap(abtasten);
+  // Farbe wird GEERBT, nicht angegeben (Leon-Entscheid 18.08.): ein Callout an einem roten
+  // Gegenstand ist rot. Damit entsteht Imprints Kopplung von Text und Bild, ohne eine
+  // zweite Farbachse neben ich/es/ueberich aufzumachen — die Karte könnte sonst dieselbe
+  // Farbe zweierlei sagen lassen.
+  // Die Zugehörigkeit steht an den Objekten auf MEHREREN Attributen — nicht aus Unordnung,
+  // sondern weil verschiedene Mechanismen sie brauchen: `data-ton` färbt Text, `data-glow`
+  // und `data-glow-fill` bestimmen, was beim Puls aufglüht. Gemessen an biology.neuron:
+  //   node:dendrit → data-ton        node:soma → data-glow-fill    node:synapse → data-glow-fill
+  // Nur `data-ton` zu lesen ließ zwei von drei Ankern farblos; der Callout an der Synapse
+  // blieb weiß und das sah nach einem Designfehler aus, war aber ein Leseloch.
+  // Letzte Quelle ist der Label-Platz, der auf denselben Anker zeigt: trägt das Objekt
+  // selbst keinen Ton, hat ihn seine Beschriftung.
+  const tonVon = (name) => {
+    for (const el of svg.querySelectorAll(`[data-anchor~="${CSS.escape(name)}"]`)) {
+      const t = el.dataset.ton || el.dataset.glow || el.dataset.glowFill;
+      if (t) return t;
+    }
+    for (const el of svg.querySelectorAll(`[data-anchor-ref="${CSS.escape(name)}"][data-ton]`))
+      return el.dataset.ton;
+    return null;
+  };
+
+  const SIZE = 10.5, ZEILE = boxH(SIZE), RAND = 4;
+  // Ein Callout braucht MEHR Luft als ein freier Text. LUFT_Y = 2 ist für Kurven-Labels
+  // richtig (dort ist der Platz knapp und Text neben Text liest sich als zwei Texte); ein
+  // Kasten mit Kante zwei Pixel unter einer Beschriftung liest sich dagegen als deren
+  // Unterzeile — gemessen am Neuron: Slot-Label endete bei y=48, der Kasten begann bei 50.
+  const LUFT_CX = 10, LUFT_CY = 9;
+  const inBild = (r) => cornersOf(r).every(([x, y]) =>
+    x >= vb.x + RAND && x <= vb.x + vb.width - RAND && y >= vb.y + RAND && y <= vb.y + vb.height - RAND);
+  const RICHTUNG = [[0, -1], [0, 1], [1, 0], [-1, 0], [0.71, -0.71], [0.71, 0.71], [-0.71, -0.71], [-0.71, 0.71]];
+  // Der Callout sucht den FREIEN RAUM, nicht die engste Lage am Objekt — die umgekehrte
+  // Regel zur Note (Leon-Entscheid 18.08. nach Vergleich beider Fassungen am Neuron).
+  // Begründung ist die Referenz selbst: bei Imprint steht die Beschriftung außen im
+  // Freiraum und zeigt mit einer ruhigen Linie ins Bild („Head High", „Microexpressions",
+  // „Limit The Fidget"). Drei Folgen: Kandidaten reichen bis 82 statt 40 Einheiten weit,
+  // der Score belohnt Abstand zur Geometrie statt Nähe zum Anker, und der Leader ist das
+  // Regelmittel mit eigenem, größerem Deckel.
+  const ABSTAND = [10, 14, 19, 25, 32, 40, 52, 66, 82];
+  // Kein `diagonal()` für Callouts: die Diagonal-Pflicht schützt Kurvenkarten davor, dass
+  // ein waagerechter Strich wie ein Achsen-Strich gelesen wird. Auf einer Objektkarte gibt
+  // es keine Achse — und bei Imprint laufen genau diese Leader waagerecht ins Bild.
+  const LEAD_C = 95;
+
+  const raus = [];
+  for (const [ai, an] of plan.entries()) {
+    if (an.art !== "callout") continue;              // klammer/ring/pfeil folgen
+    const eigen = punkteVon(an.an);
+    if (!eigen.length) continue;                     // unbekannter Anker — der Validator lehnt ihn ab
+    const fremd = [...new Set(plan.map((p) => p.an).filter((n) => n && n !== an.an))]
+      .map(punkteVon).filter((p) => p.length);
+    const naechster = (r, pts) => {
+      let b = null, bd = Infinity;
+      for (const p of pts) { const d = distRect(r, p[0], p[1]); if (d < bd) { bd = d; b = p; } }
+      return { p: b, d: bd };
+    };
+    const schritt = Math.max(1, Math.ceil(eigen.length / 24));
+    const saat = eigen.filter((_, i) => i % schritt === 0);
+    const w = measure(an.text, SIZE, 600), h = ZEILE;
+    const kandidaten = [];
+    for (const p of saat) for (const [dx, dy] of RICHTUNG) for (const ab of ABSTAND) {
+      const r = rect(p[0] + dx * (ab + (Math.abs(dx) * w + Math.abs(dy) * h) / 2),
+                     p[1] + dy * (ab + (Math.abs(dx) * w + Math.abs(dy) * h) / 2), w, h);
+      const nah = naechster(r, eigen);
+      const braucht = nah.d > LEADER_AB;
+      kandidaten.push({ r, dot: nah.p, nah, braucht, g: leaderGeom(r, nah.p),
+        score: nah.d * 0.45 - distPix(r, hindernis) });
+    }
+    kandidaten.sort((a, b) => a.score - b.score);
+    const frei = (c) => inBild(c.r) && !hitPlaced(c.r, LUFT_CX, LUFT_CY) && !hitPix(grow(c.r, 2), hindernis)
+      && (!c.braucht || (leaderLen(c.g) <= LEAD_C && leaderFree(c.g, hindernis)));
+    const eindeutig = (c) => fremd.every((pts) => naechster(c.r, pts).d >= c.nah.d - 1.5);
+    const wahl = platziere(kandidaten, { frei, eindeutig,
+      schaden: (c) => (inBild(c.r) ? schadenVon(c.r, hindernis) + c.score * 0.05 : null) });
+    if (!wahl) continue;
+    put(wahl.r);
+    const ton = tonVon(an.an);
+    const fill = ton ? C(ton) : C("ink");
+    const anker = `annot:${ankerSlug(an.text, String(ai))}`;
+    const leader = wahl.braucht && leaderLen(wahl.g) <= LEAD_C ? wahl.g : null;
+    // Punkt AM Gegenstand — dasselbe Bindungs-Vokabular, das Asset- und Kurven-Notes
+    // benutzen. Ohne ihn schwebt der Kasten: er lag am Neuron zwei Pixel unter einem
+    // fremden Slot-Label und las sich als dessen Unterzeile, weil nichts ihn mit dem
+    // Dendriten verband. Der Leader bleibt die Degradation für größere Abstände.
+    const dot = `<circle class="c-notedot"${AN(anker)} data-label-anchor="${an.an}"`
+      + `${ton ? GLOW(ton) : ""} cx="${wahl.dot[0].toFixed(1)}" cy="${wahl.dot[1].toFixed(1)}" r="3" fill="${fill}"/>`;
+    // Gefüllter Kasten statt blankem Text: das ist Imprints Callout — die Beschriftung
+    // ist ein eigenes Objekt auf dem Bild, keine zweite Bildschrift.
+    raus.push(dot
+      + `<rect class="c-callout"${AN(anker)} x="${(wahl.r.cx - wahl.r.w / 2 - 5).toFixed(1)}"`
+      + ` y="${(wahl.r.cy - wahl.r.h / 2 - 2).toFixed(1)}" width="${(wahl.r.w + 10).toFixed(1)}"`
+      + ` height="${(wahl.r.h + 4).toFixed(1)}" rx="3" fill="${ton ? SOFT(ton) : C("card")}"/>`
+      + leaderSvg(leader, anker, "", "leader-c")
+      + textSvg(wahl.r, SIZE, an.text, "c-callout-text", fill, AN(anker) + ` data-label-anchor="${an.an}"`));
+  }
+  if (raus.length) svg.insertAdjacentHTML("beforeend", raus.join("\n"));
+}
+
 function renderCardInto(root, card, opts = {}) {
   seqStop();                                        // laufende Sequenz der Vorgänger-Karte abbrechen
   root.innerHTML = RENDERERS[card.type](card);
+  wireAnnotations(root, card);                      // vor wireSequence: die Schicht bringt eigene Anker mit
   if (card.type === "quiz") wireQuiz(root, card, opts.onAdvance, opts.onQuizResult);
   const save = root.querySelector(".savebtn");
   if (save) save.addEventListener("click", (e) => {

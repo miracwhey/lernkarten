@@ -243,6 +243,7 @@ const ANKER_MODELL = {
     (card.zones || []).forEach((z, i) => A(`zone:${ankerSlug(z.label, String(i))}`));
     A("waterline");
     (card.body?.regions || []).forEach((r, i) => A(`label:${ankerSlug(r.label, String(i))}`));
+    A("node:berg");            // Berg-Umriss: die einzige echte Kontur der Karte
   }
 };
 
@@ -276,6 +277,48 @@ const AFTER_STOP = ["collapse", "reset", "rebound"];
 // ein Apex auf dem Boden wäre keine Höhe, sondern ein Widerspruch zur Form.
 const REBOUND_LEVELS = ["low", "mid", "high"];
 const COLORS = new Set(["es", "ich", "ueberich"]);
+
+/// Erklär-Schicht v4, ADDITIV wie die Sequenz: eine Karte ohne `annotations` bleibt exakt
+/// so gültig wie vorher. Geprüft wird gegen dieselbe Anker-Registry — ein Ziel, das es
+/// nicht gibt, ist ein Fehler VOR dem Rendern. Ohne diese Prüfung überspränge der Renderer
+/// eine unbekannte Annotation stillschweigend: die Karte sähe heil aus und hätte die
+/// Aussage verloren, die das Modell setzen wollte.
+export const ANNOT_MAX = 4;
+export const ANNOT_ARTEN = ["callout"];       // klammer/ring/pfeil/zone folgen additiv
+function checkAnnotations(card, p, err) {
+  if (card.annotations === undefined) return;
+  const { anker } = ankerModell(card);
+  if (!anker.length) {
+    err(p + ".annotations", `Karten-Typ "${card.type}" trägt keine Anker — eine Annotation hätte nichts zu `
+      + `bezeichnen; entferne ${p}.annotations (die Schicht gehört auf Diagramm-Karten)`);
+    return;
+  }
+  if (!Array.isArray(card.annotations) || !card.annotations.length || card.annotations.length > ANNOT_MAX) {
+    const n = Array.isArray(card.annotations) ? card.annotations.length : -1;
+    err(p + ".annotations", n < 0 ? `ist kein Array — erwartet 1–${ANNOT_MAX} Einträge {art, text, an}`
+      : `braucht 1–${ANNOT_MAX} Einträge, hat ${n} — ${n ? `entferne ${n - ANNOT_MAX}; mehr Beschriftung macht die Karte zum Wimmelbild`
+        : "entferne das Feld"}`);
+    return;
+  }
+  // Anker, die keine Kontur tragen, sind kein Ziel: `label:`/`sub:` zeigen auf Text, und
+  // ein Callout an einer Beschriftung wäre die Beschriftung einer Beschriftung.
+  const OHNE_KONTUR = /^(label|sub|zone):/;
+  card.annotations.forEach((a, i) => {
+    const ap = `${p}.annotations[${i}]`;
+    if (!ANNOT_ARTEN.includes(a?.art))
+      err(ap + ".art", `unbekannte Art "${a?.art}" (erlaubt: ${ANNOT_ARTEN.join(", ")})`);
+    if (typeof a?.text !== "string" || !a.text.trim())
+      err(ap + ".text", "fehlt — eine Annotation ohne Text bezeichnet nichts");
+    else if (a.text.length > 28)
+      err(ap + ".text", `zu lang (${a.text.length} > 28 Zeichen) — kürze auf einen Ruf, keinen Satz`);
+    if (!a?.an) err(ap + ".an", `fehlt — nenne den Anker, den die Annotation bezeichnet (${anker.join(", ")})`);
+    else if (!anker.includes(a.an))
+      err(ap + ".an", `unbekannter Anker "${a.an}" — diese Karte hat: ${anker.join(", ")}`);
+    else if (OHNE_KONTUR.test(a.an))
+      err(ap + ".an", `"${a.an}" bezeichnet Text, keine Geometrie — hänge die Annotation an das Objekt `
+        + `selbst (${anker.filter((n) => !OHNE_KONTUR.test(n)).join(", ") || "diese Karte hat keinen"})`);
+  });
+}
 
 /// Sequenz-Layer v3, ADDITIV: eine Karte ohne `sequence` bleibt exakt so gültig wie
 /// vorher. Geprüft wird gegen die Anker-Registry der KARTE — ein Target, das es dort
@@ -717,6 +760,7 @@ export function validateLesson(lesson, opts = {}) {
         err(p + ".asset", `Karten-Typ "${c.type}" trägt kein Asset — ein Objekt aus der Library bekommt eine eigene Karte `
           + `(relation "object", type "asset"). Entferne ${p}.asset ODER mache daraus eine eigene asset-Karte.`);
       CARD_CHECKS[c.type](c, p);
+      checkAnnotations(c, p, err);
       checkSequence(c, p, err);
     });
     if (lesson.cards[0]?.type !== "title") err("cards[0]", "muss title sein");
