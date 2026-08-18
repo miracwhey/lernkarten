@@ -237,6 +237,9 @@
      durchgezogene Linie, die zeigt, worauf sie zeigt. Die gepunktete `.leader` bleibt
      für Notes, wo sie erst bei zu großem Abstand überhaupt erscheint. */
   .leader-c { stroke: var(--ink); stroke-width: 0.9; opacity: 0.55; }
+  /* Maßklammer: dünn wie der Leader, aber durchgehend und ohne Rundung — sie ist ein
+     Messwerkzeug im Bild, keine gezeichnete Form des Gegenstands. */
+  .c-klammer { stroke-width: 1.1; stroke-linejoin: miter; stroke-linecap: butt; opacity: 0.8; }
   /* Leader nur als letztes Mittel: gepunktet und dünn, damit er nie wie eine
      Ereignis-Linie oder ein Achsen-Strich gelesen wird. */
   .leader { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 2.5; opacity: 0.75; }

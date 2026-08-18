@@ -1727,7 +1727,35 @@ function wireAnnotations(root, card) {
   // (layers-Regionen), und als HINDERNIS ist ein Rechteck richtig, auch wenn es als ANKER
   // irreführend wäre.
   const GEO_SEL = "path:not(.a-route), line, polyline, polygon, circle, rect";
-  const hindernis = [...svg.querySelectorAll(GEO_SEL)].flatMap(abtasten);
+  const geoEls = [...svg.querySelectorAll(GEO_SEL)];
+  const hindernis = geoEls.flatMap(abtasten);
+
+  // Eine gefüllte FLÄCHE ist für die Erklär-Schicht mehr als ihre Kontur. Bei Asset-Notes
+  // gilt bewusst das Gegenteil — dort darf die Note IN ihrer Fläche liegen, weil das die
+  // Zugehörigkeit zeigt. Hier zählt die fremde Fläche als besetzt: ein Text auf ihr liest
+  // sich als IHRE Beschriftung. Am Eisberg landete „WAS ICH ZEIGE" sonst auf dem blauen
+  // Wasserband, dunkel auf dunkel — und die Abstandsmetrik konnte das nicht sehen, weil
+  // die nächste Kontur dort weiter weg war als an der freien Bergspitze.
+  // GECLIPPTE Flächen zählen NICHT mit: `isPointInFill` kennt `clip-path` nicht und
+  // meldet die ungeschnittene Form. Bei layers sind die Regionen Rechtecke von (90,30)
+  // bis (335,440), sichtbar ist davon nur der Eisberg-Ausschnitt — ungeclippt gemessen
+  // sperrten sie fast die ganze Karte, und die Klammer fand nirgends mehr Platz. Dieselbe
+  // Falle wie beim Anker: die eigene Kontur eines geclippten Rechtecks sagt nichts über
+  // das, was man sieht.
+  const flaechen = geoEls.filter((el) => {
+    const f = el.getAttribute("fill");
+    if (!f || f === "none" || typeof el.isPointInFill !== "function") return false;
+    return !el.closest("[clip-path]") && !el.getAttribute("clip-path");
+  });
+  const aufFremderFlaeche = (r, eigene) => flaechen.some((el) => {
+    if (eigene.includes(el)) return false;
+    const m = matrix(el).inverse();
+    return cornersOf(r).concat([[r.cx, r.cy]]).some(([x, y]) =>
+      el.isPointInFill(new DOMPoint(m.a * x + m.c * y + m.e, m.b * x + m.d * y + m.f)));
+  });
+  const elementeVon = (...namen) => namen.filter(Boolean)
+    .flatMap((n) => [...svg.querySelectorAll(`[data-anchor~="${CSS.escape(n)}"]`)])
+    .flatMap((el) => (el.matches(GEO_SEL) ? [el] : [...el.querySelectorAll(GEO_SEL)]));
 
   // Bestehende Texte sind belegt: ein Callout, das auf einem Label landet, hat den Platz
   // genommen, den die Karte schon vergeben hatte.
@@ -1786,9 +1814,120 @@ function wireAnnotations(root, card) {
   // es keine Achse — und bei Imprint laufen genau diese Leader waagerecht ins Bild.
   const LEAD_C = 95;
 
+  // ——— Klammer: ein Maß über eine Spanne aus ZWEI Ankern ———
+  // Warum es dieses Primitiv braucht: ein Callout an einer großen Kontur ist unbestimmt.
+  // Am Eisberg landete „WAS ICH ZEIGE" unter Wasser, weil `node:berg` das ganze Objekt
+  // ist und keine Stelle bezeichnet — der Solver fand unten genauso viel Nähe wie oben.
+  // Eine Spanne dagegen ist wohldefiniert, sobald die Regel es ist:
+  //
+  //   Achse   = die Richtung, in der A am weitesten ÜBER B hinausragt.
+  //   von-Ende= die Außenkante von A auf dieser Achse, in Richtung des Überstands.
+  //   bis-Ende= die Kante von B, die diesem Überstand zugewandt ist.
+  //
+  // Das ist genau, was eine Maßklammer tut: von der Außenkante des ersten Objekts bis zur
+  // zugewandten Kante des zweiten. Am Eisberg ergibt das Spitze → Wasserlinie, also die
+  // Strecke über Wasser — dieselbe Aussage wie Imprints „What I Know". Keine Heuristik,
+  // keine Sonderfälle je Karten-Typ.
+  //
+  // Die naheliegende Regel über SCHWERPUNKTE scheitert hier, und zwar sichtbar: `waterline`
+  // markiert am Eisberg nicht die Linie, sondern die ganze Wasserfläche. Ihr Schwerpunkt
+  // liegt fast auf dem des Bergs, die Richtungsbestimmung wird degeneriert, und die
+  // Klammer landete waagerecht über der Bergspitze. Der Überstand ist unempfindlich
+  // dagegen: über die Wasserfläche ragt der Berg nur nach OBEN hinaus (225 Einheiten),
+  // seitlich gar nicht.
+  const spanne = (ptsA, ptsB) => {
+    const bereich = (p, i) => [Math.min(...p.map((q) => q[i])), Math.max(...p.map((q) => q[i]))];
+    let best = null;
+    for (const achse of [0, 1]) {
+      const [a0, a1] = bereich(ptsA, achse), [b0, b1] = bereich(ptsB, achse);
+      const nachVorn = b0 - a0;             // A ragt zu kleineren Werten hinaus (oben/links)
+      const nachHinten = a1 - b1;           // A ragt zu größeren Werten hinaus (unten/rechts)
+      const vorn = nachVorn >= nachHinten;
+      const betrag = vorn ? nachVorn : nachHinten;
+      if (!best || betrag > best.betrag) best = { achse, betrag, a: vorn ? a0 : a1, b: vorn ? b0 : b1 };
+    }
+    return best;
+  };
+
   const raus = [];
   for (const [ai, an] of plan.entries()) {
-    if (an.art !== "callout") continue;              // klammer/ring/pfeil folgen
+    if (an.art === "klammer") {
+      const ptsA = punkteVon(an.von), ptsB = punkteVon(an.bis);
+      if (!ptsA.length || !ptsB.length) continue;    // unbekannter Anker — der Validator lehnt ihn ab
+      const { achse, a, b } = spanne(ptsA, ptsB);
+      const v0 = Math.min(a, b), v1 = Math.max(a, b);
+      if (v1 - v0 < 14) continue;                    // zu kurz für ein Maß, das man lesen kann
+      const quer = 1 - achse;
+      // Die Klammer steht NEBEN der Spanne, nicht darauf — und zwar neben dem GEMESSENEN
+      // Objekt (A). Nähme man beide Anker als Bezug, spannte sie am Eisberg über die volle
+      // Wasserfläche und stünde am Kartenrand statt am Berg.
+      const qMin = Math.min(...ptsA.map((p) => p[quer])), qMax = Math.max(...ptsA.map((p) => p[quer]));
+      const ton = tonVon(an.von) || tonVon(an.bis);
+      const fill = ton ? C(ton) : C("ink");
+      const anker = `annot:${ankerSlug(an.text, String(ai))}`;
+      const w = measure(an.text, SIZE, 600), h = ZEILE;
+      const kand = [];
+      for (const seite of [1, -1]) for (const ab of [10, 16, 24, 34, 46, 60]) {
+        const q = seite > 0 ? qMax + ab : qMin - ab;
+        // Textlage: an der Klammer, außen — konstruktiv gebunden, sie sucht sich nichts
+        // Eigenes. Angeboten werden drei Höhen: Mitte der Spanne und beide Enden. Nur die
+        // Mitte anzubieten hieß am Eisberg, dass rechts nichts passte (der Text lief über
+        // den Kartenrand) und links der Zonen-Text „BEWUSST" im Weg stand.
+        const tq = q + seite * (8 + (achse === 1 ? w / 2 : h / 2));
+        for (const tv of [(v0 + v1) / 2, v0 + h / 2, v1 - h / 2]) {
+          const r = achse === 1 ? rect(tq, tv, w, h) : rect(tv, tq, w, h);
+          kand.push({ r, q, seite, ab });
+        }
+        // Zweite Form: Text AM ENDE der Klammer, quer zu ihr statt neben ihr. Seitlich
+        // braucht er seine volle Breite neben dem Objekt — am Eisberg sind das 75
+        // Einheiten, während links 90 und rechts 65 frei sind: auf keiner Seite genug,
+        // die Klammer fiel ganz aus. Über dem Ende steht er mittig auf der Klammer und
+        // darf nach beiden Seiten überhängen.
+        for (const tv of [v0 - h, v1 + h]) {
+          const r = achse === 1 ? rect(q, tv, w, h) : rect(tv, q, w, h);
+          kand.push({ r, q, seite, ab });
+        }
+      }
+      // Rangfolge: nah am Objekt, aber im freien Raum. Ungeordnet gewann die erste freie
+      // Lage der Liste — am Eisberg landete der Text dadurch auf dem blauen Wasserband,
+      // dunkel auf dunkel. Eine gefüllte Fläche ist nämlich kein Hindernis, nur ihre
+      // Kontur (bei Asset-Notes ist das gewollt: die Note gehört IN ihre Fläche). Hier
+      // ersetzt der Freiraum-Abstand dieses Urteil.
+      kand.sort((x, y) => (x.ab * 0.5 - distPix(x.r, hindernis)) - (y.ab * 0.5 - distPix(y.r, hindernis)));
+      // Für die Klammer sind ALLE gefüllten Flächen tabu, auch die ihrer eigenen Anker:
+      // sie misst eine Strecke ZWISCHEN Objekten, ihr Text gehört in keins davon. Beim
+      // Callout gilt das Gegenteil (er bezeichnet ein Objekt und darf darin liegen) —
+      // am Eisberg trägt das Wasserband selbst den Anker `waterline`, der Text lag also
+      // formal auf seiner „eigenen" Fläche und blieb trotzdem unlesbar.
+      const frei = (c) => inBild(c.r) && !hitPlaced(c.r, LUFT_CX, LUFT_CY) && !hitPix(grow(c.r, 2), hindernis)
+        && !aufFremderFlaeche(c.r, []);
+      // Die Klammerlinie selbst wird NICHT gegen die Geometrie geprüft: sie endet per
+      // Konstruktion an ihrem `bis`-Anker und muss ihn deshalb berühren. Diese Prüfung
+      // schloss am Eisberg jede Lage aus (die Linie endet auf der Wasserlinie), worauf der
+      // Notnagel griff — und der kannte nur `inBild`, also landete der Text doch auf der
+      // Fläche. Der Notnagel trägt die Flächenregel jetzt mit; bleibt nichts übrig, wird
+      // nicht gezeichnet.
+      const wahl = platziere(kand, { frei,
+        schaden: (c) => ((inBild(c.r) && !aufFremderFlaeche(c.r, [])) ? schadenVon(c.r, hindernis) : null) });
+      // Ein Maß, das über den Rand läuft, ist schlimmer als keins: `platziere` gibt als
+      // letzten Ausweg den ersten Kandidaten zurück (für einen Callout richtig — irgendwo
+      // stehen schlägt fehlen). Hier wird lieber nichts gezeichnet; genau so lief der Text
+      // am Eisberg zuerst rechts aus der Karte.
+      if (!wahl || !inBild(wahl.r) || aufFremderFlaeche(wahl.r, [])) continue;
+      put(wahl.r);
+      // Eckige Klammer mit Haken ZUM Objekt hin: die Haken sagen, was gemessen wird.
+      const hk = 6 * -wahl.seite;
+      const d = achse === 1
+        ? `M${(wahl.q + hk).toFixed(1)},${v0.toFixed(1)} L${wahl.q.toFixed(1)},${v0.toFixed(1)} `
+          + `L${wahl.q.toFixed(1)},${v1.toFixed(1)} L${(wahl.q + hk).toFixed(1)},${v1.toFixed(1)}`
+        : `M${v0.toFixed(1)},${(wahl.q + hk).toFixed(1)} L${v0.toFixed(1)},${wahl.q.toFixed(1)} `
+          + `L${v1.toFixed(1)},${wahl.q.toFixed(1)} L${v1.toFixed(1)},${(wahl.q + hk).toFixed(1)}`;
+      raus.push(`<path class="c-klammer"${AN(anker)} d="${d}" fill="none" stroke="${fill}"/>`
+        + textSvg(wahl.r, SIZE, an.text, "c-callout-text", fill,
+          AN(anker) + ` data-label-anchor="${an.von}"`));
+      continue;
+    }
+    if (an.art !== "callout") continue;              // ring/pfeil/zone folgen
     const eigen = punkteVon(an.an);
     if (!eigen.length) continue;                     // unbekannter Anker — der Validator lehnt ihn ab
     const fremd = [...new Set(plan.map((p) => p.an).filter((n) => n && n !== an.an))]
@@ -1811,7 +1950,9 @@ function wireAnnotations(root, card) {
         score: nah.d * 0.45 - distPix(r, hindernis) });
     }
     kandidaten.sort((a, b) => a.score - b.score);
+    const eigeneEls = elementeVon(an.an);
     const frei = (c) => inBild(c.r) && !hitPlaced(c.r, LUFT_CX, LUFT_CY) && !hitPix(grow(c.r, 2), hindernis)
+      && !aufFremderFlaeche(c.r, eigeneEls)
       && (!c.braucht || (leaderLen(c.g) <= LEAD_C && leaderFree(c.g, hindernis)));
     const eindeutig = (c) => fremd.every((pts) => naechster(c.r, pts).d >= c.nah.d - 1.5);
     const wahl = platziere(kandidaten, { frei, eindeutig,

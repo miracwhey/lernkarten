@@ -284,7 +284,7 @@ const COLORS = new Set(["es", "ich", "ueberich"]);
 /// eine unbekannte Annotation stillschweigend: die Karte sähe heil aus und hätte die
 /// Aussage verloren, die das Modell setzen wollte.
 export const ANNOT_MAX = 4;
-export const ANNOT_ARTEN = ["callout"];       // klammer/ring/pfeil/zone folgen additiv
+export const ANNOT_ARTEN = ["callout", "klammer"];   // ring/pfeil/zone folgen additiv
 function checkAnnotations(card, p, err) {
   if (card.annotations === undefined) return;
   const { anker } = ankerModell(card);
@@ -311,12 +311,22 @@ function checkAnnotations(card, p, err) {
       err(ap + ".text", "fehlt — eine Annotation ohne Text bezeichnet nichts");
     else if (a.text.length > 28)
       err(ap + ".text", `zu lang (${a.text.length} > 28 Zeichen) — kürze auf einen Ruf, keinen Satz`);
-    if (!a?.an) err(ap + ".an", `fehlt — nenne den Anker, den die Annotation bezeichnet (${anker.join(", ")})`);
-    else if (!anker.includes(a.an))
-      err(ap + ".an", `unbekannter Anker "${a.an}" — diese Karte hat: ${anker.join(", ")}`);
-    else if (OHNE_KONTUR.test(a.an))
-      err(ap + ".an", `"${a.an}" bezeichnet Text, keine Geometrie — hänge die Annotation an das Objekt `
-        + `selbst (${anker.filter((n) => !OHNE_KONTUR.test(n)).join(", ") || "diese Karte hat keinen"})`);
+    // Die Klammer misst eine Spanne und braucht deshalb ZWEI Anker; der Callout
+    // bezeichnet eine Stelle und braucht einen. Beide Formen prüfen dieselbe Registry.
+    const felder = a?.art === "klammer" ? ["von", "bis"] : ["an"];
+    for (const f of felder) {
+      const v = a?.[f];
+      if (!v) err(`${ap}.${f}`, `fehlt — ${a?.art === "klammer"
+        ? `eine Klammer misst von einem Anker zum anderen (${anker.join(", ")})`
+        : `nenne den Anker, den die Annotation bezeichnet (${anker.join(", ")})`}`);
+      else if (!anker.includes(v))
+        err(`${ap}.${f}`, `unbekannter Anker "${v}" — diese Karte hat: ${anker.join(", ")}`);
+      else if (OHNE_KONTUR.test(v))
+        err(`${ap}.${f}`, `"${v}" bezeichnet Text, keine Geometrie — hänge die Annotation an das Objekt `
+          + `selbst (${anker.filter((n) => !OHNE_KONTUR.test(n)).join(", ") || "diese Karte hat keinen"})`);
+    }
+    if (a?.art === "klammer" && a.von && a.von === a.bis)
+      err(ap, `von und bis sind derselbe Anker ("${a.von}") — eine Klammer über nichts misst nichts`);
   });
 }
 

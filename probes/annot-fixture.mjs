@@ -41,7 +41,15 @@ const FAELLE = [
   ["06-kurve-callout", { ...kurve, annotations: [{ art: "callout", text: "STEIGT WEITER", an: "axis" }] }],
   // Negativprobe: ein Anker, den es nicht gibt. Muss spurlos bleiben (der Validator lehnt
   // ihn ab, der Renderer darf daran nicht zerbrechen).
-  ["07-unbekannter-anker", { ...neuron, annotations: [{ art: "callout", text: "GIBT ES NICHT", an: "node:quatsch" }] }]
+  ["07-unbekannter-anker", { ...neuron, annotations: [{ art: "callout", text: "GIBT ES NICHT", an: "node:quatsch" }] }],
+  // Die Klammer am Eisberg: der Fall, für den das Primitiv gebaut ist. Spitze →
+  // Wasserlinie ist die Strecke über Wasser, dieselbe Aussage wie Imprints „What I Know".
+  ["08-eisberg-klammer", { ...eisberg, annotations: [{ art: "klammer", text: "WAS ICH ZEIGE", von: "node:berg", bis: "waterline" }] }],
+  ["09-eisberg-beides", { ...eisberg, annotations: [
+    { art: "klammer", text: "WAS ICH ZEIGE", von: "node:berg", bis: "waterline" },
+    { art: "callout", text: "UND WAS NICHT", an: "region:es" }
+  ] }],
+  ["10-neuron-klammer", { ...neuron, annotations: [{ art: "klammer", text: "DER GANZE WEG", von: "node:dendrit", bis: "node:synapse" }] }]
 ];
 
 const browser = await chromium.launch();
@@ -57,7 +65,7 @@ page.on("pageerror", (e) => { fehler.push(e.message); console.error("PAGEERROR:"
 for (const [name, card] of FAELLE) {
   const n = await page.evaluate((c) => {
     renderCardInto(document.getElementById("area"), c);
-    return document.querySelectorAll("#area .c-callout").length;
+    return document.querySelectorAll("#area .c-callout, #area .c-klammer").length;
   }, card);
   await page.waitForTimeout(150);
   await page.locator(".phone").screenshot({ path: `${outdir}/${name}.png` });
