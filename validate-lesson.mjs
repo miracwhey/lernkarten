@@ -300,9 +300,14 @@ function checkAnnotations(card, p, err) {
         : "entferne das Feld"}`);
     return;
   }
-  // Anker, die keine Kontur tragen, sind kein Ziel: `label:`/`sub:` zeigen auf Text, und
-  // ein Callout an einer Beschriftung wäre die Beschriftung einer Beschriftung.
-  const OHNE_KONTUR = /^(label|sub|zone):/;
+  // Anker, die keine BRAUCHBARE Geometrie tragen, sind kein Ziel. Zwei Gründe:
+  //  - `label:`/`sub:`/`zone:` zeigen auf Text — das wäre die Beschriftung einer Beschriftung.
+  //  - Auf layers-Karten sind die `region:`-Anker beschnittene Rechtecke von (90,30) bis
+  //    (335,440). Sie HABEN Geometrie, aber nicht die sichtbare: gemessen landete ein
+  //    Callout für die Region „ICH" (blau, unten rechts im Eisberg) oben an der Bergspitze.
+  //    Auf venn-Karten sind `region:`-Anker echte Kreise und bleiben erlaubt — die Regel
+  //    hängt deshalb am Karten-Typ, nicht am Namen allein.
+  const OHNE_KONTUR = card.type === "layers" ? /^(label|sub|zone|region):/ : /^(label|sub|zone):/;
   card.annotations.forEach((a, i) => {
     const ap = `${p}.annotations[${i}]`;
     if (!ANNOT_ARTEN.includes(a?.art))
@@ -338,8 +343,10 @@ function checkAnnotations(card, p, err) {
       else if (!anker.includes(v))
         err(`${ap}.${f}`, `unbekannter Anker "${v}" — diese Karte hat: ${anker.join(", ")}`);
       else if (OHNE_KONTUR.test(v))
-        err(`${ap}.${f}`, `"${v}" bezeichnet Text, keine Geometrie — hänge die Annotation an das Objekt `
-          + `selbst (${anker.filter((n) => !OHNE_KONTUR.test(n)).join(", ") || "diese Karte hat keinen"})`);
+        err(`${ap}.${f}`, `"${v}" trägt keine brauchbare Geometrie — ${card.type === "layers" && v.startsWith("region:")
+          ? "die Regionen dieser Karte sind beschnittene Flächen, ihre Kante liegt nicht dort, wo man sie sieht"
+          : "das ist Text, keine Form"}; hänge die Annotation an das Objekt selbst `
+          + `(${anker.filter((n) => !OHNE_KONTUR.test(n)).join(", ") || "diese Karte hat keinen"})`);
     }
     if ((a?.art === "klammer" || a?.art === "pfeil") && a.von && a.von === a.bis)
       err(ap, `von und bis sind derselbe Anker ("${a.von}") — ${a.art === "pfeil"

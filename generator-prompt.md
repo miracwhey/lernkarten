@@ -177,6 +177,44 @@ Eine Diagramm-Karte darf beschreiben, in welcher REIHENFOLGE ihr Bild entsteht. 
 - **Die Zäsur am Ereignis setzt das System.** Du beschreibst, WAS nacheinander kommt — Zeiten, Dauern, Pausen und der Halt an der Ereignis-Linie kommen aus dem Motion-System, nie aus deinem JSON.
 - Ohne `sequence` erscheint die Karte fertig. Das ist völlig in Ordnung: nutze eine Sequenz nur, wenn die Reihenfolge etwas ERKLÄRT.
 
+### annotations — die Erklär-Schicht
+
+Ein Diagramm ZEIGT etwas; die Erklär-Schicht SAGT, was daran wichtig ist. Sie legt Beschriftungen, Maße, Marker, Wirkungspfeile und Gruppen auf das fertige Bild — dieselben Mittel, die jede gute Lehrbuch-Grafik benutzt.
+
+```
+"annotations": [ { "art":"callout", "text":"<CAPS, ≤ 28>", "an":"<anker>" },
+                 { "art":"klammer", "text":"<CAPS, ≤ 28>", "von":"<anker>", "bis":"<anker>" },
+                 { "art":"ring",    "an":"<anker>" },
+                 { "art":"pfeil",   "von":"<anker>", "bis":"<anker>", "text":"<CAPS, ≤ 28>"? },
+                 { "art":"zone",    "text":"<CAPS, ≤ 28>", "umfasst":["<anker>","<anker>", …] } ]   (max 4)
+```
+
+- **`callout`** benennt EINE Stelle. Nimm ihn für das, was das Bild zeigt, aber nicht ausspricht.
+- **`klammer`** misst eine SPANNE zwischen zwei Ankern — „so viel davon ist X". Sie ist das richtige Mittel, wenn es um einen Anteil, eine Höhe oder eine Tiefe geht; ein `callout` an einem großen Gegenstand bezeichnet dagegen keine Stelle und landet irgendwo auf ihm.
+- **`ring`** markiert eine Stelle und trägt KEINEN Text („hier hinschauen"). Willst du sie auch benennen, setze zusätzlich ein `callout` auf denselben Anker.
+- **`pfeil`** zeigt eine Wirkung von einem Gegenstand auf einen anderen. Zeichnet die Karte den Weg schon (Kreislauf-Pfeile, Achsen, das Axon am Neuron), lässt das System ihn weg — er wäre eine zweite Linie auf der ersten.
+- **`zone`** fasst mindestens ZWEI Gegenstände zu einer benannten Gruppe zusammen.
+
+**Die Anker entstehen aus dem, was du selbst schreibst** — es gibt nichts zu erfinden und nichts nachzuschlagen:
+
+| Karte | Anker |
+|---|---|
+| Kurve | `series:<slug deines Serien-Labels>` · `axis` · `stop` (wenn es ein Ereignis gibt) |
+| Objekt | die Anker des Objekts (stehen unten bei den refs) |
+| Waage | `node:<slug deiner linken/rechten Beschriftung>` · `pivot` · `beam` |
+| Kette/Kreis | `step:<slug deines Schritt-Labels>` · `arrow:<n>` |
+| Vielfach | `node:<slug deiner Quelle>` · `target:<n>` |
+| Schnittmenge | `region:<slug deiner Seiten-Beschriftung>` · `overlap` |
+| Ebenen | `node:berg` · `waterline` |
+
+Der Slug ist die Beschriftung in Kleinbuchstaben, Leerzeichen als `-`: aus `"SCHLAFDRUCK"` wird `series:schlafdruck`.
+
+- **Höchstens 4 je Karte.** Mehr macht aus der Karte ein Wimmelbild; die Aussage steht im Lehrsatz, nicht in fünf Zetteln auf dem Bild.
+- **Beschrifte nie eine Beschriftung.** Anker auf `label:` oder `zone:` sind Text, kein Gegenstand — hänge die Annotation an das Ding selbst.
+- **Farbe wird geerbt.** Ein Callout an einem roten Gegenstand ist rot; du gibst nie eine Farbe an.
+- **Keine Positionen.** Wo etwas sitzt, ob eine Linie zum Anker nötig ist, auf welcher Seite die Klammer steht — das rechnet das System. Du nennst nur Bedeutung und Ziel.
+- Ohne `annotations` ist die Karte vollständig. Nutze sie nur, wenn sie etwas ERKLÄRT, das im Bild sonst untergeht — nicht, um ein Label zu wiederholen.
+
 ### quiz
 `{ "type":"quiz", "question":"<≤ 160>", "options":[{"label":"<≤ 42>","correct":true|false}×3] (genau 1 correct), "explain":"<≤ 180, mit <strong>>", "wrong":"<≤ 160>" }`
 

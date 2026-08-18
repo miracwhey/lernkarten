@@ -27,6 +27,7 @@ const neuron = lade("lessons/wie-nervenzellen-feuern.json", 1);
 const eisberg = lade("lessons/freud-psyche.json", 1);
 const kurve = lade("lessons/warum-wir-schlafen.json", 1);
 const waage = lade("lessons/wie-nervenzellen-feuern.json", 9);
+const kreis = lade("lessons/wie-nervenzellen-feuern.json", 4);
 
 const FAELLE = [
   ["01-neuron-ohne", neuron],
@@ -65,6 +66,10 @@ const FAELLE = [
   // Positivfall: die Waagschalen sind räumlich getrennt und NICHT direkt verbunden.
   ["14b-waage-pfeil", { ...waage, annotations: [{ art: "pfeil", text: "KIPPT ES", von: "node:erregung", bis: "node:hemmung" }] }],
   ["15-neuron-zone", { ...neuron, annotations: [{ art: "zone", text: "DIE ZELLE", umfasst: ["node:dendrit", "node:soma"] }] }],
+  // Prompt-Deckung: trägt ein Schritt-Anker bei Kette/Kreis wirklich, und was macht ein
+  // Callout an einer layers-Region (deren rect geclippt und damit irreführend ist)?
+  ["17-cycle-step", { ...kreis, annotations: [{ art: "callout", text: "HIER KIPPT ES", an: "step:schwelle" }] }],
+  ["18-layers-region", { ...eisberg, annotations: [{ art: "callout", text: "DAS ZEIGE ICH", an: "region:ich" }] }],
   ["16-alles", { ...neuron, annotations: [
     { art: "zone", text: "DIE ZELLE", umfasst: ["node:dendrit", "node:soma"] },
     { art: "ring", an: "node:synapse" },
