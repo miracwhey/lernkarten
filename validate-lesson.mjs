@@ -39,6 +39,16 @@ export const RELATION_TO_TYPE = {
   "object": "asset"           // der Gegenstand selbst ist die Aussage (Asset-Karte)
 };
 const STRUCT_TYPES = new Set(["title", "quiz", "insight"]);
+/// Karten ohne SVG: `compare` stellt zwei Panels als HTML nebeneinander, die Struktur-Typen
+/// haben ohnehin kein Bild. Beide Schichten legen sich auf ein SVG — `wireAnnotations` sucht
+/// eines und tut ohne eines still gar nichts, das Schritt-Audit meldet „sequence ohne
+/// SVG-Geometrie". Die Anker-Frage trennt das NICHT: `compare` hat Anker (panel:, label:,
+/// item:), sie zeigen nur auf HTML-Knoten. Ohne diese Menge nahm der Validator eine
+/// Annotation auf einer compare-Karte an, der Renderer verschluckte sie, und die Karte sah
+/// heil aus — mit einer Aussage weniger, als das Modell geschrieben hatte.
+/// Gemessen statt behauptet: probes/anker-check.mjs vergleicht diese Menge gegen das
+/// gerenderte DOM aller Typen.
+export const TYPEN_OHNE_BILD = new Set([...STRUCT_TYPES, "compare"]);
 
 // ————————————————————— v3: Asset-Registry —————————————————————
 // Die kuratierte Library ist assets/manifest.json — dieselbe Datei, die der Renderer
@@ -285,12 +295,59 @@ const COLORS = new Set(["es", "ich", "ueberich"]);
 /// Aussage verloren, die das Modell setzen wollte.
 export const ANNOT_MAX = 4;
 export const ANNOT_ARTEN = ["callout", "klammer", "ring", "pfeil", "zone"];
+
+/// ——— Contract-Quoten für die beiden OPTIONALEN Schichten ———
+/// Beide haben denselben Weg genommen: ein eigener Prompt-Abschnitt, und trotzdem kam
+/// nichts an (`annotations` 0 in zwei vollen Läufen, `sequence` 4 von 582 generierten
+/// Karten). Wirksam war erst die Zeile im AUFTRAG — gemessen mit probes/feld-sonde.mjs:
+/// dasselbe Modell, derselbe Systemprompt, sequence 0/3 ohne die Zeile und 3/3 mit ihr.
+///
+/// Die Zeile stand unter der Überschrift „Contract — wird geprüft", und geprüft hat sie
+/// niemand. Das hier ist die fehlende Prüfung. Die ZAHL steht nur an dieser Stelle;
+/// contract-pflichten.md holt sie sich über `pflichtText()`, damit Zusage und Prüfung
+/// nicht auseinanderlaufen können.
+export const PFLICHT_QUOTEN = { annotations: 2, sequence: 1 };
+
+/// Der Auftragstext zu diesen Quoten — EINE Prosa-Quelle (contract-pflichten.md), die
+/// Zahlen aus PFLICHT_QUOTEN. glm-generate.mjs und die Sonde rufen dieselbe Funktion.
+export function pflichtText() {
+  const roh = readFileSync(new URL("./contract-pflichten.md", import.meta.url), "utf8").trim();
+  return roh.replace(/\{\{(\w+)\}\}/g, (m, feld) => {
+    if (!(feld in PFLICHT_QUOTEN)) throw new Error(`contract-pflichten.md nennt {{${feld}}} — kein Eintrag in PFLICHT_QUOTEN`);
+    return String(PFLICHT_QUOTEN[feld]);
+  });
+}
+
+/// Gezählt wird nur, was die Schicht überhaupt TRAGEN kann: eine Karte ohne Anker (compare,
+/// title, quiz, insight) hätte nichts zu bezeichnen, und ihr eine Quote anzulasten hieße,
+/// dem Modell einen Fehler vorzuwerfen, den es nicht machen kann. Fällt die Zahl der
+/// fähigen Karten unter das Soll, gilt die Quote nicht — sonst wäre eine kurze Lektion mit
+/// wenigen Diagramm-Karten unerfüllbar.
+function quotenPruefen(lesson, err) {
+  const faehig = lesson.cards
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => !TYPEN_OHNE_BILD.has(c.type) && ankerFuerKarte(c).length > 0);
+  for (const [feld, soll] of Object.entries(PFLICHT_QUOTEN)) {
+    if (faehig.length < soll) continue;
+    const ohne = faehig.filter(({ c }) => !(Array.isArray(c[feld]) && c[feld].length));
+    const ist = faehig.length - ohne.length;
+    if (ist >= soll) continue;
+    // Der Fehlertext trägt die Korrektur und die in Frage kommenden Karten: die Pipeline
+    // heilt das als Feld-Patch, nicht als Voll-Regeneration.
+    err("cards", `nur ${ist} von ${soll} Karten mit "${feld}" — der Contract verlangt ${soll}. `
+      + `Ergänze ${feld} auf ${soll - ist} weiteren Diagramm-Karte(n); in Frage kommen `
+      + `${ohne.map(({ c, i }) => `cards[${i}] (${c.relation ?? c.type})`).join(", ")}. `
+      + `Bestehende Karten bleiben sonst unverändert.`);
+  }
+}
 function checkAnnotations(card, p, err) {
   if (card.annotations === undefined) return;
   const { anker } = ankerModell(card);
-  if (!anker.length) {
-    err(p + ".annotations", `Karten-Typ "${card.type}" trägt keine Anker — eine Annotation hätte nichts zu `
-      + `bezeichnen; entferne ${p}.annotations (die Schicht gehört auf Diagramm-Karten)`);
+  if (TYPEN_OHNE_BILD.has(card.type) || !anker.length) {
+    err(p + ".annotations", `Karten-Typ "${card.type}" trägt ${TYPEN_OHNE_BILD.has(card.type)
+      ? "kein Bild — die Schicht legt sich auf ein Diagramm, hier gäbe es keines, auf dem sie läge"
+      : "keine Anker — eine Annotation hätte nichts zu bezeichnen"}; `
+      + `entferne ${p}.annotations (die Schicht gehört auf Diagramm-Karten)`);
     return;
   }
   if (!Array.isArray(card.annotations) || !card.annotations.length || card.annotations.length > ANNOT_MAX) {
@@ -362,8 +419,10 @@ function checkSequence(card, p, err) {
     err(p + ".trigger", `ungültig "${card.trigger}" (erlaubt: ${SEQ_TRIGGER.join(", ")}) — ohne Angabe gilt "auto"`);
   if (card.sequence === undefined) return;
   const { anker, paare, aeste, traceBar } = ankerModell(card);
-  if (!anker.length) {
-    err(p + ".sequence", `Karten-Typ "${card.type}" trägt keine Anker — eine Sequenz hätte nichts zu adressieren; `
+  if (TYPEN_OHNE_BILD.has(card.type) || !anker.length) {
+    err(p + ".sequence", `Karten-Typ "${card.type}" trägt ${TYPEN_OHNE_BILD.has(card.type)
+      ? "kein Bild — eine Sequenz beschreibt, wie ein Diagramm ENTSTEHT, und hier entsteht keines"
+      : "keine Anker — eine Sequenz hätte nichts zu adressieren"}; `
       + `entferne ${p}.sequence (Sequenzen gehören auf Diagramm-Karten)`);
     return;
   }
@@ -800,6 +859,7 @@ export function validateLesson(lesson, opts = {}) {
     if (lesson.cards[0]?.type !== "title") err("cards[0]", "muss title sein");
     if (lesson.cards.at(-1)?.type !== "insight") err("cards[letzte]", "muss insight sein");
     if (lesson.cards.at(-2)?.type !== "quiz") err("cards[vorletzte]", "muss quiz sein");
+    quotenPruefen(lesson, err);
   }
   return errs;
 }

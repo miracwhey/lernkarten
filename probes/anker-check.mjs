@@ -7,7 +7,7 @@
 import { chromium } from "playwright";
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
-import { normalizeLesson, ankerFuerKarte, RELATION_TO_TYPE } from "../validate-lesson.mjs";
+import { normalizeLesson, ankerFuerKarte, RELATION_TO_TYPE, TYPEN_OHNE_BILD } from "../validate-lesson.mjs";
 
 const repo = resolve(new URL("..", import.meta.url).pathname);
 const dateien = (process.argv.length > 2 ? process.argv.slice(2) : [
@@ -58,16 +58,22 @@ page.on("pageerror", (e) => console.error("PAGEERROR:", e.message));
 
 let fehler = 0, geprueft = 0;
 const gesehen = new Set();
+const bildIst = new Map();
 for (const { c, quelle } of karten) {
   const soll = ankerFuerKarte(c);
-  const ist = await page.evaluate((card) => {
+  const { anker: ist, hatBild } = await page.evaluate((card) => {
     document.getElementById("area").innerHTML = RENDERERS[card.type](card);
     const out = [];
     document.querySelectorAll("#area [data-anchor]").forEach((e) =>
       e.getAttribute("data-anchor").split(/\s+/).filter(Boolean).forEach((n) => { if (!out.includes(n)) out.push(n); }));
-    return out;
+    return { anker: out, hatBild: !!document.querySelector("#area .diagram svg") };
   }, c);
   gesehen.add(c.type);
+  // Zweite Gleichheit, dieselbe Bauart: der Validator BEHAUPTET mit TYPEN_OHNE_BILD, welche
+  // Typen kein SVG rendern, und hängt beide Schichten daran. Eine Behauptung über den
+  // Renderer gehört gemessen — sonst fällt ein neuer HTML-Typ still durch das Gate und
+  // seine Annotationen verschwinden, ohne dass jemand einen Fehler sieht.
+  bildIst.set(c.type, (bildIst.get(c.type) || false) || hatBild);
   if (!soll.length && !ist.length) continue;        // title/quiz/insight tragen keine Anker
   geprueft++;
   const fehlend = soll.filter((n) => !ist.includes(n));
@@ -87,5 +93,21 @@ const typen = [...new Set(Object.values(RELATION_TO_TYPE))];
 const fehltTyp = typen.filter((t) => !gesehen.has(t));
 console.log(`ABDECKUNG ${typen.length - fehltTyp.length}/${typen.length} Diagramm-Typen: ${typen.filter((t) => gesehen.has(t)).join(", ")}`);
 if (fehltTyp.length) console.log(`UNGÜLTIG — ohne Karte für: ${fehltTyp.join(", ")}`);
-console.log(fehler || fehltTyp.length ? `ANKER-CHECK FAIL — ${fehler} Mismatch bei ${geprueft} Karten` : `ANKER-CHECK PASS — ${geprueft} Karten, Registry ≡ DOM`);
-process.exit(fehler || fehltTyp.length ? 1 : 0);
+
+// ——— TYPEN_OHNE_BILD gegen das DOM ———
+let bildFehler = 0;
+for (const [typ, hatBild] of [...bildIst].sort()) {
+  const behauptet = !TYPEN_OHNE_BILD.has(typ);
+  if (behauptet === hatBild) continue;
+  bildFehler++;
+  console.log(hatBild
+    ? `BILD-MISMATCH "${typ}" rendert ein SVG, steht aber in TYPEN_OHNE_BILD — die Schicht wäre dort grundlos verboten`
+    : `BILD-MISMATCH "${typ}" rendert KEIN SVG, fehlt aber in TYPEN_OHNE_BILD — Annotationen und Sequenzen darauf verschwinden still`);
+}
+console.log(`BILD-CHECK ${bildIst.size} Typen gemessen, ohne Bild: ${
+  [...bildIst].filter(([, b]) => !b).map(([t]) => t).sort().join(", ") || "(keiner)"}`);
+
+console.log(fehler || fehltTyp.length || bildFehler
+  ? `ANKER-CHECK FAIL — ${fehler} Mismatch bei ${geprueft} Karten, ${bildFehler} Bild-Mismatch`
+  : `ANKER-CHECK PASS — ${geprueft} Karten, Registry ≡ DOM, TYPEN_OHNE_BILD ≡ DOM`);
+process.exit(fehler || fehltTyp.length || bildFehler ? 1 : 0);

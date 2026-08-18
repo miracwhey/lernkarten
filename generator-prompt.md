@@ -176,7 +176,7 @@ Eine Diagramm-Karte darf beschreiben, in welcher REIHENFOLGE ihr Bild entsteht. 
 - **Höchstens 6 Schritte.** Brauchst du mehr, ist es nicht eine Karte, sondern zwei.
 - **Erst der Gegenstand, dann seine Beschriftung.** Ein `reveal` auf ein Label, dessen Objekt noch nicht da ist, zeigt Text im leeren Bild — das wird gemessen und zurückgewiesen. Labels und Sub-Zeilen erscheinen ohnehin mit ihrem Gegenstand; du musst sie nicht einzeln aufführen.
 - **Die Zäsur am Ereignis setzt das System.** Du beschreibst, WAS nacheinander kommt — Zeiten, Dauern, Pausen und der Halt an der Ereignis-Linie kommen aus dem Motion-System, nie aus deinem JSON.
-- Ohne `sequence` erscheint die Karte fertig. Das ist völlig in Ordnung: nutze eine Sequenz nur, wenn die Reihenfolge etwas ERKLÄRT.
+- Ohne `sequence` erscheint die Karte fertig. Nicht jede Karte braucht eine Sequenz — aber **eine Lektion, in der keine einzige Karte entsteht, hat ihre stärkste Erklärform verschenkt**. Eine Aussage, die in Schritten zerfällt („erst der Reiz, dann die Antwort"), gehört in eine Sequenz; eine, die auf einen Blick dasteht, nicht.
 
 ### annotations — die Erklär-Schicht
 

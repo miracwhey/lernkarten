@@ -9,7 +9,7 @@
 //          --depth <kompakt|standard|tief> steuert die Kartenzahl (Default: Bestand 7–8)
 import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import { execFileSync } from "child_process";
-import { cardRange, lesezeit, normalizeLesson, validateLesson } from "./validate-lesson.mjs";
+import { cardRange, lesezeit, normalizeLesson, pflichtText, validateLesson } from "./validate-lesson.mjs";
 import { suspiciousWords, wordFindings } from "./spellcheck.mjs";
 import { factFlags, geometryFlags } from "./factcheck.mjs";
 import { judgeLesson, restoreMarkup } from "./judge.mjs";
@@ -183,10 +183,19 @@ const TOPIC = topicArg ?? `„Why We Sleep" von Matthew Walker (2017) — warum 
 // Der Soll-Bereich steht NUR hier im Auftrag (nicht im Systemprompt) — eine Quelle,
 // dieselbe Zahl, die der Validator gleich prüft.
 const diagramme = `${MIN_CARDS - 3}–${MAX_CARDS - 3}`;
+// Die Pflicht-Zeilen stehen in einer eigenen Datei, weil der AUFTRAG der wirksame Ort für
+// ein optionales Feld ist und nicht der Systemprompt: `annotations` war in zwei Läufen
+// null, obwohl der Prompt einen ganzen Abschnitt dazu trug; erst die Zeile hier brachte
+// die Schicht an. `sequence` steht seit v3 im Prompt und liegt bei 4 von 582 generierten
+// Karten — dasselbe Muster, mit der Sonde als A/B belegt (0/3 ohne die Zeile, 3/3 mit).
+// Der Text kommt aus contract-pflichten.md, die ZAHLEN aus PFLICHT_QUOTEN im Validator:
+// so verspricht der Auftrag genau das, was gleich geprüft wird, und die Sonde misst
+// dieselbe Fassung statt einer Kopie, die still auseinanderläuft.
+const pflichten = pflichtText();
 const kartenAuftrag = `## Umfang (Contract — wird geprüft)
 
 ${MIN_CARDS}–${MAX_CARDS} Karten${depth ? ` (Tiefe „${depth}")` : ""}: Karte 1 = title, dazwischen ${diagramme} Diagramm-Karten, vorletzte = quiz, letzte = insight.
-Mindestens zwei der Diagramm-Karten tragen „annotations" — die Beschriftung IM Bild, die sagt, worauf zu schauen ist.
+${pflichten}
 Mehr Karten heißen feinere Gedanken-Schritte aus dem Dossier — nicht längere Karten und keine Wiederholungen.
 In "stats" der Titel-Karte steht die tatsächliche Kartenzahl: "<N> Karten · <M> Minuten".`;
 const userBase = `Thema: ${TOPIC}
