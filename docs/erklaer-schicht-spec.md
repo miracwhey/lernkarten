@@ -1,7 +1,37 @@
-# Erklär-Schicht — Spec-Entwurf
+# Erklär-Schicht
 
-Stand 18.08.2026 · Status: **ENTWURF, nicht abgenommen, nicht gebaut.**
+Stand 18.08.2026 · Status: **GEBAUT und abgenommen** (Leon, 18.08. am Bild).
 Grundlage: `docs/referenz-imprint/analyse.md` (12 von Leon ausgewählte Imprint-Karten).
+
+| Primitiv | Stand | Contract |
+|---|---|---|
+| `callout` | ✅ | `{art, text, an}` |
+| `klammer` | ✅ | `{art, text, von, bis}` |
+| `ring` | ✅ | `{art, an}` — trägt bewusst keinen Text |
+| `pfeil` | ✅ | `{art, von, bis, text?}` |
+| `zone` | ✅ | `{art, text, umfasst[≥2]}` |
+
+Angebunden: Renderer (`wireAnnotations`), Validator (`checkAnnotations`, 19 Negativfälle),
+Generator-Prompt (Abschnitt „annotations"), Werkbank `probes/annot-fixture.mjs` (19 Fälle
+mit Shots). Deckel 4 je Karte. Farbe wird vom Anker geerbt, nie im JSON genannt.
+
+**Welche Anker tragen — gemessen, nicht geschlossen:**
+
+| Typ | trägt | trägt nicht |
+|---|---|---|
+| `curve` | `series:` · `axis` · `stop` | `label:` |
+| `asset` | `asset:` · `node:` | `label:` · `sub:` |
+| `balance` | `node:` · `pivot` · `beam` | `label:` |
+| `cycle` / `flow` | `step:` · `arrow:n` · `sink` | `label:` |
+| `fanout` | `node:` · `fan` · `target:n` | `label:` |
+| `venn` | `region:` · `overlap` | `label:` |
+| `layers` | `node:berg` · `waterline` | `region:` · `zone:` · `label:` |
+| `compare` | — (reine HTML-Karte, kein SVG) | alles |
+
+Zwei Fälle, die eine erste, gröbere Erhebung falsch hatte: `step:` trägt (die frühere Probe
+hatte `rect` nicht im Selektor), und `region:` auf `layers` trägt NICHT, obwohl Geometrie da
+ist — die Regionen sind beschnittene Rechtecke, ihre Kante liegt nicht dort, wo man sie
+sieht. Der Validator lehnt sie deshalb typabhängig ab.
 
 ## Was das ist
 
