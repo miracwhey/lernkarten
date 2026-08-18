@@ -38,3 +38,6 @@ probes/foto-testset/ground-truth.md
 app/MockupFotos/
 runs/
 probes/foto-testset/mockup-shots/
+
+# Fremd-Referenzmaterial (Imprint-Screenshots, fremdes Copyright — NIE ins public Repo)
+docs/referenz-imprint/shots/

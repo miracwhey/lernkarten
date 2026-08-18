@@ -137,6 +137,43 @@ const leaderFree = (g, pix) => {
   return true;
 };
 
+// ——— Auswahl einer Lage aus vorsortierten Kandidaten ———
+// Die KANDIDATEN erzeugt der Karten-Typ: seine Geometrie bestimmt, wo ein Text überhaupt
+// stehen könnte, und seine Sonderfälle (Fläche am Objekt, Apex am Kurvenast) lassen sich
+// nicht verallgemeinern. Die AUSWAHL daraus ist überall dieselbe Staffel und stand bisher
+// zweimal im Renderer — einmal für Asset-Notes, einmal für Kurven-Notes:
+//   bevorzugte Lage → streng (frei UND eindeutig) → lax (nur frei) → Notnagel.
+// Herausgelöst als Fundament der Erklär-Schicht (docs/erklaer-schicht-spec.md): deren
+// Primitive bringen eigene Kandidaten mit, sollen aber nicht ihre eigene Staffel erfinden.
+const platziere = (kandidaten, { frei, eindeutig = () => true, bevorzugt = null, guete = null, schaden = null }) => {
+  // Bevorzugte Lagen entscheiden NICHT nach der Rangfolge der Liste, sondern nach eigener
+  // Güte: wo die Bindung schon anders bewiesen ist, zählt ein anderes Maß als Nähe.
+  if (bevorzugt) {
+    let best = null, bg = -Infinity;
+    for (const c of kandidaten) {
+      if (!frei(c) || !eindeutig(c) || !bevorzugt(c)) continue;
+      const g = guete(c);
+      if (g > bg) { bg = g; best = c; }
+    }
+    if (best) return best;
+  }
+  for (const streng of [true, false])
+    for (const c of kandidaten) if (frei(c) && (!streng || eindeutig(c))) return c;
+  // Notnagel: nirgends frei — die Lage mit dem geringsten Schaden. `schaden` liefert null
+  // für Lagen, die auch als Notnagel ausscheiden; bleibt keine übrig, gilt die beste
+  // Rangfolge-Lage, damit nie gar nichts gezeichnet wird.
+  if (schaden) {
+    let schlecht = null;
+    for (const c of kandidaten) {
+      const s = schaden(c);
+      if (s == null) continue;
+      if (!schlecht || s < schlecht.s) schlecht = { c, s };
+    }
+    if (schlecht) return schlecht.c;
+  }
+  return kandidaten[0] || null;
+};
+
 // ————————————————————— v3: Anker (Sequenz-Layer) —————————————————————
 // Anker-Namen entstehen KONSTRUKTIV beim Erzeugen der Elemente, nie durch
 // nachträgliches Klassifizieren: die Serien-Geometrie ist eine klassenlose polyline,
@@ -392,35 +429,20 @@ function assetEinbau(ref, { A, labels = {}, subs = {}, notes = [], role = "hero"
     // Ist der Anker eine FLÄCHE, gehört die Anmerkung hinein: dort ist die Zugehörigkeit
     // nicht erschlossen, sondern gezeigt. Deshalb ist die Fläche die erste Wahl und nicht
     // nur die geduldete — draußen daneben stünde derselbe Text wie eine Bildunterschrift.
+    // IN der Fläche entscheidet dann nicht mehr die Nähe zur Kontur, sondern die LUFT: an
+    // den Rand geklebt läse sich der Text als Beschriftung dieser Kante statt als
+    // Anmerkung zur Fläche. Draußen gilt weiter das Gegenteil (nah an der Linie).
     const flaechen = flaechenVon(n.anker);
     const inFlaeche = (c) => flaechen.length > 0
       && cornersOf(c.r).every(([x, y]) => flaechen.some((el) => el.isPointInFill(new DOMPoint(ix(x), iy(y)))));
-    let wahl = null;
-    // IN der Fläche ist die Bindung durch Enthaltensein schon bewiesen — dort entscheidet
-    // nicht mehr die Nähe zur Kontur, sondern die LUFT: an den Rand geklebt läse sich der
-    // Text als Beschriftung dieser Kante statt als Anmerkung zur Fläche. Draußen gilt
-    // weiter das Gegenteil (nah an der Linie, an der die Note hängt).
-    const inF = kandidaten.filter((c) => frei(c) && eindeutig(c) && inFlaeche(c));
-    if (inF.length) {
-      let best = null, bl = -Infinity;
-      for (const c of inF) { const l = distPix(c.r, hindernis) - (c.zeilen.length > 1 ? 3 : 0); if (l > bl) { bl = l; best = c; } }
-      wahl = best;
-    }
-    if (!wahl) for (const streng of [true, false]) {
-      for (const c of kandidaten) if (frei(c) && (!streng || eindeutig(c))) { wahl = c; break; }
-      if (wahl) break;
-    }
-    if (!wahl) {
-      // Notnagel: nirgends frei — die Lage mit dem geringsten Schaden. Der Leader-Deckel
-      // bleibt auch hier, ein zu langer Strich wäre schlimmer als gar keiner.
-      let schlecht = null;
-      for (const c of kandidaten) {
-        if (!inBild(c.r)) continue;
-        const bad = schadenVon(c.r, hindernis) + c.score * 0.05;
-        if (!schlecht || bad < schlecht.bad) schlecht = { c, bad };
-      }
-      wahl = schlecht ? schlecht.c : kandidaten[0];
-    }
+    const wahl = platziere(kandidaten, {
+      frei, eindeutig,
+      bevorzugt: inFlaeche,
+      guete: (c) => distPix(c.r, hindernis) - (c.zeilen.length > 1 ? 3 : 0),
+      // Der Leader-Deckel bleibt auch im Notnagel: ein zu langer Strich wäre schlimmer als
+      // gar keiner. Lagen außerhalb des Bildes scheiden ganz aus.
+      schaden: (c) => (inBild(c.r) ? schadenVon(c.r, hindernis) + c.score * 0.05 : null)
+    });
     const leader = wahl.braucht && leaderLen(wahl.g) <= LEADER_MAX && diagonal(wahl.g) ? wahl.g : null;
     put(wahl.r);
     const ton = n.ton;
@@ -1013,18 +1035,18 @@ const RENDERERS = {
       const frei = (c) => inView(c.r, NOTE_BOTTOM) && !hitPlaced(c.r, LUFT_X, LUFT_Y) && !hitPix(grow(c.r, 2), kurvenPix)
         && (!c.braucht || (leaderLen(c.g) <= LEADER_MAX && diagonal(c.g) && leaderFree(c.g, pix)));
       const eindeutig = (c) => fremdDist(si, c.r) >= distPix(c.r, seriesPix[si]) - 1.5;
-      for (const streng of [true, false]) for (const c of cands)
-        if (frei(c) && (!streng || eindeutig(c))) return { r: put(c.r), size: c.size, leader: c.braucht ? c.g : null };
-      // Notnagel: nirgends frei — Lage mit geringstem Schaden, Deckel bleibt.
-      let schlecht = null;
-      for (const c of cands) {
-        if (!inView(c.r, NOTE_BOTTOM) || (c.braucht && leaderLen(c.g) > LEADER_MAX)) continue;
-        const bad = schadenVon(c.r, pix) + c.score * 0.05;
-        if (!schlecht || bad < schlecht.bad) schlecht = { c, bad };
-      }
-      const c = schlecht ? schlecht.c : cands[0];
-      // Auch im Notnagel gilt der Leader-Contract: ein senkrechter oder zu langer
-      // Strich wäre schlimmer als gar keiner — der Punkt-Marker bindet weiter.
+      // Dieselbe Staffel wie die Asset-Note; nur die Kandidaten sind kurvenspezifisch.
+      // Eine bevorzugte Lage gibt es hier nicht — auf einer Linie ist kein „innen".
+      const c = platziere(cands, {
+        frei, eindeutig,
+        schaden: (k) => ((!inView(k.r, NOTE_BOTTOM) || (k.braucht && leaderLen(k.g) > LEADER_MAX))
+          ? null : schadenVon(k.r, pix) + k.score * 0.05)
+      });
+      // Der Leader-Contract gilt für beide Wege gleich: aus der Staffel kommt eine Lage nur
+      // durch `frei`, das Länge und Diagonale schon geprüft hat — für sie ist diese Zeile
+      // deshalb wortgleich mit dem früheren `c.braucht ? c.g : null`. Im Notnagel prüft sie
+      // wirklich: ein senkrechter oder zu langer Strich wäre schlimmer als gar keiner, der
+      // Punkt-Marker bindet weiter.
       const brauchbar = c.braucht && leaderLen(c.g) <= LEADER_MAX && diagonal(c.g);
       return { r: put(c.r), size: c.size, leader: brauchbar ? c.g : null };
     };
