@@ -1171,14 +1171,31 @@ const RENDERERS = {
     // Adaptive Label-Größe wie in den Waage-Schalen: ein 12-Zeichen-Label füllt die
     // Box sonst randvoll; Strahlen starten mit Luft zur Box, nie an ihrer Kante.
     const fs = card.source.label.length > 9 ? 12.5 : 15;
+    // Benannte Ziele ändern die AUSSAGE der Karte, nicht nur ihre Beschriftung: eine
+    // Reihe gleicher Personen sagt „viele Getroffene" (Reichweite), benannte Ziele
+    // sagen „verschiedene Bereiche" (Hebel). Für Bereiche ist die Personen-Silhouette
+    // falsch — sie bekommen einen neutralen Knoten. Ohne `targets` bleibt alles, wie
+    // es war, samt Breite: Bestandskarten dürfen sich nicht verschieben.
+    const ziele = Array.isArray(card.targets) ? card.targets : null;
+    const BREITE = ziele ? 500 : 400;
+    // Der Contract deckelt Zeichen, gezeichnet werden Pixel: „LEBENSERWARTUNG" ist
+    // genauso lang wie „MITTELLINIENLAGE" und fast doppelt so breit wie sechzehn I.
+    // Statt den Deckel auf die breiteste denkbare Kombination zu senken (das nähme
+    // allen anderen Namen den Platz), misst der Renderer den längsten Namen und
+    // wählt die Größe, die ihn hält.
+    const ZIEL_X = 340, ZIEL_PLATZ = BREITE - ZIEL_X - 8;
+    const zielFs = ziele
+      ? Math.max(10, Math.min(12.5, ...ziele.map((t) => 12.5 * ZIEL_PLATZ / Math.max(measure(t?.label ?? "", 12.5), 1))))
+      : 12.5;
     const A = ankerVergabe();
     const anQuelle = A(`node:${ankerSlug(card.source?.label, "quelle")}`), anFan = A("fan");
     const anTarget = cys.map((_, i) => A(`target:${i + 1}`));
     const anQuelleLabel = A(`label:${ankerSlug(card.source?.label, "quelle")}`);
     const anWirkung = A(`label:${ankerSlug(card.result?.label, "wirkung")}`);
+    const anZiel = (ziele || []).map((t, i) => A(`label:${ankerSlug(t?.label, `ziel${i}`)}`));
     return `<div class="card">
       <p class="lehrsatz">${card.text}</p>
-      <div class="diagram"><svg viewBox="0 0 400 300" role="img" aria-label="Hebel-Diagramm: eine Handlung wirkt vielfach">
+      <div class="diagram"><svg viewBox="0 0 ${BREITE} 300" role="img" aria-label="Hebel-Diagramm: eine Handlung wirkt ${ziele ? `auf ${ziele.map((t) => t.label).join(", ")}` : "vielfach"}">
         ${cys.map((cy) => `<line${AN(anFan)} x1="166" y1="154" x2="${316 - 15}" y2="${cy}" stroke="${C("ink")}" stroke-width="1.5"/>`).join("")}
         <g${AN(anQuelle)}>
         <rect${GLOW(card.source.color)} x="24" y="122" width="136" height="64" rx="16" fill="${SOFT(card.source.color)}" stroke="${C(card.source.color)}" stroke-width="2.5"/>
@@ -1187,10 +1204,13 @@ const RENDERERS = {
         </g>
         ${cys.map((cy, i) => `<g${AN(anTarget[i])} data-idx="${i}">
           <circle${GLOW("ich")} cx="316" cy="${cy}" r="15" fill="${SOFT("ich")}" stroke="${C("ich")}" stroke-width="2"/>
-          <circle cx="316" cy="${cy - 3.5}" r="4.2" fill="${C("ich")}"/>
-          <path d="M308,${cy + 9.5} a8,6 0 0 1 16,0 Z" fill="${C("ich")}"/>
-        </g>`).join("")}
-        <text class="svglabel"${AN(anWirkung)}${TON("ich")} x="316" y="28" font-size="14" fill="${C("ink")}" text-anchor="middle">${card.result.label}</text>
+          ${ziele
+            ? `<circle cx="316" cy="${cy}" r="5" fill="${C("ich")}"/>`
+            : `<circle cx="316" cy="${cy - 3.5}" r="4.2" fill="${C("ich")}"/>
+          <path d="M308,${cy + 9.5} a8,6 0 0 1 16,0 Z" fill="${C("ich")}"/>`}
+        </g>`).join("")}${(ziele || []).map((t, i) => `
+        <text class="svglabel"${AN(anTarget[i], anZiel[i])} x="${ZIEL_X}" y="${(cys[i] + zielFs * 0.36).toFixed(1)}" font-size="${zielFs.toFixed(1)}" fill="${C("ink")}" text-anchor="start">${t.label}</text>`).join("")}
+        <text class="svglabel"${AN(anWirkung)}${TON("ich")} x="${ziele ? ZIEL_X : 316}" y="28" font-size="14" fill="${C("ink")}" text-anchor="${ziele ? "start" : "middle"}">${card.result.label}</text>
       </svg></div>
       ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
     </div>`;

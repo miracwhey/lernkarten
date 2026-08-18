@@ -94,8 +94,14 @@ Jeder Text IM Bild (Serien-Label, `notes`, `stop.label`, Achsen) steht aus der P
 **Begriffs-Budget** (Leitlinie, kein Limit): ein Label je Serie, ein Ereignis-Begriff, höchstens ein Achsen-Label mit Eigenaussage. `notes` nur für etwas, das die Kurve allein nicht sagt — eine Anmerkung, die ihr Serien-Label wiederholt, ist Lärm im Bild. Lieber ein Begriff weniger und der bleibt hängen.
 
 ### relation: multiplication
-`{ "relation":"multiplication", "text", "source":{"label":"<≤ 12>","sub":"<≤ 22>","color"}, "count":3-6, "result":{"label":"<≤ 12>"}, "caption" }`
-Die Ziel-Knoten werden als Personen gezeichnet — sie sind gleich und tragen keine eigene Beschriftung. `count` ist die Zahl der Getroffenen, nicht ihre Aufzählung: nimm die Zahl, die die Aussage hat (drei Bereiche = 3), und benenne die Wirkung in `result.label`.
+`{ "relation":"multiplication", "text", "source":{"label":"<≤ 12>","sub":"<≤ 22>","color"}, "count":3-6, "targets":[{"label":"<≤ 16>"}×count]?, "result":{"label":"<≤ 12>"}, "caption" }`
+
+Diese Relation trägt zwei verschiedene Aussagen, und `targets` entscheidet welche:
+
+- **Ohne `targets` — Reichweite.** Die Ziele werden als gleiche Personen gezeichnet: viele Getroffene, auf die es einzeln nicht ankommt („Ein Video erreicht eine Million Menschen").
+- **Mit `targets` — Hebel.** Jedes Ziel bekommt einen neutralen Knoten und seinen Namen daneben: verschiedene Bereiche, die derselbe Auslöser trifft („Schlaf wirkt auf Gedächtnis, Abwehr, Konzentration"). Nutze das immer, wenn die Getroffenen **verschieden** sind — sonst zeigt das Bild vier gleiche Figuren, während dein Lehrsatz vier verschiedene Dinge nennt, und der Leser sieht eine Zählung statt einer Aussage.
+
+`targets` hat genau `count` Einträge. `count` ist die Zahl der Getroffenen, nicht ihre Aufzählung — nimm die Zahl, die die Aussage hat.
 
 ### relation: contrast
 `{ "relation":"contrast", "text", "left":{"title":"<CAPS ≤ 18>","color","items":[{"label":"<≤ 20>","sub":"<≤ 32>"}×2]}, "right":{…}, "caption" }`

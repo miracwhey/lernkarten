@@ -20,6 +20,15 @@ const dateien = (process.argv.length > 2 ? process.argv.slice(2) : [
 // Sonderfälle, die im Bestand nicht vorkommen: gleicher Slug zweimal auf EINER Karte
 // (Dedup -2 muss in beiden Produzenten an derselben Stelle greifen) und Satzzeichen.
 const SONDERFALL = [{
+  // Benannte Ziele gibt es im Bestand noch nicht — ohne diesen Fall liefe die Probe
+  // grün, ohne die neuen Label-Anker je gesehen zu haben. Ein Ziel trägt bewusst den
+  // Namen der Quelle: dann müssen BEIDE Produzenten an derselben Stelle auf -2 zählen.
+  quelle: "sonderfall: multiplication mit benannten Zielen", type: "fanout", relation: "multiplication",
+  text: "Ein Auslöser, vier verschiedene Bereiche.", caption: "Eine Nacht wirkt überall.",
+  source: { label: "SCHLAF", sub: "eine Nacht", color: "ich" }, count: 4,
+  targets: [{ label: "GEDÄCHTNIS" }, { label: "ABWEHR" }, { label: "SCHLAF" }, { label: "LEBENSZEIT" }],
+  result: { label: "WIRKT ÜBERALL" },
+}, {
   quelle: "sonderfall: Slug-Kollision + Satzzeichen", type: "curve", relation: "trend",
   text: "Zwei Serien, ein Name.", xlabel: "ZEIT", ylabel: "DRUCK", caption: "Sonderfall.",
   series: [

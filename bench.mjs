@@ -29,7 +29,15 @@ const NUR = (flagWert("nur") || "").split(",").map((s) => s.trim()).filter(Boole
 // ins Zeugnis. Die BEZAHLTEN Modelle zählen nicht in dieses Kontingent, dürfen also
 // nebenher laufen; die Regel „nie zwei kostenlose gleichzeitig" steht im Arbeiter.
 const PARALLEL = 2;
-const DOSSIER = "facts/why-we-sleep.md";
+// `--dossier <pfad> --topic <text>` fährt das Feld gegen ein anderes Thema. Beide
+// zusammen oder keins: das Thema steht sonst NUR im Default von glm-generate.mjs
+// („Why We Sleep"), und ein fremdes Dossier liefe unter falscher Überschrift — das
+// Modell bekäme Wärmeinsel-Fakten zu einem Auftrag über Schlaf und sähe aus, als
+// könne es keine Lektion schreiben.
+const DOSSIER = flagWert("dossier") || "facts/why-we-sleep.md";
+const TOPIC_ARG = flagWert("topic");
+if ((flagWert("dossier") == null) !== (TOPIC_ARG == null))
+  throw new Error("--dossier und --topic gehören zusammen: ein fremdes Dossier ohne eigenes Thema läuft unter der falschen Überschrift.");
 const DEPTH = null;                        // ohne Tiefe = Bestands-Contract (7–8 Karten)
 // Die Backoff-Ketten der Pipeline (8 Versuche mit wachsender Wartezeit) können einen
 // toten Lauf über eine halbe Stunde festhalten — hier ist Schluss.
@@ -90,6 +98,7 @@ const runArgs = (m, outdir) => [
   "--base", BASE, "--key", KEY_ENV,
   "--judge", JUDGE, "--judgebase", BASE, "--judgekey", KEY_ENV,
   "--dossier", DOSSIER, "--outdir", outdir,
+  ...(TOPIC_ARG ? ["--topic", TOPIC_ARG] : []),
   ...(DEPTH ? ["--depth", DEPTH] : []),
   ...(Object.keys(m.body ?? {}).length ? ["--body", JSON.stringify(m.body)] : []),
 ];

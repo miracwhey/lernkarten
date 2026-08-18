@@ -181,6 +181,9 @@ const ANKER_MODELL = {
     for (let i = 1; i <= n; i++) m.paare.push([q, A(`target:${i}`)]);
     A(`label:${ankerSlug(card.source?.label, "quelle")}`);
     A(`label:${ankerSlug(card.result?.label, "wirkung")}`);
+    // Benannte Ziele tragen eigene Label-Anker — dieselbe Reihenfolge wie im Renderer,
+    // sonst vergeben die beiden Produzenten bei gleichen Slugs verschiedene Nummern.
+    (card.targets || []).forEach((t, i) => A(`label:${ankerSlug(t?.label, `ziel${i}`)}`));
   },
   venn(card, A, m) {
     const a = A(`region:${ankerSlug(card.a?.label, "a")}`);
@@ -483,6 +486,22 @@ export function validateLesson(lesson, opts = {}) {
           if (n.at !== "apex" || n.t !== undefined) {
             if (!(n.t >= 0 && n.t <= 1)) err(np + ".t", `muss zwischen 0 und 1 liegen (ist ${n.t})`);
           }
+          // Am FUSS des Nach-Stop-Asts ist kein Platz: dort stoßen die Ereignis-Vertikale,
+          // das gedrückte Stück und der aufsteigende Ast zusammen. Ein Note-Label findet
+          // zwischen ihnen keine Lage, der Solver fällt in den Notnagel und legt den Text
+          // auf die Kurve — das Audit meldet das als System-Fehler und der ganze Lauf ist
+          // verloren, obwohl die Karte fertig war (gemessen 17.08., „MÜDIGKEIT SCHLÄGT ZU").
+          // Wer das Ereignis meint, hat dafür den apex-Anker; der sitzt am ENDE des Asts.
+          // Das Fenster ist bewusst schmal (0.05 der Plot-Breite, rund 15 px): es trifft
+          // „zielt auf das Ereignis", nicht „liegt in seiner Nähe".
+          if (n.at !== "apex" && c.stop && Math.abs(n.t - c.stop.t) < 0.05
+              && (c.series || [])[si]?.afterStop !== undefined) {
+            err(np + ".t", `t ${n.t} zielt auf das Ereignis (stop.t ${c.stop.t}), und series[${si}] hat afterStop — `
+              + `am Fuß des Asts stoßen Ereignis-Linie, gedrücktes Stück und aufsteigender Ast zusammen, `
+              + `dort ist für ein Label kein Platz. Wähle EINE Lösung: `
+              + `(A) das Ereignis meinen: setze ${np}.at = "apex" UND ${np}.t = null (null löscht das Feld) `
+              + `ODER (B) eine Stelle im Verlauf meinen: rücke ${np}.t um mindestens 0.1 vom Ereignis weg.`);
+          }
           if (n.side !== undefined && !["above", "below"].includes(n.side)) err(np + ".side", `ungültig "${n.side}" (erlaubt: above, below)`);
         });
         // Zwei apex-Notes derselben Serie zeigten auf denselben Punkt.
@@ -496,6 +515,13 @@ export function validateLesson(lesson, opts = {}) {
       str(c.source?.label, p + ".source.label", 12); str(c.source?.sub, p + ".source.sub", 22); color(c.source?.color, p + ".source.color");
       if (!(c.count >= 3 && c.count <= 6)) err(p + ".count", "muss 3–6 sein");
       str(c.result?.label, p + ".result.label", 12);
+      // `targets` ist optional und benennt die Getroffenen einzeln. Ist es da, muss es
+      // GENAU so viele Einträge haben wie `count` — zwei Zahlen für dieselbe Menge
+      // wären zwei Wahrheiten, und das Bild folgt sonst der einen, der Text der anderen.
+      if (c.targets !== undefined) {
+        if (arr(c.targets, p + ".targets", c.count, c.count))
+          c.targets.forEach((t, i) => str(t?.label, `${p}.targets[${i}].label`, 16));
+      }
     },
     compare(c, p) {
       str(c.text, p + ".text", 220); str(c.caption, p + ".caption", 90);

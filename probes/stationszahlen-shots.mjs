@@ -39,9 +39,15 @@ const fanoutKarte = (n) => ({
   caption: "Eine Nacht mit vier Stunden senkt die Killerzellen um 70 %.",
 });
 
+// Benannte Ziele: die längsten Namen, die der Contract zulässt (16 Zeichen), und breite
+// Versalien — ein Test mit „ABWEHR" beweist nichts über „LEISTUNGSFÄHIG".
+const ZIELE = ["GEDÄCHTNIS", "IMMUNABWEHR", "AM STEUER", "LEBENSERWARTUNG", "STIMMUNG", "MUSKELAUFBAU"];
+const mitZielen = (n) => ({ ...fanoutKarte(n), targets: ZIELE.slice(0, n).map((label) => ({ label })) });
+
 const faelle = [
   ...[3, 4, 5].map((n) => ({ name: `loop-${n}`, card: loopKarte(n) })),
   ...[3, 4, 5, 6].map((n) => ({ name: `multiplication-${n}`, card: fanoutKarte(n) })),
+  ...[3, 4, 6].map((n) => ({ name: `multiplication-${n}-benannt`, card: mitZielen(n) })),
 ];
 
 const browser = await chromium.launch();
@@ -106,7 +112,15 @@ for (const { name, card } of faelle) {
       return verdeckt ? `Pfeil ${i}: Kopf liegt unter einer Station`
         : len < 20 ? `Pfeil ${i}: Bogen nur ${len.toFixed(0)} px lang` : null;
     }).filter(Boolean);
-    return { n: kasten.length, paare, raus, koepfe, eng: eng === Infinity ? null : +eng.toFixed(1) };
+    // Text gegen die Kartenkante: der Contract deckelt ZEICHEN, gezeichnet werden
+    // PIXEL, und breite Versalien brauchen fast doppelt so viel Platz wie schmale.
+    // Ein Label, das rechts hinausläuft, wird still abgeschnitten.
+    const texte = [...svg.querySelectorAll("text")].map((t) => {
+      const b = t.getBBox();
+      return (b.x < -0.5 || b.x + b.width > vbW + 0.5)
+        ? `"${t.textContent.trim().slice(0, 18)}" reicht bis x=${(b.x + b.width).toFixed(0)} (Karte ${vbW})` : null;
+    }).filter(Boolean);
+    return { n: kasten.length, paare, raus, koepfe, texte, eng: eng === Infinity ? null : +eng.toFixed(1) };
   }, card);
 
   const phone = page.locator(".phone");
@@ -116,12 +130,13 @@ for (const { name, card } of faelle) {
   if (!box || box.width < 300 || box.height < 500)
     throw new Error(`Karten-Hülle ist ${box ? `${box.width}×${box.height}` : "nicht da"} — der Shot wäre leer.`);
   await phone.screenshot({ path: `${outdir}/${name}.png` });
-  const schlimm = mess.paare.length || mess.raus.length || mess.koepfe.length;
+  const schlimm = mess.paare.length || mess.raus.length || mess.koepfe.length || mess.texte.length;
   if (schlimm) befunde++;
   console.log(`${schlimm ? "✗" : "✓"} ${name}: ${mess.n} Kästen, engste Lücke ${mess.eng ?? "—"} px`
     + (mess.paare.length ? `\n    ÜBERLAPPUNG: ${mess.paare.join(" · ")}` : "")
     + (mess.raus.length ? `\n    RAND: ${mess.raus.join(" · ")}` : "")
-    + (mess.koepfe.length ? `\n    PFEIL: ${mess.koepfe.join(" · ")}` : ""));
+    + (mess.koepfe.length ? `\n    PFEIL: ${mess.koepfe.join(" · ")}` : "")
+    + (mess.texte.length ? `\n    TEXT: ${mess.texte.join(" · ")}` : ""));
 }
 await browser.close();
 
