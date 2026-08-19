@@ -15,11 +15,13 @@ Werkzeug: `probes/feld-stresstest.mjs`.
 |---|---|---|---|
 | Recht | Notwehr im deutschen Strafrecht | **pass**, 13 Karten | — |
 | Geschichte | Warum die Weimarer Republik scheiterte | abgelehnt (Contract) | **pass**, 13 Karten |
-| Wirtschaft | Wie Inflation entsteht | **exit 3** (Systemfehler) | siehe unten |
+| Wirtschaft | Wie Inflation entsteht | **exit 3** (Systemfehler) | **exit 3**, anderer Befund |
 | Musik | Warum Moll traurig klingt | abgelehnt (Contract) | **pass**, 11 Karten |
 
-**Eins von vier Feldern kam sauber durch — nach den Fixes alle.** Keiner der drei Ausfälle
-hatte mit dem Thema zu tun; jeder war ein Fehler im eigenen System.
+**Eins von vier Feldern kam sauber durch, nach den Fixes drei.** Keiner der Ausfälle hatte
+mit dem Thema zu tun; jeder war ein Fehler im eigenen System. Wirtschaft steht noch aus —
+siehe Befund 7, und dort liegt der Verdacht erstmals nicht auf dem Renderer, sondern auf
+dem Gate selbst.
 
 Gesamtbild über alle vier Lektionen: **50 Karten, 11 verschiedene Formen**. `trend` liegt
 bei 16 % (auf den Heimatfeldern 46–57 %), `multiplication` kommt 5× vor — im gesamten
@@ -185,6 +187,33 @@ Das Werkzeug ist nachgerüstet. Es ist die stillste Sorte Fehler: Ein Stillbild-
 das den Startframe einer Animation liefert, meldet Defekte, die es nicht gibt — und würde
 sie bei jeder künftigen Sichtung wieder melden. Die Lehre stand für die Mockups schon fest
 („Stills brauchen reduced-motion"), war aber in diesem Werkzeug nie angekommen.
+
+## Befund 7 — Wirtschaft stirbt weiter, und diesmal ist das Gate verdächtig
+
+⚠️ **Offen, mit klarer Spur.** Nach dem Solver-Fix ist der alte PATH-Befund weg; der Lauf
+endet jetzt an einem anderen: `PATH "ÜBERNACHFRAGE" × line bei (21,76)` auf einer
+`balance`-Karte. Dieselbe Meldung war auch im deepseek-Lauf zu sehen, dort auf `fanout`
+(`"Filme nutzen das gezielt" × line`) — zwei Vorkommen, also ein Muster.
+
+Die erste Vermutung war die Hindernis-Menge der Callout-Schicht. Sie ist falsch: `line`
+steht in `GEO_SEL`. **Das Bild widerspricht dem Befund ebenfalls** — der Callout-Kasten
+steht sichtbar frei über der linken Waagschale und kreuzt nichts.
+
+Gemessen am gerenderten DOM (`webkit`, reduzierte Bewegung):
+
+- Textbox „ÜBERNACHFRAGE": x 206,6–412,9 · y 28,9–56,0
+- die Linie an der gemeldeten Stelle: `a-hair` von (20,9 | 75,95) nach (18,5 | 79,5)
+
+Die gemeldete Position ist exakt diese Linie — aber in **Asset-lokalen** Koordinaten. Die
+Waage ist ein Asset mit eigener viewBox und eigener Transformation; ihre `line`-Attribute
+stehen in ihrem System, die Textbox liegt im Wurzelsystem. Der Verdacht ist deshalb ein
+**Phantom-Befund durch fehlende Koordinaten-Transformation**, und die Klasse ist bekannt:
+`audit-overlap.mjs` war am 15.08. aus genau diesem Grund tot (Zweit-Messung mit `getBBox`
+ohne CTM, 43 Phantom-Befunde).
+
+Nicht bewiesen. Der Unterschied ist wichtig genug für einen eigenen Block: Wäre es ein
+Phantom, tötet ein Gate seit einiger Zeit Läufe mit einwandfreien Bildern — das ist die
+Umkehrung des Zonen-Befundes, wo das Bild falsch war und das Gate schwieg.
 
 ## Was das für die Flexibilitäts-Frage heißt
 
