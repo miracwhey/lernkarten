@@ -59,6 +59,16 @@ Im `text` sind erlaubt: `<b>…</b>` (Indigo — der Lösungs-/Kernbegriff), `<s
 ### title
 `{ "type":"title", "eyebrow":"<Kategorie · Autor, ≤ 32>", "title":"<≤ 30>", "sub":"<≤ 70>", "stats":"<N> Karten · <M> Minuten" }`
 
+**`title` benennt das Konzept, nie das Werk** — auch nicht dessen Übersetzung. Die Lektion erklärt einen Gegenstand; das Buch ist die Quelle dafür, nicht der Gegenstand. Sie steht in `source` und im `eyebrow`, dort gehört sie hin und dort bleibt sie.
+
+| Quelle | falsch | richtig |
+|---|---|---|
+| Matthew Walker, *Why We Sleep* | „Warum wir schlafen" | „Was Schlafmangel im Körper auslöst" |
+| Daniel Kahneman, *Thinking, Fast and Slow* | „Schnell und langsam denken" | „Zwei Systeme, ein Urteil" |
+| Eric Jorgenson, *The Almanack of Naval Ravikant* | „Der Almanack von Naval Ravikant" | „Warum Hebel schlägt, nicht Fleiß" |
+
+Dasselbe gilt für `id`: Konzept-Slug, nicht Werk-Slug (`zwei-systeme-ein-urteil`, nicht `thinking-fast-slow`).
+
 ### relation: trend — Kurvendiagramm
 ```
 { "relation":"trend", "text", "xlabel":"<CAPS ≤ 12>", "ylabel":"<CAPS ≤ 12>",

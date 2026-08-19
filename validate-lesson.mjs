@@ -39,6 +39,64 @@ export const RELATION_TO_TYPE = {
   "object": "asset"           // der Gegenstand selbst ist die Aussage (Asset-Karte)
 };
 const STRUCT_TYPES = new Set(["title", "quiz", "insight"]);
+
+// Der Lektionstitel darf nicht das Werk sein, aus dem die Lektion schöpft: eine
+// Lektion erklärt einen Gegenstand, das Buch ist die Quelle dafür. Trägt der Titel
+// das Werk, wird aus der Erklärung eine Kurzfassung des Buchs — die Bearbeitung, für
+// die man Rechte braucht (Apple 5.2). Das Werk gehört in `source` und `eyebrow`.
+//
+// ⚠️ REICHWEITE, damit niemand mehr erwartet, als das Gate leistet: es greift bei
+// GLEICHSPRACHIGER Übernahme und beim Autornamen im Titel. Eine Übersetzung
+// („Warum wir schlafen" aus „Why We Sleep") teilt kein Wort mit dem Original und
+// bleibt unentdeckt — dagegen steht allein die Regel im Generator-Prompt, samt
+// Beispielen. Wer hier eine Schwelle senkt, fängt die Übersetzung trotzdem nicht.
+const TITEL_STOPP = new Set([
+  "der", "die", "das", "den", "dem", "des", "ein", "eine", "einer", "eines", "und", "oder", "von",
+  "vom", "im", "in", "am", "an", "auf", "aus", "für", "mit", "zu", "zum", "zur", "über", "warum",
+  "wie", "was", "wer", "the", "a", "an", "and", "or", "of", "in", "on", "for", "with", "to", "why",
+  "how", "what", "who",
+]);
+
+/// Inhaltswörter eines Titels: klein, ohne Satzzeichen, ohne Stoppwörter.
+function titelWorte(s) {
+  return String(s || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !TITEL_STOPP.has(w));
+}
+
+/// Zerlegt `source` im Format "Nach: <Autor>, <Werk> (<Jahr>)".
+/// Ohne Jahresklammer ist die Quelle kein publiziertes Werk (z. B. ein eigenes
+/// Fakten-Dossier) — dann gibt es nichts zu schützen und das Gate schweigt.
+export function quelleZerlegen(source) {
+  const m = /^\s*Nach:\s*([^,]+),\s*(.+?)\s*\((\d{4})\)\s*$/.exec(String(source || ""));
+  if (!m) return null;
+  return { autor: m[1].trim(), werk: m[2].trim(), jahr: m[3] };
+}
+
+/// Gibt den Fehlertext zurück, wenn der Lektionstitel das Werk spiegelt — sonst "".
+/// Der Text trägt die Korrektur, nicht nur den Befund.
+export function werkTitelKonflikt(lesson) {
+  const q = quelleZerlegen(lesson?.source);
+  if (!q) return "";
+  const titel = titelWorte(lesson?.title);
+  if (!titel.length) return "";
+
+  // Geprüft wird NUR die Übernahme des Werktitels. Der Autorname im Titel wurde als
+  // zweite Regel gebaut und nach der Probe wieder entfernt: „Freuds Modell der Psyche"
+  // und „Kahnemans zwei Systeme" sind eingeführte Namen von KONZEPTEN, keine Werktitel —
+  // die Regel hätte legitime Titel geblockt und fing nichts, was die Werk-Regel nicht
+  // schon fängt (bei „Der Almanack von Naval Ravikant" heißt der Autor Jorgenson).
+  const werk = new Set(titelWorte(q.werk));
+  const gemeinsam = titel.filter((w) => werk.has(w));
+  if (gemeinsam.length >= 2 && gemeinsam.length / titel.length >= 0.6)
+    return `spiegelt den Werktitel („${q.werk}"): ${gemeinsam.length} von ${titel.length} `
+      + `Inhaltswörtern gleich — benenne stattdessen das Konzept, das die Karten erklären `
+      + `(die Quelle bleibt unverändert in source)`;
+
+  return "";
+}
 /// Karten ohne SVG: `compare` stellt zwei Panels als HTML nebeneinander, die Struktur-Typen
 /// haben ohnehin kein Bild. Beide Schichten legen sich auf ein SVG — `wireAnnotations` sucht
 /// eines und tut ohne eines still gar nichts, das Schritt-Audit meldet „sequence ohne
@@ -384,13 +442,29 @@ function checkAnnotations(card, p, err) {
       : a?.art === "zone" ? [] : ["an"];
     if (a?.art === "zone") {
       const u = a.umfasst;
-      if (!Array.isArray(u) || u.length < 2)
-        err(ap + ".umfasst", `braucht mindestens 2 Anker — eine Zone um einen einzigen Gegenstand `
-          + `fasst nichts zusammen (nimm ein callout oder einen ring)`);
-      else u.forEach((v, k) => {
-        if (!anker.includes(v)) err(`${ap}.umfasst[${k}]`, `unbekannter Anker "${v}" — diese Karte hat: ${anker.join(", ")}`);
-        else if (OHNE_KONTUR.test(v)) err(`${ap}.umfasst[${k}]`, `"${v}" bezeichnet Text, keine Geometrie`);
-      });
+      // Gezählt wird, was die Zone WIRKLICH umschließt: verschiedene Anker. Die rohe
+      // Listenlänge sagt darüber nichts — gemessen im Feld-Stresstest (19.08.2026) kam
+      // `["target:1","target:1","target:2"]` durch, weil drei Einträge dastanden; gezeichnet
+      // wurde eine Zone um ZWEI der drei Ziele, während ihr Text „RECHTLICHE FOLGEN" alle
+      // drei meinte. Das Bild zeigte es, keine Messung — der Fehler saß in der Zählung.
+      const verschieden = Array.isArray(u) ? [...new Set(u)] : [];
+      if (!Array.isArray(u) || verschieden.length < 2)
+        err(ap + ".umfasst", `braucht mindestens 2 VERSCHIEDENE Anker — eine Zone um einen einzigen `
+          + `Gegenstand fasst nichts zusammen (nimm ein callout oder einen ring)`);
+      else {
+        u.forEach((v, k) => {
+          if (!anker.includes(v)) err(`${ap}.umfasst[${k}]`, `unbekannter Anker "${v}" — diese Karte hat: ${anker.join(", ")}`);
+          else if (OHNE_KONTUR.test(v)) err(`${ap}.umfasst[${k}]`, `"${v}" bezeichnet Text, keine Geometrie`);
+        });
+        if (verschieden.length < u.length) {
+          const doppelt = [...new Set(u.filter((v, i) => u.indexOf(v) !== i))];
+          const offen = anker.filter((x) => !u.includes(x) && !OHNE_KONTUR.test(x));
+          err(ap + ".umfasst", `nennt ${doppelt.map((d) => `"${d}"`).join(", ")} mehrfach — die Zone `
+            + `umschliesst dadurch ${verschieden.length} Gegenstände, nicht ${u.length}. Entweder war ein `
+            + `anderer Anker gemeint (frei: ${offen.length ? offen.join(", ") : "keiner"}) oder die Liste `
+            + `ist zu lang; doppelte Einträge vergrössern die Zone nicht.`);
+        }
+      }
     }
     for (const f of felder) {
       const v = a?.[f];
@@ -485,12 +559,51 @@ function checkSequence(card, p, err) {
   });
 }
 
-// Setzt fehlende Typen aus der Relation. Mutiert nicht; liefert Kopie.
+/// Holt ein verschachteltes Objekt zurück, das als JSON-TEXT statt als Objekt kam.
+///
+/// Gemessen im Feld-Stresstest (19.08.2026): auf argumentativen Themen schrieben BEIDE
+/// Modelle die Waage-Schalen als `"left": "{\"label\":\"…\",\"color\":\"ich\"}"` — ein
+/// Objekt, einmal zu oft serialisiert. Der Validator las darauf `left.label === undefined`
+/// und meldete „fehlt oder leer", obwohl das Label dastand, nur eine Ebene tiefer. Die
+/// Patch-Runde bekam damit den falschen Auftrag (ergänze, was schon da ist), drehte sich
+/// im Kreis und riss zwei von vier Läufen mit — Klasse: die Fehlermeldung muss die
+/// Korrektur tragen, und eine Form, die deterministisch heilbar ist, darf keine
+/// LLM-Runde kosten.
+///
+/// Bewusst über die FORM entschieden, nicht über eine Liste bekannter Felder: geheilt
+/// wird, was syntaktisch ein JSON-Objekt oder -Array ist. Fließtext einer Karte kann das
+/// nicht versehentlich erfüllen — er müsste mit `{` beginnen, mit `}` enden und dazwischen
+/// gültiges JSON sein. Ein String, der nur wie JSON aussieht, aber nicht parst, bleibt
+/// unangetastet und läuft in die reguläre Feldprüfung.
+function entpackeJson(wert) {
+  if (Array.isArray(wert)) return wert.map(entpackeJson);
+  if (wert && typeof wert === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(wert)) out[k] = entpackeJson(v);
+    return out;
+  }
+  if (typeof wert !== "string") return wert;
+  const t = wert.trim();
+  if (!(t.startsWith("{") && t.endsWith("}")) && !(t.startsWith("[") && t.endsWith("]"))) return wert;
+  try {
+    const geparst = JSON.parse(t);
+    // Nur Struktur zurückholen. Ein String, der zu einer Zahl oder zu null parst, war
+    // als Text gemeint — die Klammer-Prüfung oben schließt das zwar aus, aber die
+    // Absicht steht hier, damit ein späterer Umbau sie nicht versehentlich aufgibt.
+    return (geparst && typeof geparst === "object") ? entpackeJson(geparst) : wert;
+  } catch { return wert; }
+}
+
+// Setzt fehlende Typen aus der Relation und holt doppelt serialisierte Objekte zurück.
+// Mutiert nicht; liefert Kopie.
 export function normalizeLesson(lesson) {
   return {
     ...lesson,
-    cards: (lesson.cards || []).map((c) =>
-      !c.type && RELATION_TO_TYPE[c.relation] ? { ...c, type: RELATION_TO_TYPE[c.relation] } : c)
+    cards: (lesson.cards || []).map((c) => {
+      const karte = entpackeJson(c);
+      return !karte.type && RELATION_TO_TYPE[karte.relation]
+        ? { ...karte, type: RELATION_TO_TYPE[karte.relation] } : karte;
+    })
   };
 }
 
@@ -823,6 +936,8 @@ export function validateLesson(lesson, opts = {}) {
   };
 
   str(lesson.id, "id", 40); str(lesson.title, "title", 40); str(lesson.source, "source", 80);
+  const werk = werkTitelKonflikt(lesson);
+  if (werk) err("title", werk);
   // Kartenzahl trägt die Korrektur im Fehlertext: zu wenige Karten heilt die
   // Pipeline additiv (Ergänzungs-Runde), nicht durch Voll-Regeneration.
   const n = Array.isArray(lesson.cards) ? lesson.cards.length : -1;

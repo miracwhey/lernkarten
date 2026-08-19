@@ -129,7 +129,9 @@ struct LibraryView: View {
         switch lesson.id {
         case "warum-wir-schlafen": return "Schlaf"
         case "thinking-fast-slow": return "Kahneman"
-        case "atomic-habits": return "Atomic Habits"
+        // Kein Werktitel als Bibliotheks-Name: die Lektion erklärt Gewohnheiten,
+        // das Buch steht als Quelle auf der Karte. Autorennamen sind in Ordnung.
+        case "atomic-habits": return "Gewohnheiten"
         case "naval-almanack": return "Naval"
         case "freud-psyche": return "Freud"
         default: return lesson.author
