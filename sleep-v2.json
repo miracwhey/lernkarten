@@ -136,6 +136,27 @@
       "sink": {
         "label": "UNTER DEINEM RADAR"
       },
+      "annotations": [
+        {
+          "art": "callout",
+          "text": "Maßstab wandert mit",
+          "an": "step:gefühl-normal"
+        }
+      ],
+      "sequence": [
+        {
+          "verb": "reveal",
+          "target": "step:kurze-nächte"
+        },
+        {
+          "verb": "reveal",
+          "target": "step:leistung-sinkt"
+        },
+        {
+          "verb": "reveal",
+          "target": "step:gefühl-normal"
+        }
+      ],
       "caption": "Zehn Tage à sechs Stunden schlafen — du leistest wie nach einer durchwachten Nacht."
     },
     {
@@ -162,6 +183,13 @@
           "label": "Leichtschlaf",
           "sub": "Tiefschlaf fehlt",
           "color": "es"
+        }
+      ],
+      "annotations": [
+        {
+          "art": "callout",
+          "text": "versteckt, heilt nicht",
+          "an": "step:kaffee-um-16"
         }
       ],
       "caption": "Der 16-Uhr-Kaffee wirkt um Mitternacht noch halb — dein Tiefschlaf zahlt die Rechnung."

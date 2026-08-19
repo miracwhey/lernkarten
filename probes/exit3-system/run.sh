@@ -32,6 +32,31 @@ cd "$REPO" || exit 1
 OUT="${TMPDIR:-/tmp}/exit3-system-probe.$$"
 mkdir -p "$OUT/fixture" "$OUT/kontrolle"
 
+# FIXTURE-PROBE: erfüllt die ausgelieferte Lektion überhaupt den heutigen Contract?
+# Zwischen 18. und 19.08. kamen die Pflicht-Quoten (annotations, sequence) dazu; die
+# Fixture stammte von davor und wurde seither abgelehnt, BEVOR das Audit anlief. Beide
+# Zweige endeten mit exit 1, die Sonde meldete „FEHLGESCHLAGEN" — und meinte den
+# Contract, nicht den Exit-Zweig, den sie prüfen soll. Ein Gate, das aus dem falschen
+# Grund rot ist, prüft nichts mehr; es fiel nur niemandem auf, weil es nicht lief.
+FIXTURE_FEHLER=$(node --input-type=module -e '
+import { readFileSync } from "fs";
+import { normalizeLesson, validateLesson } from "./validate-lesson.mjs";
+const roh = JSON.parse(readFileSync("sleep-v2.json", "utf8"));
+const koll = JSON.parse(readFileSync("probes/exit3-system/kollisions-karte.json", "utf8"));
+const mitKollision = structuredClone(roh);
+mitKollision.cards[1] = koll;
+for (const [name, l] of [["Basis sleep-v2.json", roh], ["Fixture mit Kollisions-Karte", mitKollision]]) {
+  const fehler = validateLesson(normalizeLesson(structuredClone(l)));
+  if (fehler.length) console.log(`${name}: ${fehler.join(" | ")}`);
+}
+' 2>&1)
+if [[ -n "$FIXTURE_FEHLER" ]]; then
+  echo "SONDE NICHT LAUFFÄHIG — die Fixture erfüllt den Contract nicht mehr:"
+  echo "$FIXTURE_FEHLER"
+  echo "(Das ist kein Befund über den exit-3-Zweig: die Pipeline lehnt vor dem Audit ab.)"
+  exit 1
+fi
+
 # Freien Port suchen. Auf den Stub-Ports liegen regelmäßig Leichen aus früheren
 # Sitzungen; ein belegter Port hätte den Stub still sterben lassen (EADDRINUSE) und die
 # ALTE Fassung hätte geantwortet — gemessen worden wäre dann ein fremder Server.

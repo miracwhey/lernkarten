@@ -611,7 +611,7 @@ const RENDERERS = {
     const anArrow = card.steps.map((_, i) => i ? A(`arrow:${i}`) : null);
     const anSink = A("sink");
     const nodes = card.steps.map((s, i) => `
-      ${i > 0 ? `<line${AN(anArrow[i])} data-idx="${i}" x1="200" y1="${ys[i-1] + 32}" x2="200" y2="${ys[i] - 34}" stroke="${C("ink")}" stroke-width="1.8" marker-end="url(#arrow)"/>` : ""}
+      ${i > 0 ? `<line${AN(anArrow[i])} data-label-anchor="${anStep[i-1]} ${anStep[i]}" data-idx="${i}" x1="200" y1="${ys[i-1] + 32}" x2="200" y2="${ys[i] - 34}" stroke="${C("ink")}" stroke-width="1.8" marker-end="url(#arrow)"/>` : ""}
       <g${AN(anStep[i])} data-idx="${i}">
       <rect${GLOW(card.steps[i].color)} x="96" y="${ys[i] - 30}" width="208" height="62" rx="16"
             fill="${SOFT(card.steps[i].color)}" stroke="${C(card.steps[i].color)}" stroke-width="2.5"/>
@@ -1327,7 +1327,7 @@ const RENDERERS = {
         <defs><marker id="cyarrow" markerWidth="9" markerHeight="8" refX="7" refY="4" orient="auto">
           <path d="M0,0 L8,4 L0,8 Z" fill="${C("ink")}"/>
         </marker></defs>
-        ${arrows.map((d, i) => `<path${AN(anArrow[i])} data-idx="${i}" d="${d}" fill="none" stroke="${C("ink")}" stroke-width="1.8" marker-end="url(#cyarrow)"/>`).join("")}
+        ${arrows.map((d, i) => `<path${AN(anArrow[i])} data-label-anchor="${anStep[i]} ${anStep[(i + 1) % card.steps.length]}" data-idx="${i}" d="${d}" fill="none" stroke="${C("ink")}" stroke-width="1.8" marker-end="url(#cyarrow)"/>`).join("")}
         ${card.steps.map((s, i) => {
           const cx = +pos[i][0].toFixed(1), cy = +pos[i][1].toFixed(1);
           return `<g${AN(anStep[i])} data-idx="${i}">
@@ -1617,21 +1617,33 @@ function wireSequence(root, card) {
     }
   });
 
-  // ——— Asset-Labels erscheinen MIT ihrem Gegenstand ———
+  // ——— Beschriftung und Beiwerk erscheinen MIT ihrem Gegenstand ———
   // Ein Label-Platz nennt seinen Anker (data-label-anchor). Sichtbar wird er, sobald
   // der Gegenstand da ist — und wenn ein Puls diesen Gegenstand zum ZIEL hat, erst mit
   // dessen Ankunft: „AB HIER FEUERT ES" steht im Bild, wenn der Reiz das Soma erreicht,
   // nicht schon beim Erscheinen des Neurons (bindendes Mockup, Panel a).
   // Ein ausdrücklicher reveal auf `label:<platz>` gewinnt (setStep vergibt nur einmal).
+  //
+  // MEHRERE Anker (durch Leerzeichen getrennt) heißen: erst, wenn ALLE da sind — der
+  // späteste Schritt gewinnt. Ein Pfeil verbindet zwei Schritte, eine Klammer misst
+  // zwischen zweien, eine Zone umfasst mehrere; sie alle zeigen ins Leere, solange auch
+  // nur ein Ende fehlt. Gemessen an der flow-Karte: der Kasten des Callouts stand ab
+  // Schritt 1 leer im Bild, sein Text erschien erst mit dem Anker in Schritt 3.
   const pulsZiel = new Map();
   plan.forEach((st, i) => { if (st.verb === "pulse" && st.to !== undefined && !pulsZiel.has(st.to)) pulsZiel.set(st.to, i + 1); });
-  root.querySelectorAll("[data-label-anchor]").forEach((lab) => {
-    const name = lab.dataset.labelAnchor;
-    let n = pulsZiel.has(name) ? pulsZiel.get(name) : null;
-    if (n === null) for (const ziel of els(name)) {
+  const schrittVon = (name) => {
+    if (pulsZiel.has(name)) return pulsZiel.get(name);
+    for (const ziel of els(name))
       for (let e = ziel; e && e !== root; e = e.parentElement)
-        if (e.dataset.seqStep) { n = Number(e.dataset.seqStep); break; }
-      if (n !== null) break;
+        if (e.dataset.seqStep) return Number(e.dataset.seqStep);
+    return null;
+  };
+  root.querySelectorAll("[data-label-anchor]").forEach((lab) => {
+    const namen = lab.dataset.labelAnchor.split(/\s+/).filter(Boolean);
+    let n = null;
+    for (const name of namen) {
+      const k = schrittVon(name);
+      if (k !== null) n = Math.max(n ?? 0, k);
     }
     if (n !== null) setStep(lab, n);
   });
@@ -1975,9 +1987,11 @@ function wireAnnotations(root, card) {
       // Spitze als Dreieck am Ziel: ein `marker` bräuchte eine defs-Definition je Farbe.
       const sp = 4.5;
       const spitze = `${x2 + ux * 7},${y2 + uy * 7} ${x2 - uy * sp},${y2 + ux * sp} ${x2 + uy * sp},${y2 - ux * sp}`;
-      raus.push(`<line class="c-pfeil"${AN(anker)} x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}"`
+      // Beide Enden — ein Pfeil ohne sein Ziel zeigt auf nichts.
+      const wirkung = ` data-label-anchor="${an.von} ${an.bis}"`;
+      raus.push(`<line class="c-pfeil"${AN(anker)}${wirkung} x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}"`
         + ` x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${fill}"/>`
-        + `<polygon class="c-pfeilspitze"${AN(anker)} points="${spitze}" fill="${fill}"/>`);
+        + `<polygon class="c-pfeilspitze"${AN(anker)}${wirkung} points="${spitze}" fill="${fill}"/>`);
       if (an.text) {
         // Beschriftung neben der Mitte des Wegs, über denselben Solver wie alles andere.
         const w = measure(an.text, SIZE, 600), h = ZEILE;
@@ -1995,7 +2009,7 @@ function wireAnnotations(root, card) {
         if (wahl && inBild(wahl.r) && !aufFremderFlaeche(wahl.r, [])) {
           put(wahl.r);
           raus.push(textSvg(wahl.r, SIZE, an.text, "c-callout-text", fill,
-            AN(anker) + ` data-label-anchor="${an.von}"`));
+            AN(anker) + wirkung));
         }
       }
       continue;
@@ -2012,7 +2026,10 @@ function wireAnnotations(root, card) {
       const ton = (an.umfasst || []).map(tonVon).find(Boolean);
       const fill = ton ? C(ton) : C("ink");
       const anker = `annot:zone-${ai}`;
-      unten.push(`<rect class="c-zone"${AN(anker)} x="${x.toFixed(1)}" y="${y.toFixed(1)}"`
+      // Alle umfassten Anker: die Hülle behauptet „diese gehören zusammen" — solange einer
+      // fehlt, umschließt sie eine Lücke.
+      const huelle = ` data-label-anchor="${(an.umfasst || []).join(" ")}"`;
+      unten.push(`<rect class="c-zone"${AN(anker)}${huelle} x="${x.toFixed(1)}" y="${y.toFixed(1)}"`
         + ` width="${w2.toFixed(1)}" height="${h2.toFixed(1)}" rx="6"`
         + ` fill="${ton ? SOFT(ton) : C("line")}"/>`);
       // Der Name gehört an eine KANTE der Zone — dort liest er sich als ihr Name und nicht
@@ -2032,7 +2049,7 @@ function wireAnnotations(root, card) {
       });
       if (wahlZ && inBild(wahlZ.r)) {
         put(wahlZ.r);
-        raus.push(textSvg(wahlZ.r, SIZE, an.text, "c-callout-text", fill, AN(anker)));
+        raus.push(textSvg(wahlZ.r, SIZE, an.text, "c-callout-text", fill, AN(anker) + huelle));
       }
       continue;
     }
@@ -2107,9 +2124,11 @@ function wireAnnotations(root, card) {
           + `L${wahl.q.toFixed(1)},${v1.toFixed(1)} L${(wahl.q + hk).toFixed(1)},${v1.toFixed(1)}`
         : `M${v0.toFixed(1)},${(wahl.q + hk).toFixed(1)} L${v0.toFixed(1)},${wahl.q.toFixed(1)} `
           + `L${v1.toFixed(1)},${wahl.q.toFixed(1)} L${v1.toFixed(1)},${(wahl.q + hk).toFixed(1)}`;
-      raus.push(`<path class="c-klammer"${AN(anker)} d="${d}" fill="none" stroke="${fill}"/>`
-        + textSvg(wahl.r, SIZE, an.text, "c-callout-text", fill,
-          AN(anker) + ` data-label-anchor="${an.von}"`));
+      // Beide Enden: eine Klammer misst eine Spanne — steht erst eines ihrer Objekte im
+      // Bild, misst sie ins Leere.
+      const spann = ` data-label-anchor="${an.von} ${an.bis}"`;
+      raus.push(`<path class="c-klammer"${AN(anker)}${spann} d="${d}" fill="none" stroke="${fill}"/>`
+        + textSvg(wahl.r, SIZE, an.text, "c-callout-text", fill, AN(anker) + spann));
       continue;
     }
     if (an.art !== "callout") continue;              // ring/pfeil/zone folgen
@@ -2171,11 +2190,15 @@ function wireAnnotations(root, card) {
       + `${ton ? GLOW(ton) : ""} cx="${wahl.dot[0].toFixed(1)}" cy="${wahl.dot[1].toFixed(1)}" r="3" fill="${fill}"/>`;
     // Gefüllter Kasten statt blankem Text: das ist Imprints Callout — die Beschriftung
     // ist ein eigenes Objekt auf dem Bild, keine zweite Bildschrift.
+    // Kasten und Leader tragen dieselbe Bindung wie Punkt und Text: sonst steht der
+    // gefüllte Kasten ab dem ersten Sequenz-Schritt leer im Bild, während der Text, den
+    // er trägt, erst mit seinem Anker erscheint.
+    const bindung = ` data-label-anchor="${an.an}"`;
     raus.push(dot
-      + `<rect class="c-callout"${AN(anker)} x="${(wahl.r.cx - wahl.r.w / 2 - 5).toFixed(1)}"`
+      + `<rect class="c-callout"${AN(anker)}${bindung} x="${(wahl.r.cx - wahl.r.w / 2 - 5).toFixed(1)}"`
       + ` y="${(wahl.r.cy - wahl.r.h / 2 - 2).toFixed(1)}" width="${(wahl.r.w + 10).toFixed(1)}"`
       + ` height="${(wahl.r.h + 4).toFixed(1)}" rx="3" fill="${ton ? SOFT(ton) : C("card")}"/>`
-      + leaderSvg(leader, anker, "", "leader-c")
+      + leaderSvg(leader, anker, bindung, "leader-c")
       + wahl.zeilen.map((z, zi) => textSvg(
         rect(wahl.r.cx, wahl.r.cy - wahl.r.h / 2 + ZEILE * (zi + 0.5), wahl.breiten[zi], ZEILE),
         SIZE, z, "c-callout-text", fill, AN(anker) + ` data-label-anchor="${an.an}"`)).join(""));
