@@ -1,0 +1,79 @@
+# Generierungs-Worker auf GitHub Actions.
+#
+# Warum hier und nicht als Daemon: die Pipeline braucht einen echten Browser
+# (Playwright für Notecheck und Render-Audit), damit fallen die üblichen
+# Funktions-Hoster weg. Öffentliche Repos laufen auf Standard-Runnern ohne
+# Minutenkontingent, und ein Lauf dauert ohnehin Minuten — auf eine Sekunde
+# Startzeit kommt es bei diesem Auftrag nicht an.
+#
+# Der Worker läuft hier in der Betriebsart „einmalig": Queue abarbeiten, dann
+# enden. Bricht ein Lauf mittendrin ab, gibt `requeueStale()` den Job nach 30
+# Minuten wieder frei — kein Auftrag geht verloren, er wartet nur.
+name: Lektionen bauen
+
+on:
+  # Aus der App bzw. per Datenbank-Hook, sobald ein Auftrag entsteht — der
+  # normale Weg, der einen neuen Auftrag ohne Wartezeit aufgreift.
+  repository_dispatch:
+    types: [generation-job]
+  # Von Hand, mit Knopf in der Actions-Oberfläche.
+  workflow_dispatch:
+  # Sicherheitsnetz: fängt Aufträge, deren Hook nicht angekommen ist. Der Plan
+  # ist eine Bitte, kein Termin — GitHub verschiebt Läufe unter Last. Genau
+  # deshalb ist er das Netz und nicht der Weg.
+  schedule:
+    - cron: "*/15 * * * *"
+
+# Zwei Läufe gleichzeitig wären nicht falsch (claim_next_job greift per
+# FOR UPDATE SKIP LOCKED), aber sie verdoppeln die Modell-Kosten ohne Nutzen.
+# Ein laufender Lauf wird NICHT abgebrochen — er hat einen Auftrag in der Hand.
+concurrency:
+  group: lektionen-bauen
+  cancel-in-progress: false
+
+jobs:
+  bauen:
+    runs-on: ubuntu-latest
+    # Der Runner erlaubt 6 Stunden. So lange wollen wir nicht warten: der Worker
+    # hört nach 50 Minuten von selbst auf (WORKER_MAX_MS), der Deckel hier ist
+    # nur die Reißleine, falls er dabei hängt.
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Abhängigkeiten
+        run: npm ci
+
+      # Nur Chromium: die Pipeline zeichnet damit, Firefox und WebKit wären
+      # Ladezeit ohne Zweck. --with-deps zieht die Systembibliotheken nach.
+      - name: Browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Queue abarbeiten
+        env:
+          WORKER_ONCE: "1"
+          WORKER_MAX_MS: "3000000" # 50 Minuten
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Ein Schlüssel für Generator UND Judge — beide laufen über OpenRouter
+          # (worker/models.mjs). Die Schlüsseldatei jarvis/.env gibt es hier
+          # nicht; loadKey nimmt deshalb die Umgebung.
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: node worker/index.mjs
+
+      # Die Lauf-Artefakte (Dossier, Zwischenstände, Statistik) sind die einzige
+      # Spur, wenn ein Auftrag scheitert — lokal liegen sie in worker/jobs/.
+      - name: Lauf-Artefakte sichern
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worker-jobs-${{ github.run_id }}
+          path: worker/jobs/
+          retention-days: 7
+          if-no-files-found: ignore

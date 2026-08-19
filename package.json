@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
     "dictionary-de": "^3.0.0",
-    "nspell": "^2.1.5"
+    "nspell": "^2.1.5",
+    "playwright": "^1.61.1"
   }
 }

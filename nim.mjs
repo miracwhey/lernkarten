@@ -75,11 +75,36 @@ export function collectUsage(usage, data) {
   if (p && Array.isArray(usage.providers) && !usage.providers.includes(p)) usage.providers.push(p);
 }
 
+/// Pfad der Schlüsseldatei. Überschreibbar, weil der Vorgabewert eine Kiste
+/// beschreibt und keine Eigenschaft des Projekts.
+export const KEY_FILE = process.env.LERNKARTEN_KEY_FILE
+  ?? `${process.env.HOME ?? ""}/Workspace/jarvis/.env`;
+
+/// Liest alle `NAME=WERT`-Zeilen der Schlüsseldatei. Fehlt sie, ist das kein Fehler:
+/// auf einem Runner kommen die Schlüssel aus der Umgebung.
+export function keyFileEntries() {
+  try {
+    return readFileSync(KEY_FILE, "utf8").split("\n")
+      .map((l) => l.match(/^([A-Z0-9_]+)=(.*)$/)).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+/// Umgebung zuerst, Datei als Rückfall — nicht umgekehrt.
+///
+/// Vorher stand hier ein absoluter Pfad nach `jarvis/.env` und sonst nichts. Das
+/// band die gesamte Pipeline an genau einen Rechner: auf jeder anderen Kiste (CI,
+/// Server, fremder Klon) starb sie beim ersten Modell-Aufruf, obwohl die Schlüssel
+/// als Umgebungsvariablen längst dagestanden hätten.
 export function loadKey(envName) {
-  const line = readFileSync("/Users/leonvalentin/Workspace/jarvis/.env", "utf8")
-    .split("\n").find((l) => l.startsWith(envName + "="));
-  if (!line) throw new Error(`${envName} nicht in jarvis/.env`);
-  return line.split("=").slice(1).join("=").trim();
+  const fromEnv = process.env[envName];
+  if (fromEnv) return fromEnv.trim();
+  const hit = keyFileEntries().find((m) => m[1] === envName);
+  if (!hit)
+    throw new Error(`${envName} fehlt — setze die Umgebungsvariable ${envName} `
+      + `oder trage sie in ${KEY_FILE} ein (Pfad via LERNKARTEN_KEY_FILE änderbar)`);
+  return hit[2].trim();
 }
 
 /// true, wenn der Fehler ein Abbruch ist (AbortController/Timeout-Signal).

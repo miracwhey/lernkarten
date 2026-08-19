@@ -26,9 +26,16 @@ const STALE_MS = 30 * 60 * 1000;
 const MAX_ATTEMPTS = 2;
 
 // ── Env ──────────────────────────────────────────────────────────────────────
-for (const line of readFileSync(`${DIR}/.env`, "utf8").split("\n")) {
-  const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-  if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
+// worker/.env ist der bequeme Weg auf dem eigenen Rechner, nicht die einzige Quelle:
+// auf einem Runner kommen dieselben Werte aus der Umgebung, und dort gibt es die
+// Datei nicht. Fehlt sie, ist das deshalb kein Fehler — fehlende WERTE sind einer.
+try {
+  for (const line of readFileSync(`${DIR}/.env`, "utf8").split("\n")) {
+    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
+  }
+} catch (e) {
+  if (e.code !== "ENOENT") throw e;
 }
 for (const need of ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]) {
   if (!process.env[need]) { console.error(`${need} fehlt in worker/.env — siehe worker/README.md`); process.exit(1); }
@@ -245,16 +252,36 @@ async function mitDeadline(fn, ms, was) {
 // ── Schleife ─────────────────────────────────────────────────────────────────
 mkdirSync(JOBS, { recursive: true });
 console.log("Worker startet · Kette:", CHAIN.map((m) => m.id).join(" → "), "· Judge:", JUDGE.id);
-if (process.env.OPENROUTER_API_KEY) {
-  console.log("HINWEIS: OPENROUTER_API_KEY ist gesetzt, wird aber ignoriert — glm-generate.mjs löst Keys"
-    + " ausschließlich über jarvis/.env auf. Siehe worker/README.md.");
+// Die Meldung sagte früher, OPENROUTER_API_KEY werde ignoriert. Das stimmte schon
+// nicht mehr, als die Kette auf OpenRouter umgestellt wurde, und wäre auf einem
+// Runner die erste Zeile im Log gewesen — eine falsche Fährte an der Stelle, an
+// der jemand nach der Ursache sucht. Jetzt meldet sie, was wirklich fehlt.
+if (!process.env.OPENROUTER_API_KEY) {
+  console.log("HINWEIS: OPENROUTER_API_KEY ist nicht gesetzt — Kette und Judge laufen darüber"
+    + " (worker/models.mjs). Ohne den Schlüssel scheitert der erste Modell-Aufruf.");
 }
 await requeueStale();
 
 let stop = false;
 for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => { console.log("\nWorker hält an…"); stop = true; });
 
+// Betriebsart. Daemon (Vorgabe) pollt endlos — das ist der Rechner unterm Tisch.
+// `WORKER_ONCE=1` arbeitet die Queue ab und endet, sobald sie leer ist: die Form,
+// die ein CI-Lauf braucht, der pro Aufruf startet und für seine Laufzeit zahlt.
+// `WORKER_MAX_MS` deckelt den Lauf zusätzlich, damit er nicht ins Limit des
+// Runners läuft und dort hart abgeschnitten wird — verbleibende Jobs holt der
+// nächste Lauf, `requeueStale()` gibt einen mittendrin abgebrochenen frei.
+const ONCE = process.env.WORKER_ONCE === "1";
+const MAX_MS = Number(process.env.WORKER_MAX_MS ?? 0);
+const START = Date.now();
+let erledigt = 0;
+if (ONCE) console.log(`Betriebsart: einmalig${MAX_MS ? ` · Deckel ${Math.round(MAX_MS / 60000)} Min` : ""}`);
+
 while (!stop) {
+  if (MAX_MS && Date.now() - START > MAX_MS) {
+    console.log(`Zeitdeckel erreicht (${Math.round((Date.now() - START) / 60000)} Min) — beende, Rest bleibt in der Queue`);
+    break;
+  }
   let job = null;
   try {
     const { data, error } = await db.rpc("claim_next_job");
@@ -265,7 +292,11 @@ while (!stop) {
   } catch (e) {
     console.error("claim_next_job fehlgeschlagen:", e.message);
   }
-  if (!job) { await new Promise((ok) => setTimeout(ok, POLL_MS)); continue; }
+  if (!job) {
+    if (ONCE) { console.log(`Queue leer — ${erledigt} Job(s) erledigt, beende`); break; }
+    await new Promise((ok) => setTimeout(ok, POLL_MS)); continue;
+  }
+  erledigt++;
 
   console.log(`\n▶ Job ${job.id} · ${job.kind} · Tiefe ${job.depth} · Versuch ${job.attempts}`);
   const t0 = Date.now();

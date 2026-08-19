@@ -13,7 +13,7 @@ import { cardRange, lesezeit, normalizeLesson, pflichtText, validateLesson } fro
 import { suspiciousWords, wordFindings } from "./spellcheck.mjs";
 import { factFlags, geometryFlags } from "./factcheck.mjs";
 import { judgeLesson, restoreMarkup } from "./judge.mjs";
-import { attemptSignal, chatJson, collectUsage, dayRateLimit, pushAssistant, defaultPace, extractJson, infraFault, isAbortError, loadKey, NIM_BASE, warnAbgeschnitten } from "./nim.mjs";
+import { attemptSignal, chatJson, collectUsage, dayRateLimit, pushAssistant, defaultPace, extractJson, infraFault, isAbortError, keyFileEntries, loadKey, NIM_BASE, warnAbgeschnitten } from "./nim.mjs";
 
 const DIR = new URL(".", import.meta.url).pathname.replace(/\/$/, "");
 
@@ -115,8 +115,12 @@ const isAnthropic = !!modelArg && modelArg.startsWith("claude");
 
 // Key zum Modell auflösen: NVIDIA_<TOKEN>_KEY aus jarvis/.env, dessen Token in der
 // Modell-ID vorkommt (glm→NVIDIA_GLM_KEY, …). Ohne Match/Arg bleibt GLM der Default.
-const envKeys = readFileSync("/Users/leonvalentin/Workspace/jarvis/.env", "utf8")
-  .split("\n").map((l) => l.match(/^(NVIDIA_([A-Z_]+)_KEY)=/)).filter(Boolean);
+// Kandidaten aus BEIDEN Quellen, damit die Zuordnung Modell→Key auch dort trägt,
+// wo es keine Schlüsseldatei gibt (CI/Server) und die Keys in der Umgebung stehen.
+const envKeys = [
+  ...keyFileEntries().map((m) => m[1]),
+  ...Object.keys(process.env),
+].map((name) => /^(NVIDIA_([A-Z_]+)_KEY)$/.exec(name)).filter(Boolean);
 const keyName = isAnthropic ? "ANTHROPIC_API_KEY"
   : keyOverride ?? (modelArg && envKeys.find((m) => modelArg.toLowerCase().includes(m[2].toLowerCase()))?.[1]) ?? "NVIDIA_GLM_KEY";
 console.log("Nutze Key:", keyName);

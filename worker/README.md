@@ -4,18 +4,46 @@ Lokaler Node-Daemon. Er zieht Aufträge aus `public.generation_jobs`, baut pro A
 ein Fakten-Dossier, lässt darauf die **unveränderte** Pipeline (`glm-generate.mjs`)
 laufen und legt die fertige Lektion in `public.lessons` ab.
 
-Kein Docker, kein Hosting — der Worker läuft auf dem Rechner, der auch die Pipeline
-fährt (Playwright-Browser für Notecheck und Render-Audit hängen daran).
+Er braucht einen echten Browser (Playwright für Notecheck und Render-Audit) — deshalb
+läuft er nicht auf einem Funktions-Hoster, sondern entweder lokal als Daemon oder auf
+GitHub Actions.
 
-## Start
+## Zwei Betriebsarten
+
+| | Daemon (Vorgabe) | Einmalig (`WORKER_ONCE=1`) |
+|---|---|---|
+| Verhalten | pollt endlos alle 5 s | arbeitet die Queue ab, endet bei leerer Queue |
+| Wofür | der Rechner unterm Tisch | ein CI-Lauf, der pro Aufruf startet |
+| Deckel | keiner | `WORKER_MAX_MS` (Rest bleibt in der Queue) |
 
 ```sh
-node worker/index.mjs
+node worker/index.mjs                                  # Daemon
+WORKER_ONCE=1 WORKER_MAX_MS=3000000 node worker/index.mjs   # einmalig, 50 Min
 ```
 
 Beenden mit Ctrl-C (der laufende Job wird zu Ende gefahren). Bleibt ein Job durch
 einen Absturz auf `running` stehen, holt ihn der nächste Start nach 30 Minuten
-zurück in die Queue — oberhalb von 2 Versuchen endgültig als `failed`.
+zurück in die Queue — oberhalb von 2 Versuchen endgültig als `failed`. **Deshalb
+kostet ein abgebrochener CI-Lauf keinen Auftrag: er wartet nur.**
+
+## Auf GitHub Actions
+
+`.github/workflows/worker.yml`. Öffentliche Repos laufen auf Standard-Runnern ohne
+Minutenkontingent; ein Job darf 6 Stunden dauern, der Worker hört nach 50 Minuten
+von selbst auf.
+
+Ausgelöst wird er dreifach: `repository_dispatch` (Typ `generation-job`) als
+normaler Weg, ein Knopf in der Actions-Oberfläche, und ein 15-Minuten-Plan als
+Sicherheitsnetz. Der Plan ist eine Bitte, kein Termin — GitHub verschiebt Läufe
+unter Last; genau deshalb ist er das Netz und nicht der Weg.
+
+**Drei Repository-Secrets sind nötig** (Settings → Secrets and variables → Actions):
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENROUTER_API_KEY`. Ein Schlüssel
+reicht für Generator und Judge, beide laufen über OpenRouter.
+
+Für den sofortigen Anstoß aus der Datenbank braucht es zusätzlich ein GitHub-Token
+mit `repo`-Recht als Supabase-Secret, das den `repository_dispatch` auslöst. Ohne
+das greift der 15-Minuten-Plan — Aufträge werden gebaut, nur eben später.
 
 ## Env
 
@@ -54,10 +82,16 @@ aus `~/Workspace/jarvis/.env` (`NVIDIA_QWEN_KEY`, `NVIDIA_KIMI_KEY`, `GROQ_API_K
 Der Judge ist immer `deepseek-ai/deepseek-v4-flash-0731` über `NVIDIA_DS_PRO_KEY` —
 er darf nie das Generator-Modell sein.
 
-**OpenRouter wird nicht unterstützt.** `glm-generate.mjs` lädt Keys ausschließlich aus
-`jarvis/.env` und kennt keinen Env-Fallback; ein OpenRouter-Zweig wäre toter Code, der
-sich nicht einmal per 1-Token-Probe verifizieren ließe. Der Worker meldet beim Start,
-wenn `OPENROUTER_API_KEY` gesetzt ist, und ignoriert ihn.
+**OpenRouter ist der Produktionsweg.** `worker/models.mjs` fährt Kette und Judge über
+`OPENROUTER_API_KEY`; der Worker reicht Key-Name und Basis als Argumente an
+`glm-generate.mjs` weiter (`--key`, `--base`, `--judgekey`, `--judgebase`). Die Tabelle
+oben beschreibt die NIM-/Groq-Kandidaten aus der Bench-Zeit, nicht den Betrieb.
+
+**Schlüssel: Umgebung zuerst, Datei als Rückfall.** `loadKey` (`nim.mjs`) nimmt
+`process.env[NAME]`, und nur wenn dort nichts steht, die Schlüsseldatei. Deren Pfad ist
+über `LERNKARTEN_KEY_FILE` änderbar und darf fehlen. Vorher stand dort ein absoluter
+Pfad nach `jarvis/.env` und sonst nichts — das band die Pipeline an genau einen Rechner
+und war der eigentliche Grund, warum sie nirgends sonst lief.
 
 ## Stufen pro Job
 
