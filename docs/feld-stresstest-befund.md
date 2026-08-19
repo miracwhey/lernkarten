@@ -211,9 +211,42 @@ stehen in ihrem System, die Textbox liegt im Wurzelsystem. Der Verdacht ist desh
 `audit-overlap.mjs` war am 15.08. aus genau diesem Grund tot (Zweit-Messung mit `getBBox`
 ohne CTM, 43 Phantom-Befunde).
 
-Nicht bewiesen. Der Unterschied ist wichtig genug für einen eigenen Block: Wäre es ein
-Phantom, tötet ein Gate seit einiger Zeit Läufe mit einwandfreien Bildern — das ist die
-Umkehrung des Zonen-Befundes, wo das Bild falsch war und das Gate schwieg.
+**BESTÄTIGT UND BEHOBEN.** Am DOM gemessen: Die Linie liegt unter
+`<g transform="scale(2)">`, trägt aber **kein** `data-asset` — roh (20,9 | 75,95),
+tatsächlich (41,8 | 151,9).
+
+Die Ursache stand im Messwerkzeug selbst. `obbOf` bringt Text-Boxen **immer** ins
+Karten-System (`svg.getScreenCTM().inverse().multiply(el.getScreenCTM())`), `sample`
+transformierte Strich-Punkte aber nur, wenn das Element unter `[data-asset]` hing. Genau
+diese Bedingung ist die Lücke: `balance` bettet die Waage aus der Library ein, ohne sie
+als Asset zu markieren. Für solche Karten verglich das Gate rohe gegen transformierte
+Koordinaten — und ein Prüfer, der zwei Maßsysteme verwechselt, meldet nicht zu wenig,
+sondern zu viel.
+
+Jetzt wird bedingungslos transformiert; wo nichts transformiert ist, ist die Matrix die
+Einheitsmatrix und ändert keine Zahl. Beidseitig belegt: die Wirtschafts-Lektion meldet
+`AUDIT PASS` (0 Befunde), und die Systemfehler-Fixture wird weiterhin gefunden
+(`TEXT² "TIEFSCHLAF UNTEN" × "REM-SCHLAF UNTEN"`, system=1). Bestand und neue Lektionen
+je 0 Befunde, `adversarial.mjs` PASS.
+
+Das ist die Umkehrung des Zonen-Befundes: dort war das Bild falsch und das Gate schwieg,
+hier war das Bild in Ordnung und das Gate schlug Alarm. Beide Male hat erst der Blick auf
+das Bild die Richtung entschieden.
+
+**Reichweite:** `data-asset` setzt nur der `asset`-Renderer. Zwei weitere Kartentypen
+holen ihre Geometrie aus derselben Library und platzieren sie über ein `scale(2)`, ohne
+sie so zu markieren — `balance` (die Waage) und `layers` (der Eisberg). Für beide hat das
+Gate bisher im falschen Maß gemessen, und `weighing` ist keine Randform: allein in den
+vier Stresstest-Lektionen kommt sie fünfmal vor. Der Fehler konnte dabei in beide
+Richtungen wirken — Alarm ohne Anlass (belegt) und übersehene echte Kollisionen
+(möglich, in den geprüften Lektionen nicht aufgetreten).
+
+⚠️ **Nebenfund: die Sonde, die das hätte fangen sollen, testet seit dem 18.08. nichts
+mehr.** `probes/exit3-system/run.sh` meldet zwar „FEHLGESCHLAGEN", aber aus dem falschen
+Grund: Ihre Stub-Lektion stammt von vor den Pflicht-Quoten (`annotations` 2, `sequence` 1)
+und scheitert jetzt am **Contract** — `rejectStage: "contract"`, das Audit läuft nie an.
+Beide Zweige geben Exit 1 statt 3 und 0. Ein Gate-Test, der seine eigene Vorstufe nicht
+mehr passiert, prüft nichts; gemerkt hat es niemand, weil er seither nicht lief.
 
 ## Was das für die Flexibilitäts-Frage heißt
 

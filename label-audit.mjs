@@ -157,18 +157,25 @@ export const auditCurveCard = ({ card, limits, seqStep }) => {
     const pts = [];
     const len = el.getTotalLength ? el.getTotalLength() : 0;
     if (!len) return pts;
-    // Ein platziertes Asset rechnet in EIGENEN Einheiten (eine Asset-Einheit = zwei
-    // Karten-Einheiten). Seine Punkte müssen in Karten-Koordinaten stehen, bevor sie
-    // mit Text-Boxen oder der viewBox verglichen werden — sonst prüfte das Gate zwei
-    // verschiedene Maßsysteme gegeneinander und meldete Nähe, wo Abstand ist.
-    // Für alles andere bleibt die Rechnung unverändert: keine Matrix, dieselben Zahlen.
-    const imAsset = el.closest && el.closest("[data-asset]");
-    const m = imAsset ? svg.getScreenCTM().inverse().multiply(el.getScreenCTM()) : null;
-    const skal = m ? (Math.hypot(m.a, m.b) || 1) : 1;
+    // Punkte kommen aus dem LOKALEN System ihres Elements, Text-Boxen stehen dank
+    // `obbOf` immer im Karten-System. Beides muss dasselbe Maß haben, bevor es verglichen
+    // wird — deshalb hier dieselbe Matrix, bedingungslos. Wo nichts transformiert ist,
+    // ist sie die Einheitsmatrix und ändert keine Zahl.
+    //
+    // Vorher hing das an `closest("[data-asset]")`, und genau diese Bedingung war die
+    // Lücke: `balance` bettet die Waage aus der Library ein, ohne sie als Asset zu
+    // markieren — ihre Teile liegen unter einem `scale(2)`, tragen aber kein
+    // `data-asset`. Gemessen an der Wirtschafts-Lektion (19.08.2026) stand eine
+    // Waagen-Linie roh bei (20,9 | 75,95) und tatsächlich bei (41,8 | 151,9); das Gate
+    // verglich sie gegen Text-Boxen im Karten-System, meldete `PATH "ÜBERNACHFRAGE"`
+    // und riss mit Exit 3 den ganzen Lauf mit — obwohl der Callout im Bild frei stand.
+    // Ein Prüfer, der zwei Maßsysteme verwechselt, meldet nicht zu wenig, sondern zu viel.
+    const m = svg.getScreenCTM().inverse().multiply(el.getScreenCTM());
+    const skal = Math.hypot(m.a, m.b) || 1;
     for (const [a, b] of spans(el, len))
       for (let d = a; d <= b; d += step / skal) {
         const p = el.getPointAtLength(d);
-        pts.push(m ? [m.a * p.x + m.c * p.y + m.e, m.b * p.x + m.d * p.y + m.f] : [p.x, p.y]);
+        pts.push([m.a * p.x + m.c * p.y + m.e, m.b * p.x + m.d * p.y + m.f]);
       }
     return pts;
   };
