@@ -5,6 +5,60 @@ Katalog; vier davon sind **Klasse A** — konstruierbar aus Primitiven, ohne das
 Illustrator einen Strich zeichnet. Die zwei anderen (Kräfte auf ein Ziel, annotiertes
 Ding) brauchen gezeichnete Szenen und bleiben außen vor.
 
+## ⚠️ Das Klasse-A-Kriterium war der falsche Filter (19.08.)
+
+Leons Urteil zur ersten Mockup-Runde: „da fehlt Liebe, Detail und Sinn, nicht nur
+Geometrie." Er hat recht, und die Ursache steht im Absatz darüber. „Konstruierbar ohne
+Illustrator" war als AUSWAHL-Kriterium gedacht — welche Relationen sind machbar — und ist
+dann still zum ZEICHEN-Kriterium geworden: Ring, Balken, drei Formen in einer Reihe, Kegel.
+Der Filter hat die Individualität wegsortiert. Dieselbe Kritik-Klasse wie am 14.08. bei den
+Assets („Andeutung statt gestaltetes Objekt").
+
+Was die Referenz stattdessen tut — alle zwölf Karten dafür nochmal einzeln angesehen:
+
+1. **Der Bildkörper ist ein Gegenstand aus dem Thema, kein Schema darüber.** Blumentopf für
+   Beziehungen, Fuß im Wasser für Gesprächstiefe, drei Schuhe auf Häusern für Verachtung.
+   Nur 2 von 12 Karten sind reine Geometrie — und die eine lässt die Form selbst die
+   Metapher tragen (der schwarze Klecks IST ein Schatten).
+2. **Die Folge ist mitgezeichnet.** Die Häuser unter den Schuhen haben Risse, die
+   Blumentöpfe daneben sind umgestürzt. Bedeutung sitzt in der Form, nicht im Etikett.
+3. **Beschriftung liegt AUF dem Objekt** und folgt seiner Neigung.
+4. **Es passiert etwas.** Zwei Menschen gießen die Pflanze, ein Fuß tritt ins Wasser.
+5. **Kleinkram, der nichts erklärt:** Gänseblümchen, Wellenringe, Schuhnähte, Trümmer,
+   Wangenröte, Bewegungsstriche. Das ist die „Liebe" — sie kostet Striche, keine Logik.
+6. **Konkrete Sätze im Bild statt Etiketten** („macht das Feuern wahrscheinlicher", ganze
+   Zitate in Sprechblasen).
+7. **Kontur plus Farbfläche**, teils gegeneinander versetzt (Risograph-Fehldruck).
+8. **Das Motiv füllt die Fläche** und wird am Rand angeschnitten.
+
+**Zweiter Anlauf: `probes/relation-szene.mjs`** → `relation-szene-shots/`. Gleiche vier
+Relationen, gleiche Inhalte, aber als Szene: die Komposition ist das Zifferblatt eines
+Weckers, die Typologie dreimal dieselbe Nervenzelle in drei Zuständen, die Zonen-Achse eine
+Nachtstraße mit ausgehenden Laternen, die Projektion ein Handy auf der Bettdecke, dessen
+Display sich in einer Pupille spiegelt.
+
+Zwei Lehren aus dem Bauen, beide teuer bezahlt:
+
+- **Bausteine einzeln prüfen, bevor sie klein zwischen Text sitzen** (`probes/formen-werkbank.mjs`).
+  Der erste Anlauf hatte eine Mondsichel, die als Strich rendert (ein Bogenradius kleiner als
+  die halbe Sehne — der Browser skaliert ihn stillschweigend hoch und legt beide Bögen
+  übereinander), eine Hand, die als Klumpen las, und ein Profilgesicht ohne Kinn. In der
+  fertigen Karte sehen alle drei gleich aus: „wirkt unfertig".
+- **Handgesetzte Beschriftung braucht eine Messung.** Der Renderer hat für sein eigenes
+  Zeichnen einen Platzierungs-Solver, ein Mockup hat keinen — und drei Runden Augenmaß
+  erzeugten dreimal dieselbe Klasse Fehler: Text aus der Karte gelaufen, Text hinter einem
+  Gegenstand, Text auf einer Kontur. Die Prüfung am Ende von `relation-szene.mjs` misst das
+  jetzt (Flächen zählen bewusst nicht als Kollision — eine Beschriftung IM Sektor oder AUF
+  dem Lichtkegel ist gewollt) und hat dabei selbst zwei Messfehler offengelegt: eine
+  Verdeckungsprüfung, die nur die Wortmitte ansah und „ÜBERMÜDET" hinter dem Auto durchließ,
+  und eine Text-gegen-Text-Prüfung, die parallele schräge Zeilen als Kollision meldete,
+  weil sie achsparallele Kästen verglich.
+
+Offen bleibt die Konsequenz für den Katalog: Szenen sind nicht mehr „aus Primitiven für
+jedes Thema konstruierbar". Die Relation kann das Gerüst bleiben (sie ist die prüfbare
+Struktur), aber der Körper wird ein gezeichnetes Trägerobjekt — und davon braucht jede
+Relation mehrere, sonst sieht jede Komposition wie ein Wecker aus.
+
 **Stand: Mockups gebaut, nicht abgenommen.** `node probes/relation-mockup.mjs` →
 `relation-mockup-shots/`. Gezeichnet in der ZIEL-Rendertechnik: dieselbe Karten-Hülle,
 dieselbe `renderer.css`, dieselbe Palette und dieselben Textmaße wie im Produkt — nur die
