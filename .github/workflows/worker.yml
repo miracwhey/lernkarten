@@ -56,20 +56,25 @@ jobs:
       # Nur Chromium: die Pipeline zeichnet damit, Firefox und WebKit wären
       # Ladezeit ohne Zweck.
       #
-      # ⚠️ Beide Vorkehrungen stammen aus dem ersten Echtlauf, der hier 48 Minuten
-      # hing, bis der Job-Deckel ihn beendete: `--with-deps` ruft `apt-get`, und
-      # ohne DEBIAN_FRONTEND wartet das auf eine Konfigurations-Antwort, die nie
-      # kommt. Das eigene Zeitlimit sorgt dafür, dass ein Hänger hier nie wieder
-      # den ganzen Lauf kostet — und weil die Systembibliotheken auf ubuntu-latest
-      # meist schon liegen, ist der Rückfall ohne --with-deps einen Versuch wert,
-      # statt den Lauf ganz aufzugeben.
+      # ⚠️ Aus dem ersten Echtlauf, der hier 53 Minuten stillstand: `--with-deps`
+      # ruft `apt-get`, und dessen Paketquelle (azure.archive.ubuntu.com) hing —
+      # letzte Log-Zeile 19:35:59, danach nichts mehr. Kein Fehler, keine Ausgabe,
+      # kein Abbruch: apt wartet auf einen Server, der nicht antwortet.
+      #
+      # Das `timeout` gehört deshalb um den BEFEHL und nicht nur an den Schritt:
+      # ein Schritt-Zeitlimit bricht den ganzen Schritt ab, dann läuft der
+      # Rückfall nie. So bekommt der zweite Versuch seine Chance — und der kommt
+      # ohne apt aus, weil die Systembibliotheken auf ubuntu-latest ohnehin
+      # meist liegen. `timeout-minutes` bleibt als äußere Reißleine stehen.
       - name: Browser
-        timeout-minutes: 8
+        timeout-minutes: 12
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          npx playwright install --with-deps chromium \
-            || npx playwright install chromium
+          timeout 360 npx playwright install --with-deps chromium || {
+            echo "::warning::--with-deps kam nicht durch (Paketquelle?) — versuche ohne Systemlibs"
+            npx playwright install chromium
+          }
 
       - name: Queue abarbeiten
         # Der Deckel liegt UNTER dem 15-Minuten-Plan: sonst läuft der nächste
