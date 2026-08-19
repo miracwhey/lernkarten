@@ -74,15 +74,32 @@ annotations:                 # optional, jeder Diagramm-Typ, max 4 je Karte (Vor
     an: node:gesicht
   - art: pfeil
     von: node:bauch
-    nach: node:kopf
+    bis: node:kopf
     text: "Bauchgefühl"       # optional
   - art: zone
-    name: "Jetzt"
+    text: "Jetzt"
     umfasst: [node:tasse, node:wuerfel, node:hirn]
 ```
 
-Alle `an`/`von`/`bis`/`nach`/`umfasst`-Werte sind **Anker-Namen aus der Registry**. Der
+Alle `an`/`von`/`bis`/`umfasst`-Werte sind **Anker-Namen aus der Registry**. Der
 Validator lehnt unbekannte Anker ab, bevor gerendert wird — genau wie bei `sequence`.
+
+**Die Feldliste ist abschließend (19.08.).** Was nicht in ihr steht, zeichnet niemand —
+und ein Feld, das niemand liest, liest sich trotzdem wie eine Zusage: `t` kam so durch den
+Validator, während der Callout-Zweig den Kasten dorthin setzte, wo Platz war (deklariert
+t=0,33, gezeichnet auf 66 % Kurvenhöhe). `ANNOT_FELDER` in `validate-lesson.mjs` ist die
+Liste, ihre Meldung trägt die Korrektur.
+
+**Und was die Schicht nicht sagen darf: eine MENGE auf einer Kurven-Karte.** Ein Callout
+hat dort keinen Ort — sein Punkt sitzt auf dem nächstgelegenen Stück Geometrie, der Kasten
+im freien Raum. Prozente und Bruchwörter gehören deshalb an `notes` (mit `t`, gegen die
+Kurvenhöhe gemessen). Auf anderen Typen bleibt die Zahl erlaubt: „4 HALBTÖNE" auf einer
+venn-Karte behauptet nichts über Geometrie.
+
+**Eine RICHTUNG darf sie sagen — und wird daran gemessen.** Zeigt der Anker auf eine
+Serie (`an: series:…`), prüft `notecheck.mjs` den Claim gegen den Verlauf; zeigt er auf
+eine Anmerkung (`an: note:…`), gegen die Steigung an deren Stelle. Ein `pfeil` bleibt
+außen vor: sein Text beschreibt eine Wirkung, keinen Verlauf.
 
 ## Die fünf Primitive
 

@@ -779,8 +779,8 @@ async function runNotecheck() {
     return out.split("\n").filter((l) => l.startsWith("HART ")).map((l) => "- " + l.slice(6));
   } finally {
     // Maschinen-Zeile von notecheck: getrennte Zählung statt Nachzählen der Prosa.
-    const z = /ZÄHLUNG ok=(\d+) fix=(\d+) hart=(\d+) hart-richtung=(\d+)/.exec(out ?? "");
-    if (z) stats.notecheck.push({ ok: +z[1], fix: +z[2], hart: +z[3], hartRichtung: +z[4] });
+    const z = /ZÄHLUNG ok=(\d+) fix=(\d+) hart=(\d+) hart-richtung=(\d+)(?: hart-schicht=(\d+))?/.exec(out ?? "");
+    if (z) stats.notecheck.push({ ok: +z[1], fix: +z[2], hart: +z[3], hartRichtung: +z[4], hartSchicht: +(z[5] ?? 0) });
     lesson = JSON.parse(readFileSync(file, "utf8"));   // t-Fixe zurücklesen
   }
 }

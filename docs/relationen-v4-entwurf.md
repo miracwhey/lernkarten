@@ -273,11 +273,12 @@ Beides ist jetzt geschlossen, und zwar an der Wurzel statt am Einzelfall:
 2. **Dann Zahlen dort erlauben, wo die Geometrie sie hält** — `zone-axis` und
    `composition` sofort; für die Kurve ist der Weg jetzt frei, entschieden ist er nicht:
    im Bild steht weiterhin keine Achsen-Zahl.
-3. ~~**Ein Gate dazu**~~ — steht: `notecheck.mjs` misst Anmerkungen gegen die Kurvenhöhe,
-   und auf der anderen Schicht verbietet der Validator die Menge, die dort nicht messbar
-   wäre. Offen bleibt der RICHTUNGS-Claim in der Erklär-Schicht („NACHFRAGE BRICHT EIN" als
-   Callout auf einer Kurve): messbar wäre er nur, wo der Anker eine Stelle hat (`note:`,
-   `stop`) — heute prüft ihn niemand.
+3. ~~**Ein Gate dazu**~~ — steht, auf **beiden** Schichten: `notecheck.mjs` misst
+   Anmerkungen gegen die Kurvenhöhe, der Validator verbietet die Menge dort, wo sie nicht
+   messbar wäre, und der RICHTUNGS-Claim der Erklär-Schicht wird jetzt ebenfalls gemessen —
+   `an: series:…` gegen den ganzen Verlauf, `an: note:…` gegen die Steigung an dieser
+   Stelle. Gegenprobe am echten Fall: „NACHFRAGE BRICHT EIN" (Feld-Stresstest, Geschichte)
+   meldet OK, dieselbe Karte mit „NACHFRAGE STEIGT" meldet HART mit Korrektur.
 
 Offen bleibt die Stil-Frage: Imprint benutzt in den zwölf Referenz-Karten **kein
 einziges** Zahlendiagramm (Befund 4 der Analyse). Zahlen erhöhen die Genauigkeit, ziehen

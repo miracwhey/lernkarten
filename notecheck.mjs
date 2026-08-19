@@ -16,7 +16,7 @@ import { readFileSync, writeFileSync, renameSync } from "fs";
 import { resolve } from "path";
 // Was ein Claim IST, steht im Validator (er braucht dieselbe Auskunft für die
 // Erklär-Schicht) — hier wird nur gemessen, nicht zweitdefiniert.
-import { normalizeLesson, claimedDirection, claimedFraction, plainLabel, DIRECTION_WORDS } from "./validate-lesson.mjs";
+import { normalizeLesson, claimedDirection, claimedFraction, plainLabel, DIRECTION_WORDS, ankerSlug } from "./validate-lesson.mjs";
 export { claimedDirection, claimedFraction, plainLabel, DIRECTION_WORDS };
 
 const TOL = 0.10;   // ±10 Punkte relativ zum Serien-Maximum — qualitative Kurve, keine Achsen-Skala
@@ -58,6 +58,34 @@ function solveT(pts, target, nearT) {
   return cands[0];
 }
 
+/// Welche Serie und welche Stelle meint eine Annotation? Beantwortbar ist das nur für
+/// Anker, die auf eine Serie zeigen:
+///   `series:<slug>` — die Aussage gilt dem ganzen VERLAUF ("NACHFRAGE BRICHT EIN").
+///   `note:<slug>`   — die Aussage gilt der STELLE, an der die Anmerkung sitzt.
+/// Bei `axis`, `stop` oder Ankern ohne Serie (bei zwei Serien wüsste niemand, welche
+/// gemeint ist) gibt es keine messbare Zuordnung — dort prüft hier nichts, statt zu raten.
+/// Gelesen wird nur `an`, also praktisch der Callout: ein `pfeil` sagt „A wirkt auf B",
+/// sein Text beschreibt die WIRKUNG, nicht den Verlauf des Ziels („ZIEHT AB" am
+/// Ereignis) — dieselbe Trennung, aus der die Eingriffs-Verben aus dem Lexikon
+/// herausgehalten sind.
+function annotZiel(card, a) {
+  const anker = a?.an;
+  if (typeof anker !== "string") return null;
+  if (anker.startsWith("series:")) {
+    const si = (card.series || []).findIndex((s, i) => ankerSlug(s.label, String(i)) === anker.slice(7));
+    return si >= 0 ? { si, t: null } : null;
+  }
+  if (anker.startsWith("note:")) {
+    const ni = (card.notes || []).findIndex((n, i) => ankerSlug(n.label, String(i)) === anker.slice(5));
+    if (ni < 0) return null;
+    const n = card.notes[ni];
+    const si = typeof n.series === "number" ? n.series
+      : (card.series || []).findIndex((s) => s.label === n.series);
+    return si >= 0 ? { si, t: n.at === "apex" ? null : n.t, apex: n.at === "apex" } : null;
+  }
+  return null;
+}
+
 // Misst pro Note das gerenderte Niveau, die Serien-Punkte und die Niveaus an den
 // Rändern des Richtungs-Fensters — alles über den echten Renderer, in EINEM Lauf.
 export async function noteMeasurements(lesson) {
@@ -97,6 +125,53 @@ export async function noteMeasurements(lesson) {
       });
     }, { card: c, dt: DIR_DT });
     rows.forEach((r, j) => out.push({ card: i, note: j, ...r }));
+  }
+  await browser.close();
+  return out;
+}
+
+/// Dieselbe Messung für die ERKLÄR-SCHICHT. Mengen sind dort seit dem 19.08. gar nicht
+/// mehr erlaubt (der Validator lehnt sie auf Kurven-Karten ab: ein Callout hat keinen Ort,
+/// an dem eine Prozentzahl gälte). Eine RICHTUNG behauptet dagegen nichts über eine Höhe,
+/// sondern über den Verlauf — und der ist messbar, sobald der Anker sagt, welche Serie
+/// gemeint ist. Ohne diese Prüfung stand „NACHFRAGE BRICHT EIN" ungeprüft auf einer
+/// Kurve, während notecheck nur `notes` ansah.
+export async function annotMeasurements(lesson) {
+  const normalized = normalizeLesson(JSON.parse(JSON.stringify(lesson)));
+  const targets = normalized.cards
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => c.type === "curve" && c.annotations?.length
+      && c.annotations.some((a) => typeof a?.text === "string" && claimedDirection(a.text) && annotZiel(c, a)));
+  if (!targets.length) return [];
+
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 560, height: 1000 } });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("file://" + resolve(new URL(".", import.meta.url).pathname, "karten-grammatik.html"));
+  await page.waitForTimeout(150);
+
+  const out = [];
+  for (const { c, i } of targets) {
+    const ziele = c.annotations.map((a, j) => ({ j, a, z: annotZiel(c, a) }))
+      .filter(({ a, z }) => z && typeof a.text === "string" && claimedDirection(a.text));
+    const rows = await page.evaluate(({ card, auftrag, dt }) => {
+      area.innerHTML = RENDERERS[card.type](card);
+      const { samples, yOnCurve } = window.__curveDebug;
+      return auftrag.map(({ j, text, z }) => {
+        const sm = samples[z.si];
+        const tMax = sm.pts[sm.pts.length - 1][0];
+        // Ohne eigene Stelle gilt die Aussage dem ganzen Verlauf: das Fenster ist dann die
+        // volle Breite, und „steigt/fällt" heißt, was die Kurve von Anfang bis Ende tut.
+        const ganz = z.t == null;
+        const tc = ganz ? tMax / 2 : Math.min(Math.max(z.t, 0), tMax);
+        const tL = ganz ? 0 : Math.max(0, tc - dt);
+        const tR = ganz ? tMax : Math.min(tMax, tc + dt);
+        return { annot: j, text, ganz, t: ganz ? null : z.t, seriesLabel: sm.s.label, pts: sm.pts,
+                 fenster: { tL, tc, tR, yL: yOnCurve(sm, tL), yC: yOnCurve(sm, tc), yR: yOnCurve(sm, tR) } };
+      });
+    }, { card: c, dt: DIR_DT,
+         auftrag: ziele.map(({ j, a, z }) => ({ j, text: a.text, z })) });
+    rows.forEach((r) => out.push({ card: i, ...r }));
   }
   await browser.close();
   return out;
@@ -169,6 +244,19 @@ export async function noteFindings(lesson) {
       findings.push({ ...dir, kind: widerspruch ? "HART" : "OK" });
     }
   }
+  // Zweite Schicht, gleiche Regel: eine Annotation, die eine Richtung behauptet, gegen
+  // den Verlauf, den sie bezeichnet.
+  for (const m of await annotMeasurements(lesson)) {
+    const richtung = claimedDirection(m.text);
+    const mess = measuredDirection(m);
+    const widerspruch = (mess.dir === "up" && richtung === "down")
+      || (mess.dir === "down" && richtung === "up")
+      || mess.globalFlat;
+    findings.push({ path: `cards[${m.card}].annotations[${m.annot}]`, label: m.text, t: m.t,
+                    series: m.seriesLabel, ganz: m.ganz, check: "richtung-schicht",
+                    claimed: richtung, actual: mess.dir, rate: mess.rate,
+                    globalFlat: mess.globalFlat, kind: widerspruch ? "HART" : "OK" });
+  }
   return findings;
 }
 
@@ -177,6 +265,18 @@ const DIR_WORT = { up: "STEIGEND", down: "FALLEND", flat: "FLACH", unklar: "nich
 export function reportLine(f) {
   const pc = (x) => Math.round(x * 100) + "%";
   const stelle = f.atApex ? `am Apex (t=${Number(f.t).toFixed(2)})` : `bei t=${f.t}`;
+  if (f.check === "richtung-schicht") {
+    // Die Korrektur nennt beide Wege und den Pfad, der zu patchen ist: der Text der
+    // Annotation ODER die Serie. Ein t gibt es hier nicht — die Schicht hat keins.
+    const wo = f.ganz ? "über den ganzen Verlauf" : `bei t=${f.t}`;
+    const gemessen = f.globalFlat ? "verläuft über die ganze Breite FLACH"
+      : `verläuft ${wo} ${DIR_WORT[f.actual]} (${f.rate >= 0 ? "+" : ""}${f.rate.toFixed(1)} Niveau-Punkte je t-Einheit)`;
+    if (f.kind === "OK")
+      return `OK    ${f.path} "${f.label}": Claim ${DIR_WORT[f.claimed]}, Kurve "${f.series}" ${gemessen} — kein Widerspruch`;
+    return `HART  ${f.path}.text: "${f.label}" behauptet ${DIR_WORT[f.claimed]}, die Serie "${f.series}" ${gemessen}`
+      + ` — schreibe den Text der Annotation auf die gezeigte Richtung um ODER ändere die Serie (shape/from/to),`
+      + ` sodass sie ${f.claimed === "down" ? "fällt" : "steigt"}; eine Annotation hat kein t zum Verschieben`;
+  }
   if (f.check === "richtung") {
     const gemessen = f.globalFlat ? "verläuft über die ganze Breite FLACH"
       : `verläuft ${stelle} ${DIR_WORT[f.actual]} (${f.rate >= 0 ? "+" : ""}${f.rate.toFixed(1)} Niveau-Punkte je t-Einheit)`;
@@ -203,11 +303,15 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()
   const raw = JSON.parse(readFileSync(file, "utf8"));   // Fix editiert die Roh-Datei, nie die normalisierte Fassung
   const findings = await noteFindings(raw);
   const claims = findings.length;
+  // Die vier ersten Felder stehen in dieser Reihenfolge fest: glm-generate.mjs liest sie
+  // als Präfix. `hart-schicht` kommt hinten dazu, damit die Erklär-Schicht in der
+  // Statistik nicht unter den Note-Befunden verschwindet.
   const zaehlung = (fs) => `ZÄHLUNG ok=${fs.filter((f) => f.kind === "OK").length}`
     + ` fix=${fs.filter((f) => f.kind === "FIX").length}`
-    + ` hart=${fs.filter((f) => f.kind === "HART" && f.check !== "richtung").length}`
-    + ` hart-richtung=${fs.filter((f) => f.kind === "HART" && f.check === "richtung").length}`;
-  if (!claims) { console.log("NOTECHECK OK — keine prüfbaren Claims in Notes"); console.log(zaehlung([])); process.exit(0); }
+    + ` hart=${fs.filter((f) => f.kind === "HART" && f.check === "level").length}`
+    + ` hart-richtung=${fs.filter((f) => f.kind === "HART" && f.check === "richtung").length}`
+    + ` hart-schicht=${fs.filter((f) => f.kind === "HART" && f.check === "richtung-schicht").length}`;
+  if (!claims) { console.log("NOTECHECK OK — keine prüfbaren Claims in Notes oder Erklär-Schicht"); console.log(zaehlung([])); process.exit(0); }
   for (const f of findings) console.log(reportLine(f));
   const fixable = findings.filter((f) => f.kind === "FIX");
   const hard = findings.filter((f) => f.kind === "HART");
