@@ -561,6 +561,7 @@ const RENDERERS = {
         <text class="svglabel"${AN(anRegion[1], anLabel[1])}${TON(rUe.color)} x="164" y="308" font-size="${rUe.label.length > 7 ? 15 : 18}" fill="${C("ink")}" text-anchor="middle">${rUe.label}</text>
         <text class="svglabel"${AN(anRegion[2], anLabel[2])}${TON(rEs.color)} x="${rEs.label.length > 4 ? 276 : 270}" y="${rEs.label.length > 4 ? 318 : 336}" font-size="${rEs.label.length > 4 ? 15 : 21}" fill="${C("ink")}" text-anchor="middle">${rEs.label}</text>
       </svg></div>
+      ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
     </div>`;
   },
 
@@ -600,6 +601,7 @@ const RENDERERS = {
         <text x="200" y="221" font-size="11" fill="${C("muted")}" text-anchor="middle" font-weight="600">${card.pivot.sub}</text>
         </g>
       </svg></div>
+      ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
     </div>`;
   },
 
@@ -632,6 +634,7 @@ const RENDERERS = {
         </g>
         ${nodes}
       </svg></div>
+      ${card.caption ? `<p class="caption">${card.caption}</p>` : ""}
     </div>`;
   },
 

@@ -126,15 +126,15 @@ Diese Relation trägt zwei verschiedene Aussagen, und `targets` entscheidet welc
 Uhrzeigersinn, Start oben. Hebe die treibende Station farblich hervor (z. B. Belohnung = ueberich). **Nimm so viele Stationen, wie der Kreislauf wirklich hat** — drei echte Stationen sind besser als eine vierte, die nur die Zahl füllt, und ein Kreis mit fünf Gliedern muss nicht auf vier zusammengezogen werden.
 
 ### relation: weighing
-`{ "relation":"weighing", "text", "left":{"label":"<≤ 9>","sub":"<≤ 16>","color"}, "right":{…}, "pivot":{"label":"<≤ 10>","sub":"<≤ 16>","color"}, "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4) }`
+`{ "relation":"weighing", "text", "left":{"label":"<≤ 9>","sub":"<≤ 16>","color"}, "right":{…}, "pivot":{"label":"<≤ 10>","sub":"<≤ 16>","color"}, "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4), "caption" }`
 **Links hängt tiefer = wiegt schwerer.** Nutze das semantisch. Der `pivot` ist das Vermittelnde/Ergebnis, keine Schnittmenge.
 
 ### relation: descent
-`{ "relation":"descent", "text", "steps":[{"label":"<≤ 16>","sub":"<≤ 26>","color"}×3, letzter mit "submerged":true], "sink":{"label":"<CAPS ≤ 20>"}, "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4), "caption"? }`
+`{ "relation":"descent", "text", "steps":[{"label":"<≤ 16>","sub":"<≤ 26>","color"}×3, letzter mit "submerged":true], "sink":{"label":"<CAPS ≤ 20>"}, "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4), "caption" }`
 Die Grenze bedeutet „unter der Oberfläche / außerhalb der Kontrolle" — nur nutzen, wenn das zum Konzept passt.
 
 ### relation: depth-layers
-`{ "relation":"depth-layers", "text", "zones":[{"id","label":"<CAPS ≤ 11>"}×3 (oben→unten)], "body":{"shape":"iceberg","regions":[{"id","label":"<CAPS ≤ 8>","color","at":"peak"?}×3]}, "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4) }`
+`{ "relation":"depth-layers", "text", "zones":[{"id","label":"<CAPS ≤ 11>"}×3 (oben→unten)], "body":{"shape":"iceberg","regions":[{"id","label":"<CAPS ≤ 8>","color","at":"peak"?}×3]}, "annotations":[{"art","text","an"|"von"+"bis"|"umfasst"}]? (max 4), "caption" }`
 `regions[0]` = rechte obere Region (mit `"at":"peak"` wandert ihr Label als Callout an die Spitze über Wasser), `regions[1]` = große linke Region, `regions[2]` = rechte untere Region.
 
 ### relation: object — Gegenstand aus der Library
