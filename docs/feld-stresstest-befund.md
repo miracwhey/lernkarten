@@ -15,13 +15,12 @@ Werkzeug: `probes/feld-stresstest.mjs`.
 |---|---|---|---|
 | Recht | Notwehr im deutschen Strafrecht | **pass**, 13 Karten | — |
 | Geschichte | Warum die Weimarer Republik scheiterte | abgelehnt (Contract) | **pass**, 13 Karten |
-| Wirtschaft | Wie Inflation entsteht | **exit 3** (Systemfehler) | **exit 3**, anderer Befund |
+| Wirtschaft | Wie Inflation entsteht | **exit 3** (Systemfehler) | **pass**, 13 Karten |
 | Musik | Warum Moll traurig klingt | abgelehnt (Contract) | **pass**, 11 Karten |
 
-**Eins von vier Feldern kam sauber durch, nach den Fixes drei.** Keiner der Ausfälle hatte
-mit dem Thema zu tun; jeder war ein Fehler im eigenen System. Wirtschaft steht noch aus —
-siehe Befund 7, und dort liegt der Verdacht erstmals nicht auf dem Renderer, sondern auf
-dem Gate selbst.
+**Eins von vier Feldern kam sauber durch, nach den Fixes alle vier.** Keiner der Ausfälle
+hatte mit dem Thema zu tun; jeder war ein Fehler im eigenen System — und der letzte saß
+nicht einmal im Renderer, sondern im Prüfer (Befund 7).
 
 Gesamtbild über alle vier Lektionen: **50 Karten, 11 verschiedene Formen**. `trend` liegt
 bei 16 % (auf den Heimatfeldern 46–57 %), `multiplication` kommt 5× vor — im gesamten
