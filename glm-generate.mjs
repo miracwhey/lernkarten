@@ -363,7 +363,20 @@ function nurModellfehler(stufe, e) {
 
 // Contract-Prüfung IMMER mit der bestellten Tiefe — sonst prüft die Pipeline gegen
 // einen anderen Bereich, als sie bestellt hat.
-const contract = (l) => validateLesson(l, { depth });
+/// Prüft — und heilt vorher, was deterministisch heilbar ist.
+///
+/// Die Heilung sitzt hier und nicht (nur) im Erstwurf, weil ALLE neun Prüfstellen durch
+/// diese eine Funktion laufen, die Patch-Runden aber direkt nach `setPath` validieren:
+/// `parseAndValidate` normalisierte den ersten Wurf, jede spätere Runde nicht. Gemessen im
+/// Feld-Stresstest (19.08.2026) reichte das nicht — das Modell lieferte die Waage-Schalen
+/// AUCH IM PATCH als JSON-Text (`"left": "{\"label\":…}"`), der Validator meldete darauf
+/// „label fehlt oder leer", die nächste Runde bekam wieder den falschen Auftrag, und der
+/// Lauf drehte sich im Kreis bis zum Abbruch. Eine Heilung, die nur den ersten Wurf trifft,
+/// deckt den Weg nicht ab, auf dem der Fehler tatsächlich ankommt.
+const contract = (l) => {
+  if (l?.cards) l.cards = normalizeLesson(l).cards;
+  return validateLesson(l, { depth });
+};
 
 function parseAndValidate(raw, tag) {
   writeFileSync(`${OUT}/${TAG}-raw-${tag}.txt`, raw);

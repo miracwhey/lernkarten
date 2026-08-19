@@ -18,6 +18,14 @@ const idx = picked.length ? picked
 
 const browser = await webkit.launch();
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+// Ohne reduzierte Bewegung fotografiert dieses Werkzeug bei jeder Karte mit
+// `sequence`/`trigger:"auto"` den AUSGANGSZUSTAND: 120 ms nach dem Rendern hat die
+// Enthüllung gerade erst begonnen, und die Karte sieht leer aus. Gemessen an der
+// Musik-Lektion (19.08.2026) — die `object`-Karte wirkte bis auf ein Kringel-Fragment
+// unbebildert, obwohl mit ihr alles in Ordnung war. Ein Stillbild-Werkzeug, das den
+// Startframe einer Animation liefert, meldet Defekte, die es nicht gibt; die Engine
+// springt unter `reduce` per Definition sofort in den Endzustand.
+await page.emulateMedia({ reducedMotion: "reduce" });
 page.on("pageerror", (e) => console.error("PAGEERROR:", e.message));
 await page.goto("file://" + resolve("card-canvas.html"));
 await page.waitForTimeout(200);

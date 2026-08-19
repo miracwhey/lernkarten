@@ -15,10 +15,17 @@ export const OR_BASE = "https://openrouter.ai/api/v1";
 // das Feld vor dem Request (openaiChat unten, wie glm-generate.requestBody).
 export const CHAIN = [
   { id: "openai/gpt-5.6-luna-pro", keyName: "OPENROUTER_API_KEY", base: OR_BASE, body: { max_tokens: 16000, temperature: null } },
-  // 24k statt 16k: DS-Pro ist ein Denker — Lauf „Impfungen" 14.08. verbrannte
-  // 16001/16001 Tokens als reine Denk-Tokens (leere Antwort). Budget statt Drossel:
-  // die Bench-Bilanz gilt nur mit Default-Denken.
-  { id: "deepseek/deepseek-v4-pro-0813", keyName: "OPENROUTER_API_KEY", base: OR_BASE, body: { max_tokens: 24000 } },
+  // DS-Pro ist ein Denker, und das größere Budget allein hat ihn nicht gerettet: nach
+  // 16001/16001 im Lauf „Impfungen" (14.08.) verbrannte er im Feld-Stresstest (19.08.)
+  // auch 24003/24003 Token rein im Denken — zweimal, auf beiden Themen, jedes Mal eine
+  // LEERE Antwort nach ~20 Minuten. Ein Fallback, der nie etwas liefert, ist keiner.
+  // Deshalb jetzt Budget UND Drossel: 8k fürs Denken lassen 16k für die Lektion — genau
+  // das Budget, mit dem Luna sie schreibt.
+  // Am echten Produktionspfad gemessen (`probes/reasoning-drossel.mjs` für die Frage, ob
+  // der Hebel überhaupt greift, danach ein voller Lauf über glm-generate.mjs gegen
+  // dasselbe Dossier): 0 leere und 0 abgeschnittene Antworten, Lektion vollständig gebaut.
+  { id: "deepseek/deepseek-v4-pro-0813", keyName: "OPENROUTER_API_KEY", base: OR_BASE,
+    body: { max_tokens: 24000, reasoning: { max_tokens: 8000 } } },
 ];
 
 // Judge fix und nie Mitglied der Generator-Kette (Bench-Setup unverändert).

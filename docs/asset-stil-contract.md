@@ -157,9 +157,11 @@ lässt nur zu, was durchgekommen ist.
 
 ## Bekannte Grenzen (Stand 15.08.2026)
 
-- **`psyche.person` ist NICHT abgenommen.** Neu gezeichnet, von Leon nie gesehen; die
-  Spec hatte die Silhouette als Bestand geführt („faktisch schon Assets"), im Renderer gab
-  es sie nie. Design-Gate ausstehend, Bild in `probes/asset-preview/psyche.person.png`.
+- **`psyche.person` ist abgenommen** (15.08.2026, nach einer Überarbeitung: Gehirn-Form
+  statt Ei, Hals- und Schulter-Übergang; Leon zur Silhouette „genial geil"). Bild in
+  `probes/asset-preview/psyche.person.png`. Offen ist etwas anderes: die innere Zone
+  trägt noch keine Anker, weshalb `probes/menschen-szene.mjs` den Kopf ein zweites Mal
+  zeichnen musste — siehe `docs/menschen-szenen-befund.md`.
 - **`physics.sky-scatter` hat keine Reserve in den Label-Plätzen** (Deckel = Länge der
   abgenommenen Texte). Mehr Spielraum bräuchte eine Überarbeitung der Komposition.
 - Das Kriterium „gestaltetes Objekt" ist **nicht** maschinell prüfbar — es hängt an der

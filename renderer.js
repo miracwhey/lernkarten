@@ -1030,34 +1030,51 @@ const RENDERERS = {
     const notePlace = (anchor, txt, sideWish, si) => {
       const pix = hindernisPix();
       const wish = sideWish === "below" ? 1 : sideWish === "above" ? -1 : 0;
-      const cands = [];
-      for (const size of [NOTE_SIZE, 9]) {
-        const w = measure(txt, size, 600), h = boxH(size);
-        // Seitliche Versätze skalieren MIT der Textbreite: ein 145 px breites Label
-        // steht bei dx=48 immer noch über seinem Anker — es muss um die halbe eigene
-        // Breite ausweichen können, sonst bleibt am Rand oder an der Achse keine Lage.
-        for (const side of [-1, 1]) for (const dist of [12, 16, 21, 27, 34, 42])
-          for (const dx of [0, -16, 16, -32, 32, -48, 48, -(w / 2 + 8), w / 2 + 8, -(w / 2 + 26), w / 2 + 26]) {
-          const r = rect(anchor[0] + dx, anchor[1] + side * dist, w, h);
-          const g = leaderGeom(r, anchor), braucht = distRect(r, anchor[0], anchor[1]) > LEADER_AB;
-          cands.push({ r, size, g, braucht,
-            score: distRect(r, anchor[0], anchor[1]) + (wish && side !== wish ? 18 : 0)
-              + (braucht ? 24 : 0) + (NOTE_SIZE - size) * 12 });
-        }
-      }
-      // Die Stop-Vertikale ist Chrome, keine Aussage: ein Note-Text mit Papier-Halo darf
-      // sie im Notfall queren (er unterbricht dann die Strichelung, statt unlesbar zu
-      // werden). Teuer im Score, damit es die letzte Wahl bleibt — anders als bei einer
-      // Kurve oder der Achse, die als Hindernis hart bleiben.
-      for (const c of cands) if (hitPix(grow(c.r, 2), stopPix)) c.score += 30;
-      cands.sort((a, b) => a.score - b.score);
       const kurvenPix = seriesPix.flat().concat(axisPix);
+      // Kandidaten EINER Textform (ein- oder zweizeilig). Herausgezogen, weil der Umbruch
+      // die zweite Form beisteuert und beide dieselbe Lagen-Geometrie brauchen.
+      const lagen = (zeilen) => {
+        const cands = [];
+        for (const size of [NOTE_SIZE, 9]) {
+          const breiten = zeilen.map((z) => measure(z, size, 600));
+          const w = Math.max(...breiten), h = boxH(size) * zeilen.length;
+          // Seitliche Versätze skalieren MIT der Textbreite: ein 145 px breites Label
+          // steht bei dx=48 immer noch über seinem Anker — es muss um die halbe eigene
+          // Breite ausweichen können, sonst bleibt am Rand oder an der Achse keine Lage.
+          for (const side of [-1, 1]) for (const dist of [12, 16, 21, 27, 34, 42])
+            for (const dx of [0, -16, 16, -32, 32, -48, 48, -(w / 2 + 8), w / 2 + 8, -(w / 2 + 26), w / 2 + 26]) {
+            const r = rect(anchor[0] + dx, anchor[1] + side * dist, w, h);
+            const g = leaderGeom(r, anchor), braucht = distRect(r, anchor[0], anchor[1]) > LEADER_AB;
+            cands.push({ r, size, g, braucht, zeilen, breiten,
+              score: distRect(r, anchor[0], anchor[1]) + (wish && side !== wish ? 18 : 0)
+                + (braucht ? 24 : 0) + (NOTE_SIZE - size) * 12 });
+          }
+        }
+        // Die Stop-Vertikale ist Chrome, keine Aussage: ein Note-Text mit Papier-Halo darf
+        // sie im Notfall queren (er unterbricht dann die Strichelung, statt unlesbar zu
+        // werden). Teuer im Score, damit es die letzte Wahl bleibt — anders als bei einer
+        // Kurve oder der Achse, die als Hindernis hart bleiben.
+        for (const c of cands) if (hitPix(grow(c.r, 2), stopPix)) c.score += 30;
+        return cands.sort((a, b) => a.score - b.score);
+      };
       const frei = (c) => inView(c.r, NOTE_BOTTOM) && !hitPlaced(c.r, LUFT_X, LUFT_Y) && !hitPix(grow(c.r, 2), kurvenPix)
         && (!c.braucht || (leaderLen(c.g) <= LEADER_MAX && diagonal(c.g) && leaderFree(c.g, pix)));
       const eindeutig = (c) => fremdDist(si, c.r) >= distPix(c.r, seriesPix[si]) - 1.5;
       // Dieselbe Staffel wie die Asset-Note; nur die Kandidaten sind kurvenspezifisch.
       // Eine bevorzugte Lage gibt es hier nicht — auf einer Linie ist kein „innen".
-      const c = platziere(cands, {
+      //
+      // Der Umbruch ist AUSWEICHFORM, nicht Regelform — dieselbe Entscheidung wie beim
+      // Callout, und aus demselben Grund eine STAFFEL statt eines gemeinsamen Score-Topfs:
+      // im Topf gewinnt der kompaktere Kasten fast immer, weil der Score Nähe belohnt.
+      // Gemessen an der Wirtschafts-Karte („WIRKT MIT VERZÖGERUNG" auf dem Absturz-Ast bei
+      // t=0.82): einzeilig ist das Label breiter als der Raum zwischen Kurve und Kartenrand,
+      // links liegt die Kurve, unten die Achse — von 264 Lagen war keine frei, der Notnagel
+      // legte den Text auf die Kurve, das Audit meldete PATH und Exit 3 riss den ganzen
+      // Lauf mit. Zweizeilig halbiert die Breite und macht denselben Platz benutzbar.
+      const formen = umbruch(txt, NOTE_SIZE, 600).map(lagen);
+      let c = formen.map((k) => platziere(k, { frei, eindeutig })).find((x) => x && frei(x));
+      // Nirgends frei — dann entscheidet der kleinste Schaden über ALLE Formen zusammen.
+      if (!c) c = platziere(formen.flat().sort((a, b) => a.score - b.score), {
         frei, eindeutig,
         schaden: (k) => ((!inView(k.r, NOTE_BOTTOM) || (k.braucht && leaderLen(k.g) > LEADER_MAX))
           ? null : schadenVon(k.r, pix) + k.score * 0.05)
@@ -1068,7 +1085,7 @@ const RENDERERS = {
       // wirklich: ein senkrechter oder zu langer Strich wäre schlimmer als gar keiner, der
       // Punkt-Marker bindet weiter.
       const brauchbar = c.braucht && leaderLen(c.g) <= LEADER_MAX && diagonal(c.g);
-      return { r: put(c.r), size: c.size, leader: brauchbar ? c.g : null };
+      return { r: put(c.r), size: c.size, leader: brauchbar ? c.g : null, zeilen: c.zeilen, breiten: c.breiten };
     };
 
     // ——— Apex-Note: blanker CAPS-Text am Nach-Stop-Ast ———
@@ -1170,10 +1187,17 @@ const RENDERERS = {
         : `<circle class="c-notedot"${AN(anNote[ni])}${GLOW(sm.s.color)} cx="${a[0].toFixed(1)}" cy="${a[1].toFixed(1)}" r="3" fill="${C(sm.s.color)}"/>`;
       // Der Ankerpunkt steht am Text: ein Puls zwischen zwei Notes derselben Serie
       // läuft AUF deren Strich zwischen genau diesen beiden Punkten.
-      return dot + leaderSvg(r.leader, anNote[ni]) + textSvg(r.r, r.size, txt, "c-note halo", C(sm.s.color),
-        `data-note-series="${si}"${atApex ? ' data-at="apex"' : ""}${r.leader ? ' data-leader="1"' : ""}`
+      const noteAttrs = `data-note-series="${si}"${atApex ? ' data-at="apex"' : ""}${r.leader ? ' data-leader="1"' : ""}`
         + (r.gestapelt ? ' data-stacked="1"' : "")
-        + AN(anNote[ni]) + TON(sm.s.color) + ` data-ax="${a[0].toFixed(1)}" data-ay="${a[1].toFixed(1)}"`);
+        + AN(anNote[ni]) + TON(sm.s.color) + ` data-ax="${a[0].toFixed(1)}" data-ay="${a[1].toFixed(1)}"`;
+      // Eine Zeile ist der Regelfall und rechnet sich hier auf exakt dieselbe Lage wie
+      // vorher (Höhe = eine Zeilenhöhe, Versatz = deren halbe); die Schleife trägt nur den
+      // Umbruch mit, den der Solver als Ausweichform wählen darf. Die Apex-Note bringt
+      // keine Zeilen mit — sie ist ihrer Natur nach einzeilig.
+      const zeilen = r.zeilen ?? [txt];
+      return dot + leaderSvg(r.leader, anNote[ni]) + zeilen.map((z, zi) => textSvg(
+        rect(r.r.cx, r.r.cy - r.r.h / 2 + boxH(r.size) * (zi + 0.5), r.breiten?.[zi] ?? r.r.w, boxH(r.size)),
+        r.size, z, "c-note halo", C(sm.s.color), noteAttrs)).join("");
     }).join("");
     const seriesLabels = samples.map((sm, si) => {
       if (!sm.s.label) return "";
