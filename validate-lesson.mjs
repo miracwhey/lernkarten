@@ -187,6 +187,58 @@ export function logMiss(art, wunsch, kontext = {}) {
   } catch { /* Backlog ist optional (read-only FS im Worker) */ }
 }
 
+// ————————————————————— Claims in Beschriftungen —————————————————————
+// Was zählt als Mengen- oder Richtungs-Aussage? Die Frage stellen zwei Stellen: das
+// Mess-Gate (notecheck.mjs misst Note-Claims gegen die gezeichnete Kurve) und der
+// Validator (eine Menge in der Erklär-Schicht ist gar nicht erst messbar — der Callout
+// hat keinen Ort auf dem Verlauf). Zwei Lexika hieße zwei Wahrheiten; deshalb steht die
+// Definition hier, wo beide sie holen.
+export const plainLabel = (label) => String(label).replace(/<[^>]+>/g, " ");
+
+// EINE Lexikon-Quelle für Richtungs-Claims. Bewusst eng: nur Wörter, die aussagen,
+// dass die GEZEICHNETE Größe selbst auf- oder abwärts geht. Nicht enthalten sind
+// Eingriffs-Verben („hemmt", „bremst", „drosselt"): sie beschreiben eine Wirkung auf
+// die Größe, die der Renderer als gedrückt-flache Form (suppressed) zeichnet — dort
+// wäre eine Steigungsmessung kein gültiger Gegenbeweis.
+export const DIRECTION_WORDS = {
+  down: ["senkt", "senken", "sinkt", "sinken", "fällt", "fallen", "abfall", "abnahme",
+         "nimmt ab", "nehmen ab", "schrumpft", "schrumpfen", "verringert", "reduziert",
+         "geht zurück", "rutscht", "stürzt", "bricht ein", "zerfällt", "halbiert"],
+  up:   ["steigt", "steigen", "anstieg", "steigert", "wächst", "wachsen", "zunahme",
+         "nimmt zu", "nehmen zu", "sammelt sich", "sammeln sich", "staut sich",
+         "baut sich auf", "häuft sich", "erhöht", "verdoppelt", "klettert", "schnellt"],
+};
+
+// Wortgrenzen mit deutschen Umlauten: \b kennt nur ASCII und trennte „fällt" mitten
+// im Wort. Deshalb explizite Buchstabenklasse als Grenze.
+const WORT = "A-Za-zÄÖÜäöüß";
+const enthaeltWort = (text, wort) =>
+  new RegExp(`(^|[^${WORT}])${wort.replace(/ /g, "\\s+")}([^${WORT}]|$)`, "i").test(text);
+
+/// Behauptete Richtung eines Labels: "up" | "down" | null.
+/// Enthält ein Label beide Richtungen („STEIGT, DANN FÄLLT"), ist es kein
+/// punktueller Claim mehr — dann prüft hier nichts.
+export function claimedDirection(label) {
+  const plain = plainLabel(label);
+  const down = DIRECTION_WORDS.down.some((w) => enthaeltWort(plain, w));
+  const up = DIRECTION_WORDS.up.some((w) => enthaeltWort(plain, w));
+  if (down === up) return null;
+  return down ? "down" : "up";
+}
+
+// Level-Claim aus einem Label: Prozentzahl oder Bruchwort. Vergleiche mit
+// anderer Serie ("HALB SO HOCH") sind kein Selbst-Claim — Judge-Territorium.
+export function claimedFraction(label) {
+  const plain = plainLabel(label);
+  if (/\bso\s+(hoch|viel|stark|groß|tief|niedrig)\b/i.test(plain)) return null;
+  const pct = plain.match(/(\d+(?:[.,]\d+)?)\s*%/);
+  if (pct) return parseFloat(pct[1].replace(",", ".")) / 100;
+  if (/\bh[äa]lfte\b|\bhalb(e|es|er)?\b/i.test(plain)) return 0.5;
+  if (/\bviertel\b/i.test(plain)) return 0.25;
+  if (/\bdrittel\b/i.test(plain)) return 1 / 3;
+  return null;
+}
+
 // ————————————————————— v3: Anker-Registry —————————————————————
 // Jeder Karten-Typ trägt stabile Anker-Namen im Schema `typ:id`, DETERMINISTISCH aus
 // dem Karten-JSON abgeleitet — ohne Rendern. Der Validator prüft Sequenz-Targets damit,
@@ -398,6 +450,51 @@ function quotenPruefen(lesson, err) {
       + `Bestehende Karten bleiben sonst unverändert.`);
   }
 }
+/// Felder je Art — was hier nicht steht, liest niemand. `t` kam so durch: die
+/// Erklär-Schicht-Probe deklarierte `t:0.33`, der Validator nahm es an, und der
+/// Callout-Zweig setzt den Kasten dorthin, wo Platz ist. Gemessen stand die Beschriftung
+/// bei einem x-Anteil von 0,15 auf 66 % Kurvenhöhe — das Feld hat NIE gewirkt, aber es
+/// stand da und las sich wie eine Zusage. Ein Feld, das niemand liest, ist eine stille
+/// Lüge; deshalb ist die Liste abschließend und nicht bloß beschreibend.
+const ANNOT_FELDER = {
+  callout: ["art", "text", "an"],
+  // `text` steht hier, obwohl ein Ring keinen trägt: die Regel dazu meldet weiter unten
+  // MIT ihrer Korrektur („setze zusätzlich ein callout auf denselben Anker"). Zweimal
+  // dasselbe zu melden gäbe der Patch-Runde zwei Aufträge für eine Ursache.
+  ring: ["art", "an", "text"],
+  klammer: ["art", "text", "von", "bis"],
+  pfeil: ["art", "text", "von", "bis"],
+  zone: ["art", "text", "umfasst"],
+};
+function feldWhitelist(a, ap, err, aufKurve) {
+  const erlaubt = ANNOT_FELDER[a.art];
+  for (const feld of Object.keys(a)) {
+    if (erlaubt.includes(feld)) continue;
+    // Der Verweis auf `notes` nur dort, wo es sie gibt: auf einer Kreis- oder
+    // Ketten-Karte wäre er eine Korrektur ins Leere.
+    err(`${ap}.${feld}`, feld === "t"
+      ? `wird nicht gelesen — die Lage einer Annotation bestimmt der Solver (freier Raum, `
+        + `Punkt am Anker); entferne das Feld${aufKurve ? ". Willst du eine STELLE im Verlauf "
+          + "bezeichnen, nimm eine notes-Anmerkung: die hat ein t und wird gegen die Kurve gemessen" : ""}`
+      : `unbekanntes Feld für art "${a.art}" (erlaubt: ${erlaubt.join(", ")}) — `
+        + `entferne es; was hier steht und nicht in der Liste, zeichnet niemand`);
+  }
+}
+
+/// Mengen in der Erklär-Schicht einer KURVE: nicht prüfbar, also nicht erlaubt.
+/// Ein Callout hat keinen Ort auf dem Verlauf — sein Punkt sitzt auf dem nächstgelegenen
+/// Stück Geometrie, der Kasten dort, wo Platz ist. „NOCH 50 % WIRKUNG" landete so auf
+/// 66 % Kurvenhöhe, und kein Gate konnte es sehen (notecheck misst `notes`, die ein t
+/// haben). Die Aussage ist nicht falsch, sie steht nur am falschen Träger.
+/// Andere Karten-Typen bleiben frei: dort ist Höhe keine Menge, und eine Zahl im Callout
+/// („4 HALBTÖNE") behauptet nichts über die Geometrie.
+function mengenClaim(a, ap, err) {
+  if (typeof a?.text !== "string" || claimedFraction(a.text) == null) return;
+  err(ap + ".text", `"${a.text}" nennt eine Menge — auf einer Kurven-Karte gehört die an `
+    + `einen Träger mit Ort: setze sie als notes-Anmerkung mit t (dort misst notecheck sie `
+    + `gegen die gezeichnete Höhe). Der Callout bezeichnet die Stelle, ohne sie zu beziffern`);
+}
+
 function checkAnnotations(card, p, err) {
   if (card.annotations === undefined) return;
   const { anker } = ankerModell(card);
@@ -427,6 +524,8 @@ function checkAnnotations(card, p, err) {
     const ap = `${p}.annotations[${i}]`;
     if (!ANNOT_ARTEN.includes(a?.art))
       err(ap + ".art", `unbekannte Art "${a?.art}" (erlaubt: ${ANNOT_ARTEN.join(", ")})`);
+    else feldWhitelist(a, ap, err, card.type === "curve");
+    if (card.type === "curve") mengenClaim(a, ap, err);
     // Der Ring markiert nur, er benennt nicht; beim Pfeil ist die Beschriftung optional
     // (die Richtung ist schon die Aussage). Alles andere braucht seinen Text.
     const brauchtText = a?.art !== "ring" && a?.art !== "pfeil";

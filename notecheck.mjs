@@ -14,7 +14,10 @@
 import { chromium } from "playwright";
 import { readFileSync, writeFileSync, renameSync } from "fs";
 import { resolve } from "path";
-import { normalizeLesson } from "./validate-lesson.mjs";
+// Was ein Claim IST, steht im Validator (er braucht dieselbe Auskunft für die
+// Erklär-Schicht) — hier wird nur gemessen, nicht zweitdefiniert.
+import { normalizeLesson, claimedDirection, claimedFraction, plainLabel, DIRECTION_WORDS } from "./validate-lesson.mjs";
+export { claimedDirection, claimedFraction, plainLabel, DIRECTION_WORDS };
 
 const TOL = 0.10;   // ±10 Punkte relativ zum Serien-Maximum — qualitative Kurve, keine Achsen-Skala
 
@@ -30,52 +33,6 @@ const FLAT_RATE = 0.0625;
 // Eine Serie gilt als GLOBAL flach, wenn ihr Verlauf über die ganze Breite unter
 // diesem Anteil ihres Maximums bleibt (shape "flat" liefert exakt 0).
 const GLOBAL_FLAT = 0.02;
-
-// EINE Lexikon-Quelle für Richtungs-Claims. Bewusst eng: nur Wörter, die aussagen,
-// dass die GEZEICHNETE Größe selbst auf- oder abwärts geht. Nicht enthalten sind
-// Eingriffs-Verben („hemmt", „bremst", „drosselt"): sie beschreiben eine Wirkung auf
-// die Größe, die der Renderer als gedrückt-flache Form (suppressed) zeichnet — dort
-// wäre eine Steigungsmessung kein gültiger Gegenbeweis.
-export const DIRECTION_WORDS = {
-  down: ["senkt", "senken", "sinkt", "sinken", "fällt", "fallen", "abfall", "abnahme",
-         "nimmt ab", "nehmen ab", "schrumpft", "schrumpfen", "verringert", "reduziert",
-         "geht zurück", "rutscht", "stürzt", "bricht ein", "zerfällt", "halbiert"],
-  up:   ["steigt", "steigen", "anstieg", "steigert", "wächst", "wachsen", "zunahme",
-         "nimmt zu", "nehmen zu", "sammelt sich", "sammeln sich", "staut sich",
-         "baut sich auf", "häuft sich", "erhöht", "verdoppelt", "klettert", "schnellt"],
-};
-
-// Wortgrenzen mit deutschen Umlauten: \b kennt nur ASCII und trennte „fällt" mitten
-// im Wort. Deshalb explizite Buchstabenklasse als Grenze.
-const WORT = "A-Za-zÄÖÜäöüß";
-const enthaeltWort = (text, wort) =>
-  new RegExp(`(^|[^${WORT}])${wort.replace(/ /g, "\\s+")}([^${WORT}]|$)`, "i").test(text);
-
-export const plainLabel = (label) => String(label).replace(/<[^>]+>/g, " ");
-
-/// Behauptete Richtung eines Note-Labels: "up" | "down" | null.
-/// Enthält ein Label beide Richtungen („STEIGT, DANN FÄLLT"), ist es kein
-/// punktueller Claim mehr — dann prüft hier nichts.
-export function claimedDirection(label) {
-  const plain = plainLabel(label);
-  const down = DIRECTION_WORDS.down.some((w) => enthaeltWort(plain, w));
-  const up = DIRECTION_WORDS.up.some((w) => enthaeltWort(plain, w));
-  if (down === up) return null;
-  return down ? "down" : "up";
-}
-
-// Level-Claim aus dem Note-Text: Prozentzahl oder Bruchwort. Vergleiche mit
-// anderer Serie ("HALB SO HOCH") sind kein Selbst-Claim — Judge-Territorium.
-export function claimedFraction(label) {
-  const plain = plainLabel(label);
-  if (/\bso\s+(hoch|viel|stark|groß|tief|niedrig)\b/i.test(plain)) return null;
-  const pct = plain.match(/(\d+(?:[.,]\d+)?)\s*%/);
-  if (pct) return parseFloat(pct[1].replace(",", ".")) / 100;
-  if (/\bh[äa]lfte\b|\bhalb(e|es|er)?\b/i.test(plain)) return 0.5;
-  if (/\bviertel\b/i.test(plain)) return 0.25;
-  if (/\bdrittel\b/i.test(plain)) return 1 / 3;
-  return null;
-}
 
 // Lineare Interpolation auf den Renderer-Punkten (Polyline = lineare Segmente).
 const levelAt = (pts, t) => {

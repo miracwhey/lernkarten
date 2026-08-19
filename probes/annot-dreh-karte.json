@@ -12,18 +12,23 @@
       "to": "floor"
     }
   ],
+  "notes": [
+    {
+      "series": 0,
+      "t": 0.33,
+      "label": "NOCH 50 % WIRKUNG"
+    },
+    {
+      "series": 0,
+      "t": 0.67,
+      "label": "NUR NOCH 25 %"
+    }
+  ],
   "annotations": [
     {
       "art": "callout",
-      "text": "NOCH 50 % WIRKUNG",
-      "an": "series:koffein-im-blut",
-      "t": 0.33
-    },
-    {
-      "art": "callout",
-      "text": "NUR NOCH 25 %",
-      "an": "series:koffein-im-blut",
-      "t": 0.67
+      "text": "DER SCHUB IST WEG",
+      "an": "series:koffein-im-blut"
     }
   ],
   "caption": "Ein Kaffee um 16 Uhr ist um 21 Uhr noch zur Hälfte aktiv.",

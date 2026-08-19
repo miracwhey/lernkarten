@@ -211,16 +211,73 @@ Offen dabei: woher die Werte kommen (aus dem Dossier, aus einer Formel je `shape
 das Modell nennt sie und der Validator prüft sie gegen den Text), und ob `t` weiterhin ein
 Bruchteil bleibt oder eine Einheit bekommt.
 
+### Gebaut am 19.08. — die Zahl kommt aus der Formel, `t` bleibt ein Bruchteil
+
+Leons Entscheid, an vier gerenderten Fassungen getroffen (heute · 3 · 4 · 5
+Halbwertszeiten über die Breite):
+
+- **Der Zerfall wird gerechnet, nicht nachgezeichnet.** `y = from · 0,5^(n·u)` in
+  `renderer.js`; `decay-halflife` steht dafür nicht mehr in `NORM` (dort stand Zeichen für
+  Zeichen dieselbe Funktion wie `saturating-rise`).
+- **`to` sagt, wie WEIT der Zerfall läuft, nicht wo er endet:** `floor` = 3
+  Halbwertszeiten (Hälfte bei ⅓, Viertel bei ⅔, Ende bei ⅛), `low` = 2, `mid` = 1. Damit
+  bleibt der Ausdrucksraum — schneller und zäher Abbau stehen auf einer Karte nebeneinander
+  —, und jede Stufe hält ihre Zusage, weil die Hälfte bei `t = 1/n` liegt.
+- **`t` bleibt ein Bruchteil der Strecke.** Eine Einheit an der Achse braucht es nicht: die
+  Strecke IST in Halbwertszeiten geteilt, und der Lehrsatz sagt, wie lange eine dauert.
+- **Im Bild steht weiterhin keine Achsen-Zahl.** Nur die Anmerkung nennt einen Wert, und
+  der stimmt jetzt mit der Höhe überein, an der sie sitzt.
+
+Gemessen mit `node probes/kurve-treue.mjs` — aus dem Diagnose-Zettel ist damit das Gate
+geworden, das der Entscheid braucht. Es misst die GEZEICHNETE Polyline gegen `0,5^k`,
+Bezugsgröße ist das Startniveau (dieselbe wie in `notecheck.mjs`; die frühere Fassung
+normierte auf die gezeichnete Spanne und bekam deshalb für dieselbe Kurve je nach Endhöhe
+verschiedene Prozentwerte).
+
+| Stufe | nach 1 HWZ | nach 2 | nach 3 | alte Fassung bei ⅓ |
+|---|---|---|---|---|
+| `to:"floor"` (3 HWZ) | 49,4 % | 25,3 % | 12,5 % | 38,1 % |
+| `to:"low"` (2 HWZ) | 50,0 % | 25,0 % | — | 28,6 % |
+| `to:"mid"` (1 HWZ) | 50,0 % | — | — | 59,1 % |
+
+Gegenprobe mit der alten Renderer-Fassung: 9 FAIL. Die Sonden-Karte
+(`probes/annot-dreh-karte.json`, aus dem Lauf vom 18.08.) trägt ihre beiden Zahlen jetzt
+als `notes` bei t=0,33 und t=0,67 — `notecheck` misst 50 % und 25 % und meldet PASS, **ohne
+t-Versatz**. Vorher war derselbe Satz nur dadurch „wahr", dass das Gate die Zahl zur Kurve
+geschoben hat.
+
+### Und die Erklär-Schicht bleibt mengenfrei
+
+Der zweite Teil desselben Befunds: `annotations[].t` war ein totes Feld — der Callout-Zweig
+liest es nie, er setzt den Kasten dorthin, wo Platz ist. Gemessen stand „NOCH 50 % WIRKUNG"
+bei einem x-Anteil von 0,15 auf 66 % Kurvenhöhe, deklariert war t=0,33. Der Validator nahm
+das Feld an, weil er unbekannte Felder nie geprüft hat.
+
+Beides ist jetzt geschlossen, und zwar an der Wurzel statt am Einzelfall:
+
+- **Feld-Whitelist je `art`** (`ANNOT_FELDER`): was nicht in der Liste steht, zeichnet
+  niemand — die Meldung für `t` trägt die Korrektur („nimm eine notes-Anmerkung, die hat
+  ein t und wird gegen die Kurve gemessen").
+- **Mengen-Verbot auf Kurven-Karten**: ein Callout hat dort keinen Ort, also darf er keine
+  Menge nennen. Andere Karten-Typen bleiben frei — auf einer `venn`-Karte behauptet
+  „4 HALBTÖNE" nichts über Geometrie. Was ein Mengen-Claim IST, steht seit heute an EINER
+  Stelle (`claimedFraction` in `validate-lesson.mjs`), aus der sich Validator und
+  `notecheck` bedienen; vorher hätte eine zweite Definition zwei Wahrheiten ergeben.
+- Gegen den Bestand gemessen: 138 Lektionen, **0** neue Befunde — die Regeln treffen
+  Fehler, nicht Gewohnheiten.
+
 **Empfehlung, in dieser Reihenfolge:**
 
-1. **Zuerst die Kurve an ihre eigene Behauptung binden** — `decay-halflife` so zeichnen,
-   dass die Halbierung wirklich auf der Hälfte der genannten Zeit liegt. Das ist ein
-   kleiner Eingriff mit sofortiger Wirkung, unabhängig von allen Zahlen an Achsen: die
-   Aussagen auf der Karte werden wahr.
+1. ~~**Zuerst die Kurve an ihre eigene Behauptung binden**~~ — **erledigt 19.08.**, siehe
+   oben. `decay-halflife` ist gerechnet, `probes/kurve-treue.mjs` hält es fest.
 2. **Dann Zahlen dort erlauben, wo die Geometrie sie hält** — `zone-axis` und
-   `composition` sofort, die Kurve erst nach Schritt 1.
-3. **Ein Gate dazu**, das Label-Werte gegen die Kurvenhöhe misst: ohne das wandert der
-   Fehler nur von der Achse ins Label zurück.
+   `composition` sofort; für die Kurve ist der Weg jetzt frei, entschieden ist er nicht:
+   im Bild steht weiterhin keine Achsen-Zahl.
+3. ~~**Ein Gate dazu**~~ — steht: `notecheck.mjs` misst Anmerkungen gegen die Kurvenhöhe,
+   und auf der anderen Schicht verbietet der Validator die Menge, die dort nicht messbar
+   wäre. Offen bleibt der RICHTUNGS-Claim in der Erklär-Schicht („NACHFRAGE BRICHT EIN" als
+   Callout auf einer Kurve): messbar wäre er nur, wo der Anker eine Stelle hat (`note:`,
+   `stop`) — heute prüft ihn niemand.
 
 Offen bleibt die Stil-Frage: Imprint benutzt in den zwölf Referenz-Karten **kein
 einziges** Zahlendiagramm (Befund 4 der Analyse). Zahlen erhöhen die Genauigkeit, ziehen

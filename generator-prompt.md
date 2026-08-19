@@ -83,10 +83,11 @@ Serie: `{ "label":"<≤ 18>"?, "color", "shape", "from"?, "to"?, "afterStop"?, "
   - `linear-rise` — stetig proportional (Gehalt pro Stunde)
   - `compound-rise` — beschleunigt sich selbst, am Anfang unscheinbar (Zinseszins, Assets)
   - `saturating-rise` — steigt erst schnell, flacht ab (Sättigung, Akkumulation mit Grenze)
-  - `decay-halflife` — fällt erst schnell, flacht ab (Halbwertszeit, Zerfall)
+  - `decay-halflife` — fällt erst schnell, flacht ab (Halbwertszeit, Zerfall). Diese Form ist **gerechnet**: nach jeder Halbwertszeit ist noch die Hälfte übrig. Eine Anmerkung „NOCH 50 %" bei `t` = einem Drittel steht deshalb wirklich auf halber Höhe — du darfst dich darauf verlassen.
   - `suppressed` — künstlich niedrig gedrückt (verdeckter Zustand): senkt sich einmal ab und **bleibt unten**, bis das Ereignis kommt; ein `to` unter `from` sagt, wie tief
   - `flat` — konstant niedrig/hoch (Referenzlinie)
 - `from`/`to` — Start-/Endniveau: `floor` | `low` | `mid` | `high` (Default: rise low→high, decay high→floor). Nutze Niveaus für Beziehungen zwischen Serien: endet A über B, gib A `to:"high"` und B `to:"mid"`.
+- **Bei `decay-halflife` sagt `to`, wie WEIT der Zerfall läuft**, nicht wo er endet: `floor` = drei Halbwertszeiten über die Breite (die Hälfte bei ⅓, ein Viertel bei ⅔), `low` = zwei (die Hälfte in der Mitte), `mid` = eine (die Hälfte am rechten Rand). Zwei Stoffe mit verschiedenem Tempo stellst du so nebeneinander: der schnelle bekommt `floor`, der zähe `mid`.
 - `stop` — EIN Ereignis als gestrichelte Vertikale; `t` = wann im Verlauf (0–1). `afterStop` sagt pro Serie, was das Ereignis mit ihr macht: `collapse` (bricht auf null), `reset` (fällt zurück auf Start), `rebound` (schnellt nach oben).
 - `reboundTo` — nur zusammen mit `afterStop:"rebound"`: wie hoch der Ast steigt (`low` | `mid` | `high`, Default `high`). Du entscheidest die Endhöhe: `high`, wenn das Verdeckte voll durchschlägt; `mid`, wenn es den aufgestauten Wert nur teilweise einholt.
 - `notes` — Anmerkungen ankern an einer Serie, wahlweise bei einem freien `t` (0–1) **oder** mit `"at":"apex"` am Ende des Nach-Stop-Asts. Der Apex-Anker bindet Ereignis-Linie, Ast und Anmerkung zu EINEM Ereignis zusammen (typisch: der Crash, wenn die Blockade endet) — er setzt eine Serie mit `afterStop` voraus, höchstens eine je Serie. Das System platziert alles kollisionsfrei.
@@ -223,7 +224,8 @@ Der Slug ist die Beschriftung in Kleinbuchstaben, Leerzeichen als `-`: aus `"SCH
 - **Höchstens 4 je Karte.** Mehr macht aus der Karte ein Wimmelbild; die Aussage steht im Lehrsatz, nicht in fünf Zetteln auf dem Bild.
 - **Beschrifte nie eine Beschriftung.** Anker auf `label:` oder `zone:` sind Text, kein Gegenstand — hänge die Annotation an das Ding selbst.
 - **Farbe wird geerbt.** Ein Callout an einem roten Gegenstand ist rot; du gibst nie eine Farbe an.
-- **Keine Positionen.** Wo etwas sitzt, ob eine Linie zum Anker nötig ist, auf welcher Seite die Klammer steht — das rechnet das System. Du nennst nur Bedeutung und Ziel.
+- **Keine Positionen.** Wo etwas sitzt, ob eine Linie zum Anker nötig ist, auf welcher Seite die Klammer steht — das rechnet das System. Du nennst nur Bedeutung und Ziel. Es gibt hier auch kein `t`: eine Annotation zeigt auf einen Anker, nicht auf eine Stelle im Verlauf.
+- **Auf Kurven-Karten nennt die Schicht keine Mengen.** „NOCH 50 %", „NUR EIN VIERTEL" gehören in eine `notes`-Anmerkung — die sitzt bei einem `t` auf der Kurve, und das System prüft die Zahl gegen die gezeichnete Höhe. Ein Callout sucht sich seinen Platz im freien Raum; eine Prozentzahl an ihm behauptete eine Höhe, die er nicht hat. Der Callout benennt („DER CRASH KOMMT SPÄTER"), die Anmerkung beziffert.
 - **Die Schicht ist der Normalfall, nicht die Ausnahme.** Fast jede gute Lehrbuch-Grafik beschriftet, markiert oder misst etwas an ihrem Bild — ein Diagramm ohne ein Wort darin lässt den Leser raten, worauf er schauen soll. Prüfe bei JEDER Diagramm-Karte, ob eine Annotation die Aussage schärft; sitzt sie nicht, lass sie weg. Wiederhole nie ein Label, das schon dasteht.
 
 ### quiz

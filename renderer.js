@@ -656,14 +656,23 @@ const RENDERERS = {
     // Ereignis keinen Knick und am Apex keine Spitze — er liest sich als eine
     // Bewegung, nicht als zweite, unbeschriftete Linie.
     const smooth = (v) => v * v * (3 - 2 * v);
+    // `decay-halflife` steht bewusst NICHT hier: es ist die einzige Form, deren Name
+    // eine nachprüfbare Zusage macht, und die hält sie nur als echter Zerfall (unten).
+    // Zeichen für Zeichen dieselbe Funktion wie `saturating-rise`, nur gespiegelt, war
+    // sie das nicht: gemessen stand „NOCH 50 % WIRKUNG" bei einem Drittel der Strecke
+    // auf 39 % Kurvenhöhe (probes/kurve-varianten.mjs).
     const NORM = {
       "linear-rise": (t) => t,
       "compound-rise": (t) => (Math.exp(3 * t) - 1) / (Math.exp(3) - 1),
       "saturating-rise": (t) => (1 - Math.exp(-2.6 * t)) / (1 - Math.exp(-2.6)),
-      "decay-halflife": (t) => (1 - Math.exp(-2.6 * t)) / (1 - Math.exp(-2.6)),
       "flat": () => 0,
       "suppressed": () => 0
     };
+    // Wie viele Halbwertszeiten in die Breite passen — `to` sagt beim Zerfall, wie WEIT
+    // er läuft, nicht, wo er endet: die Endhöhe folgt aus der Zahl (Leon, 19.08.).
+    // Damit bleibt der Ausdrucksraum (zäher vs. schneller Abbau nebeneinander) und jede
+    // Fassung hält die Zusage — bei n Halbwertszeiten steht die Hälfte bei t = 1/n.
+    const HALBWERTSZEITEN = { floor: 3, low: 2, mid: 1 };
     const defFrom = (s) => s.shape === "decay-halflife" ? "high" : "low";
     const defTo = (s) => s.shape === "decay-halflife" ? "floor"
       : (s.shape === "flat" || s.shape === "suppressed") ? (s.from ?? defFrom(s)) : "high";
@@ -688,13 +697,18 @@ const RENDERERS = {
     // 1) Sample-Punkte je Serie: Form lebt bis zum Stop (wenn afterStop), sonst bis 1.
     const samples = card.series.map((s) => {
       const from = LEVELS[s.from ?? defFrom(s)];
-      const to = LEVELS[s.to ?? defTo(s)];
+      const toKey = s.to ?? defTo(s);
+      const to = LEVELS[toKey];
+      // `high` kommt hier nie an (der Validator lässt einen Zerfall nach oben nicht zu);
+      // der Rückfall auf den Default hält die Zeichnung trotzdem gültig.
+      const hwz = HALBWERTSZEITEN[toKey] ?? HALBWERTSZEITEN.floor;
       const tEnd = s.afterStop && tStop != null ? tStop : 1;
       const held = heldLevel(s, from);
       const N = 56, pts = [];
       for (let i = 0; i <= N; i++) {
         const u = i / N;
-        let y = from + (to - from) * NORM[s.shape](u);
+        let y = s.shape === "decay-halflife" ? from * Math.pow(0.5, hwz * u)
+          : from + (to - from) * NORM[s.shape](u);
         if (s.shape === "suppressed") y = from + (held - from) * smooth(Math.min(1, u / 0.32));
         pts.push([u * tEnd, Math.max(0, y)]);
       }
